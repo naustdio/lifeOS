@@ -131,7 +131,14 @@ function mapPgError(e: PostgrestLikeError, context: "create_account" | "move" | 
     if (context === "create_account") {
       return { code: "ACCOUNT_DETAIL_REQUIRED", message: "That account type requires matching detail fields.", cause: e };
     }
-    if (context === "move") {
+    // finance.update_transaction() raises 22023 for TWO distinct reasons under the same
+    // sqlstate: moving a transfer leg, and editing an already-voided transaction (the
+    // void-lock check runs BEFORE the move check, so it can fire even on a non-move patch).
+    // Both arrive here with context "move" since updateTransaction/updateOriginTransaction
+    // always call mapPgError(e, "move") — disambiguate on the exact raised message rather
+    // than mislabeling every 22023 from that path as a transfer-leg-move rejection
+    // (confirmed real bug: tests/integration/finance-facade.test.ts T-032).
+    if (context === "move" && !/voided transaction/i.test(e.message ?? "")) {
       return { code: "TRANSFER_LEG_NOT_MOVABLE", message: "A transfer leg cannot be moved to another account.", cause: e };
     }
     return { code: "VOID_TRANSACTION_NOT_EDITABLE", message: "That operation is not valid for this transaction.", cause: e };
