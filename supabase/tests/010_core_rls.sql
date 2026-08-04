@@ -1,11 +1,10 @@
 -- pgTAP — core RLS (design.md §4.4, §9 "Database — tenancy", tasks.md T-016)
 --
--- NOT EXECUTED by this agent — no local Postgres/Supabase CLI access in this
--- session (verified: `supabase` binary is not on PATH). Run against a local
--- stack with:
---
---   supabase start
---   supabase test db
+-- Executed 2026-08-04 against a local Supabase stack (`supabase start` +
+-- `supabase test db`). Initial run surfaced one mismatch between this
+-- file's assumptions and the actual (correct, stricter) grant design — see
+-- the note above the anon-role assertions below — since fixed. All 8
+-- assertions now pass for real.
 --
 -- This hand-rolls the `set local role authenticated; set local
 -- request.jwt.claims = '...'` impersonation pattern from design.md §4.4
@@ -113,28 +112,36 @@ select lives_ok(
   'owner A can UPDATE own household'
 );
 
--- (c) anon sees zero rows across every core table (policies are `TO
--- authenticated`, so anon short-circuits without evaluating any predicate).
+-- (c) anon is denied before RLS even evaluates: `core` has no `GRANT USAGE
+-- ON SCHEMA core TO anon` (migration 20260804090002, line 135 grants usage
+-- to `authenticated` only). This is stricter than an RLS-filtered empty
+-- result, so the correct assertion is a schema-level permission error, not
+-- an empty row count. (Corrected 2026-08-04 after running this suite for
+-- real against a local stack surfaced the mismatch between this test's
+-- original assumption and the actual, tighter grant design.)
 reset role;
 set local role anon;
 reset request.jwt.claims;
 
-select is(
-  (select count(*) from core.households),
-  0::bigint,
-  'anon sees zero rows from core.households'
+select throws_ok(
+  $$ select count(*) from core.households $$,
+  '42501',
+  null,
+  'anon is denied schema-level access to core.households'
 );
 
-select is(
-  (select count(*) from core.household_members),
-  0::bigint,
-  'anon sees zero rows from core.household_members'
+select throws_ok(
+  $$ select count(*) from core.household_members $$,
+  '42501',
+  null,
+  'anon is denied schema-level access to core.household_members'
 );
 
-select is(
-  (select count(*) from core.profiles),
-  0::bigint,
-  'anon sees zero rows from core.profiles'
+select throws_ok(
+  $$ select count(*) from core.profiles $$,
+  '42501',
+  null,
+  'anon is denied schema-level access to core.profiles'
 );
 
 select * from finish();

@@ -57,7 +57,7 @@ apply_progress:
         authored_lines: 504
     verify_gate: "pnpm verify — eslint + tsc --noEmit + check-tokens.mjs + next build — PASS"
     test_gate: "pnpm test (vitest) — 5/5 tests pass (boundary-lint smoke test, 3 theme-selection scenarios, no-household-text scan) — PASS"
-    db_gate: "NOT EXECUTED — no Supabase CLI/local Postgres in this session (verified: `supabase` binary absent from PATH). Migrations under supabase/migrations/ and pgTAP under supabase/tests/ are written but unverified against a real database; core.ensure_personal_space() concurrency also has a standalone bash harness (scripts/test-bootstrap-race.sh) that requires a running local stack. User must run `supabase start && supabase test db` (or apply to a project) to close this gate."
+    db_gate: "EXECUTED 2026-08-04 — Supabase CLI installed, local stack started (project_id LIFE_OS, ports remapped to the 55300s to avoid colliding with another project's stack on this machine). All 16 pgTAP assertions across 010_core_rls.sql and 020_core_bootstrap_idempotency.sql pass for real (one initial assertion corrected: anon lacks USAGE on schema core entirely, a stricter guarantee than the original RLS-filtered-to-zero-rows assumption). scripts/test-bootstrap-race.sh also executed for real via two genuinely concurrent connections (docker exec into the db container, since psql is not installed on this machine) — PASS, both callers landed in the same household, no duplicate rows."
     review_budget_note: >
       Cached session budget is 800 changed lines. Total authored diff for
       1B is 1027 lines (excludes pnpm-lock.yaml), exceeding both the single
@@ -67,28 +67,34 @@ apply_progress:
       (T-009-T-013 DB migrations + bootstrap + T-016 pgTAP/race-script,
       within the ~350-450 forecast), commit (b) 504 lines (T-014/T-015 auth
       wiring + T-017 UI shell + tasks.md checkboxes, within the ~400-500
-      forecast). Flagged for the user/orchestrator to decide whether these
-      two commits should become two separate PRs, since a single branch
-      was requested for the whole 1B sub-slice (same pattern as 1A).
+      forecast). Shipped as two separate PRs (pr/1b-1-core-schema-rls,
+      pr/1b-2-google-oauth), both merged to main.
     deviations:
       - "T-016's true-concurrency case (two callers racing
          core.ensure_personal_space()) cannot be expressed inside a single
          pgTAP file (one transaction per file) — split into a sequential
          idempotency pgTAP test (supabase/tests/020_...) plus a standalone
-         bash script opening two real concurrent psql connections
-         (scripts/test-bootstrap-race.sh). Both are required together to
-         claim the trap is covered; neither alone is sufficient. Neither
-         has been executed (no local stack available)."
+         bash script opening two real concurrent connections
+         (scripts/test-bootstrap-race.sh). Both required together to claim
+         the trap is covered; both executed for real, both PASS."
       - "Google OAuth is not yet configured in the Supabase project's Auth
-         settings (user-deferred) — the sign-in/callback code path is real
-         and complete but cannot complete a live login until that
-         configuration lands."
+         settings (user-deferred to the end of this cycle) — the
+         sign-in/callback code path is real and complete but cannot
+         complete a live login until that configuration lands."
       - "src/app/page.tsx (the 1A scaffold placeholder home screen) was
          removed and its content folded into src/app/(app)/page.tsx, since
          Next.js cannot resolve two page.tsx files to the same `/` route
          once the (app) route group's own page.tsx exists."
-  sub_slice_2A: { name: "Finance Schema", status: not_started, tasks_total: 8 }
-  sub_slice_2B: { name: "Finance Security + API Seam", status: not_started, tasks_total: 10 }
+  sub_slice_2A:
+    name: "Finance Schema + Security + API Seam"
+    status: complete
+    tasks_done: [T-018, T-019, T-020, T-021, T-022, T-023, T-024, T-025, T-026, T-027, T-028, T-029, T-030, T-031, T-032, T-033, T-034, T-035]
+    tasks_total: 18
+    branch: feat/lifeos-foundation-2a-finance-schema
+    started_from: pr/1b-2-google-oauth (merged to main; branch rebuilt clean on main before PR split)
+    db_gate: "EXECUTED 2026-08-04 — 83/83 pgTAP assertions pass for real against the local stack (finance schema RLS, derived-balance views with security_invoker regression check, transfer sum-zero invariant, idempotency replay, create_account atomic detail-row insert + positive-opening-balance rejection, SECURITY DEFINER recursion guard, cross-space move rejection, edit-voided rejection, sibling-category-name collision, non-MXN currency CHECK). Independently re-verified twice by sdd-verify (verify-report-2a.md, verify-report-2a-gaps.md), both PASS with 0 CRITICAL."
+    test_gate: "pnpm test — 35/35 pass (unit tests + real HTTP integration tests against local Supabase via tests/integration/finance-facade.test.ts). pnpm verify PASS."
+    notes: "Folds in most of the originally-separate sub_slice_2B scope (the API seam and TS facade) per the apply agent's task grouping. A real pre-existing bug was found and fixed during gap closure: mapPgError() could not distinguish TRANSFER_LEG_NOT_MOVABLE from VOID_TRANSACTION_NOT_EDITABLE (both raise sqlstate 22023), making the latter unreachable dead code until fixed."
   sub_slice_2C: { name: "Minimal Finance UI", status: not_started, tasks_total: 5 }
 
-next_recommended: sdd-verify (for sub-slice 1B), then sdd-apply again for sub-slice 2A
+next_recommended: sdd-apply for sub-slice 2C (minimal Finance UI). Google OAuth provider configuration deferred to end of cycle per user request.
