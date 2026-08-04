@@ -1,13 +1,15 @@
--- pgTAP — correction-path rejections not covered by 040_finance_money.sql's
--- transfer-leg-immovable case (design.md §5.4, tasks.md T-034).
+-- pgTAP — correction-path cases not covered by 040_finance_money.sql's transfer-leg-immovable
+-- case (design.md §5.4, tasks.md T-034).
 --
--- Cases: (a) moving a transaction to an account in a DIFFERENT household is rejected 42501
--- (INVALID_DESTINATION_ACCOUNT), confirming the exact errcode/behavior finance.update_transaction
--- produces; (b) editing a transaction whose status is already 'void' is rejected 22023, not
--- silently allowed to "resurrect" a voided entry.
+-- Cases: (0) moving a transaction between two accounts in the SAME household leaves BOTH
+-- balances correct (design.md §5.4's "balance correctness is free" claim — verified true, not
+-- just architecturally plausible); (a) moving a transaction to an account in a DIFFERENT
+-- household is rejected 42501 (INVALID_DESTINATION_ACCOUNT), confirming the exact
+-- errcode/behavior finance.update_transaction produces; (b) editing a transaction whose status
+-- is already 'void' is rejected 22023, not silently allowed to "resurrect" a voided entry.
 
 begin;
-select plan(4);
+select plan(7);
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
@@ -39,6 +41,39 @@ on conflict (id) do nothing;
 
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000008a","role":"authenticated"}';
+
+-- ---------------------------------------------------------------------------
+-- (0) same-household account move: both balances are correct afterward, not just
+-- architecturally plausible.
+-- ---------------------------------------------------------------------------
+do $$
+declare v_from uuid; v_to uuid; v_move_tx uuid;
+begin
+  select finance.create_account('00000000-0000-0000-0000-0000000008aa', 'Move From', 'checking', 30000) into v_from;
+  select finance.create_account('00000000-0000-0000-0000-0000000008aa', 'Move To', 'checking', 5000) into v_to;
+  select finance.record_transaction('00000000-0000-0000-0000-0000000008aa', v_from,
+    '00000000-0000-0000-0000-000000008c01', 'expense', 4000, current_date) into v_move_tx;
+  perform set_config('lifeos.test.move_from', v_from::text, false);
+  perform set_config('lifeos.test.move_to', v_to::text, false);
+  perform set_config('lifeos.test.move_tx', v_move_tx::text, false);
+end $$;
+
+select lives_ok(
+  $$ select finance.update_transaction(current_setting('lifeos.test.move_tx')::uuid,
+       current_setting('lifeos.test.move_to')::uuid) $$,
+  'moving a transaction between two same-household accounts succeeds'
+);
+
+select is(
+  (select balance_cents::bigint from finance.account_balances where account_id = current_setting('lifeos.test.move_from')::uuid),
+  30000::bigint,
+  'the source account balance is restored to opening balance after the expense moves away'
+);
+select is(
+  (select balance_cents::bigint from finance.account_balances where account_id = current_setting('lifeos.test.move_to')::uuid),
+  1000::bigint,
+  'the destination account balance reflects the moved expense (5000 opening - 4000 moved-in expense)'
+);
 
 -- ---------------------------------------------------------------------------
 -- (a) cross-space account-move rejection: destination account belongs to household B, caller
