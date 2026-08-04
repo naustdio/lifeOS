@@ -41,9 +41,54 @@ apply_progress:
          table) were NOT created in 1A — they belong to sub-slices
          1B/2A per tasks.md's own T-001..T-008 scope and were correctly
          out of scope here."
-  sub_slice_1B: { name: "Identity Kernel", status: not_started, tasks_total: 9 }
+  sub_slice_1B:
+    name: "Identity Kernel"
+    status: complete
+    tasks_done: [T-009, T-010, T-011, T-012, T-013, T-014, T-015, T-016, T-017]
+    tasks_total: 9
+    branch: feat/lifeos-foundation-1b-identity
+    started_from: pr/1a-2-design-system-pwa
+    commits:
+      - sha_ref: HEAD~1 # feat(core): core schema, RLS membership helpers, and personal-space bootstrap
+        covers: [T-009, T-010, T-011, T-012, T-013, T-016]
+        authored_lines: 558
+      - sha_ref: HEAD # feat(identity): Google OAuth sign-in flow, session middleware, authenticated shell
+        covers: [T-014, T-015, T-017]
+        authored_lines: 504
+    verify_gate: "pnpm verify — eslint + tsc --noEmit + check-tokens.mjs + next build — PASS"
+    test_gate: "pnpm test (vitest) — 5/5 tests pass (boundary-lint smoke test, 3 theme-selection scenarios, no-household-text scan) — PASS"
+    db_gate: "NOT EXECUTED — no Supabase CLI/local Postgres in this session (verified: `supabase` binary absent from PATH). Migrations under supabase/migrations/ and pgTAP under supabase/tests/ are written but unverified against a real database; core.ensure_personal_space() concurrency also has a standalone bash harness (scripts/test-bootstrap-race.sh) that requires a running local stack. User must run `supabase start && supabase test db` (or apply to a project) to close this gate."
+    review_budget_note: >
+      Cached session budget is 800 changed lines. Total authored diff for
+      1B is 1027 lines (excludes pnpm-lock.yaml), exceeding both the single
+      PR budget and tasks.md's own ~700-950 forecast band for this
+      sub-slice. Split across two commits on one branch mirroring
+      tasks.md's own recommended (a)/(b) split: commit (a) 558 lines
+      (T-009-T-013 DB migrations + bootstrap + T-016 pgTAP/race-script,
+      within the ~350-450 forecast), commit (b) 504 lines (T-014/T-015 auth
+      wiring + T-017 UI shell + tasks.md checkboxes, within the ~400-500
+      forecast). Flagged for the user/orchestrator to decide whether these
+      two commits should become two separate PRs, since a single branch
+      was requested for the whole 1B sub-slice (same pattern as 1A).
+    deviations:
+      - "T-016's true-concurrency case (two callers racing
+         core.ensure_personal_space()) cannot be expressed inside a single
+         pgTAP file (one transaction per file) — split into a sequential
+         idempotency pgTAP test (supabase/tests/020_...) plus a standalone
+         bash script opening two real concurrent psql connections
+         (scripts/test-bootstrap-race.sh). Both are required together to
+         claim the trap is covered; neither alone is sufficient. Neither
+         has been executed (no local stack available)."
+      - "Google OAuth is not yet configured in the Supabase project's Auth
+         settings (user-deferred) — the sign-in/callback code path is real
+         and complete but cannot complete a live login until that
+         configuration lands."
+      - "src/app/page.tsx (the 1A scaffold placeholder home screen) was
+         removed and its content folded into src/app/(app)/page.tsx, since
+         Next.js cannot resolve two page.tsx files to the same `/` route
+         once the (app) route group's own page.tsx exists."
   sub_slice_2A: { name: "Finance Schema", status: not_started, tasks_total: 8 }
   sub_slice_2B: { name: "Finance Security + API Seam", status: not_started, tasks_total: 10 }
   sub_slice_2C: { name: "Minimal Finance UI", status: not_started, tasks_total: 5 }
 
-next_recommended: sdd-verify (for sub-slice 1A), then sdd-apply again for sub-slice 1B
+next_recommended: sdd-verify (for sub-slice 1B), then sdd-apply again for sub-slice 2A
