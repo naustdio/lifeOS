@@ -348,7 +348,7 @@ guidance.
 > UI (FAB quick entry, category charts, polished history) is deferred to the next SDD cycle
 > (proposal delivery slice 3).
 
-### T-036: Minimal account list + creation screen
+### T-036 [x] DONE: Minimal account list + creation screen
 - `(app)/cuentas/` — list active accounts (excludes archived, per `finance-accounts/Account Archiving`), a creation form covering all six account types with their type-specific detail fields (liability: rate/term/monthly payment/start date; savings_goal: target amount/date).
 - Server Actions call `finance.api.createAccount()` (the `finance/api` facade from T-031, design.md §5.6/§"Interfaces/Contracts") for the write — this is the UI's proof that the account-creation seam works end-to-end, exactly mirroring how T-037 calls `recordTransaction`/`recordTransfer`. The form's per-type fields map directly onto `CreateAccountInput`'s discriminated union (`liability`/`goal` detail blocks appear only for their respective type). Reads (the active-account list) go through `src/modules/finance/data/` repositories directly (client-direct Supabase reads under RLS remain fine per design.md's approach).
 - Surface the facade's `ACCOUNT_DETAIL_REQUIRED` and `NOT_A_MEMBER` error mappings as inline form errors.
@@ -356,14 +356,14 @@ guidance.
 - Depends on: T-021, T-031 (needs the facade's `createAccount` export, not just T-023's RLS/balances-view reads).
 - Parallel: sequential.
 
-### T-037: Minimal transaction entry screen (income/expense/transfer)
+### T-037 [x] DONE: Minimal transaction entry screen (income/expense/transfer)
 - `(app)/movimientos/` — entry form for income/expense (category picker excludes deactivated categories, no "who paid" field per `finance-transactions/paid_by_user_id Hidden From Personal-Mode UI`) and transfer (source + destination account picker).
 - Calls `recordTransaction`/`recordTransfer` from the `finance/api` facade (T-031) via a Server Action — this is the UI's proof that the seam works end-to-end.
 - Satisfies: `finance-transactions/Transaction Types and Money Representation`, `finance-transactions/Linked Transfer Pairs`, `finance-transactions/paid_by_user_id Hidden From Personal-Mode UI`, `finance-categories/Deactivate Categories Instead of Deleting` (picker exclusion scenario).
 - Depends on: T-031, T-036.
 - Parallel: sequential.
 
-### T-038: Minimal transaction correction affordance
+### T-038 [x] DONE: Minimal transaction correction affordance
 - Edit-in-place on a transaction row: change account (exercises the cross-account move), change amount/category/date/description.
 - When the target is a transfer leg, surface `TRANSFER_LEG_NOT_MOVABLE` and offer void-and-re-record as the one-tap remedy (per design.md's Open Question — this cycle chooses to implement the remedy affordance since it is needed to verify the transfer-leg-reject rule end-to-end, not just at the API layer).
 - Void action on any posted transaction with a reason field.
@@ -371,13 +371,25 @@ guidance.
 - Depends on: T-037.
 - Parallel: sequential.
 
-### T-039: Minimal balance/summary view
+### T-039 [x] DONE: Minimal balance/summary view
 - Home screen (`(app)/page.tsx`) showing `available_cents` as the hero figure and `debt_cents` as a separate card (never subtracted from the hero), per-account balances list, savings-goal progress (`balance_cents / target_amount_cents`).
 - Satisfies: `finance-accounts/Derived Balances`, `finance-accounts/Savings-Goal Account Detail` (goal progress display), proposal Success Criteria "liability account shows remaining balance... savings-goal account shows progress fed by real transfers," "transfers never appear as income or expense in the month summary."
 - Depends on: T-021, T-036.
 - Parallel: yes, parallel with T-037/T-038 once T-036 lands (reads only, no write dependency).
 
-### T-040: E2E smoke suite (Playwright)
+### T-040 [~] PARTIAL: E2E smoke suite (Playwright)
+
+> **Deviation note (2C apply run):** implemented as a manual checklist
+> (`tests/e2e/finance-ui-smoke-checklist.md`) plus real automated
+> integration coverage for every scenario that doesn't require an actual
+> browser (`tests/integration/account-creation-ui.test.ts`,
+> `tests/integration/movement-creation-ui.test.ts`), rather than Playwright
+> browser automation. This follows the same precedent T-007 already
+> established ("manual checklist or Playwright") and the orchestrator's
+> explicit instruction for this run that a full Playwright pass is not
+> required. Playwright itself is not installed in this repo. If a future
+> cycle wants real browser automation, `finance-ui-smoke-checklist.md`
+> already enumerates the exact scenarios to encode.
 - Per design.md §9 row "E2E (thin smoke set)": sign-in → dashboard with zero ceremony and categories already present; record expense; correct an expense onto the right account and see both balances update; record transfer and confirm it is absent from month income/expense; 375px layout; light and dark render.
 - **Auth caveat**: do not automate the real Google consent screen. Authenticate against the local stack with an admin-minted session (`auth.admin.generateLink` or a seeded password user) and inject cookies; the real Google flow is verified manually once per environment.
 - Also folds in the "no household/hogar text" scan from T-017 and the 375px check from T-007.

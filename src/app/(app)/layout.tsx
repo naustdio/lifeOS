@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import type * as React from "react";
 import { FabMenu } from "@/design-system/patterns/FabMenu";
@@ -37,9 +38,15 @@ export default async function AppLayout({
       </div>
       {children}
       <NavPill>
-        <span className="text-sm">Inicio</span>
-        <FabMenu />
-        <span className="text-sm">Cuentas</span>
+        <Link href="/" className="text-sm">
+          Inicio
+        </Link>
+        <Link href="/movimientos">
+          <FabMenu />
+        </Link>
+        <Link href="/cuentas" className="text-sm">
+          Cuentas
+        </Link>
       </NavPill>
     </div>
   );

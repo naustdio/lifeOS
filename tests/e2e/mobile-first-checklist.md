@@ -11,7 +11,11 @@ below for every shipped screen.
 
 | Screen | 375px: no horizontal scroll | 375px: all interactive elements reachable/legible | Light theme renders | Dark theme renders |
 |---|---|---|---|---|
-| `/` (scaffold home) | ☐ | ☐ | ☐ | ☐ |
+| `/` (home — balance hero, debt, accounts, goal progress) | ☐ | ☐ | ☐ | ☐ |
+| `/cuentas` (account list) | ☐ | ☐ | ☐ | ☐ |
+| `/cuentas/nueva` (account creation, all 6 types) | ☐ | ☐ | ☐ | ☐ |
+| `/movimientos` (entry form + history) | ☐ | ☐ | ☐ | ☐ |
+| `/movimientos/[id]/editar` (correction + void) | ☐ | ☐ | ☐ | ☐ |
 
 Structural basis for why this passes by construction in sub-slice 1A:
 
