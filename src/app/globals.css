@@ -1,0 +1,62 @@
+@import "tailwindcss";
+@import "../design-system/tokens/primitives.css";
+@import "../design-system/tokens/semantic.css";
+
+/*
+ * Tailwind v4 `@theme inline` maps semantic tokens to utility classes, so
+ * `bg-surface text-expense rounded-card` works. `@theme inline` (rather than
+ * plain `@theme`) is required because these values are `var()` references
+ * resolved at use-site (design.md §7) — the exact pattern the shadcn
+ * Tailwind-v4 template uses.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent-brand: var(--accent-brand);
+  --color-accent-brand-foreground: var(--accent-brand-foreground);
+  --color-nav-pill: var(--nav-pill);
+  --color-nav-pill-foreground: var(--nav-pill-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-income: var(--income);
+  --color-expense: var(--expense);
+
+  --font-sans: var(--font-sans);
+
+  --text-hero: var(--text-hero);
+
+  --radius-card: var(--radius-card);
+  --radius-pill: var(--radius-pill);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-soft-lg: var(--shadow-soft-lg);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+}

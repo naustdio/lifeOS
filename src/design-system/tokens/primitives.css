@@ -1,0 +1,45 @@
+/**
+ * Raw palette — OKLCH primitives ONLY. Components must NEVER reference these
+ * directly (design.md §7, design-system spec "No Raw Hex in Components").
+ * `tokens/semantic.css` is the only file allowed to reference these names;
+ * everything else consumes semantic tokens.
+ */
+:root {
+  /* Brand accent — lime/chartreuse (#C6F432 family) */
+  --lime-050: oklch(0.98 0.05 122);
+  --lime-100: oklch(0.95 0.09 122);
+  --lime-200: oklch(0.91 0.14 122);
+  --lime-300: oklch(0.88 0.18 122);
+  --lime-400: oklch(0.86 0.21 122); /* ~#C6F432 */
+  --lime-500: oklch(0.8 0.2 122);
+  --lime-600: oklch(0.7 0.17 122);
+
+  /* Contrast accent — near-black (#111 family) */
+  --ink-950: oklch(0.15 0.005 285); /* ~#111111 */
+  --ink-900: oklch(0.2 0.005 285);
+  --ink-800: oklch(0.27 0.006 285);
+  --ink-700: oklch(0.35 0.006 285);
+
+  /* Neutral surfaces */
+  --neutral-000: oklch(1 0 0); /* white */
+  --neutral-050: oklch(0.97 0.002 285); /* very light page (#F0F0F0 family) */
+  --neutral-100: oklch(0.94 0.002 285);
+  --neutral-200: oklch(0.88 0.003 285);
+  --neutral-300: oklch(0.78 0.004 285);
+  --neutral-400: oklch(0.64 0.004 285);
+  --neutral-500: oklch(0.5 0.004 285);
+  --neutral-600: oklch(0.4 0.004 285);
+  --neutral-700: oklch(0.32 0.004 285);
+  --neutral-800: oklch(0.24 0.005 285);
+  --neutral-900: oklch(0.18 0.005 285); /* elevated dark-gray card */
+  --neutral-950: oklch(0.12 0.005 285); /* near-black dark page */
+
+  /* Semantic amount colors — income/expense, on amounts only */
+  --green-500: oklch(0.72 0.19 149);
+  --green-600: oklch(0.62 0.17 149);
+  --red-500: oklch(0.63 0.22 27);
+  --red-600: oklch(0.55 0.2 27);
+
+  /* Shadow color (used at low opacity for the soft/wide neumorphism look) */
+  --shadow-color: 285 6% 10%;
+}
