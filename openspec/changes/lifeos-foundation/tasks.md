@@ -171,7 +171,7 @@ guidance.
 
 ## Sub-slice 2A — Finance Schema: Accounts, Categories, Transactions, Balances
 
-### T-018: `finance.accounts` + detail tables migration
+### T-018 [x] DONE: `finance.accounts` + detail tables migration
 - Migration `finance_schema.sql` (accounts portion): `finance.accounts` exactly per design.md §3.2 — `type` CHECK across all six values (`cash`, `checking`, `credit_card`, `savings`, `liability`, `savings_goal`), `class` CHECK (`asset`/`liability`), `visibility` CHECK, `currency` CHECK (`MXN` only), `accounts_private_needs_owner` constraint, partial index on non-archived rows.
 - `finance.account_liability_details` and `finance.account_goal_details` per design.md §3.2.
 - **Trigger trap**: `accounts.class` MUST be trigger-derived from `type` (BEFORE INSERT/UPDATE), never client-supplied — this is what makes the headline "available money" figure trustworthy. Implement the trigger in this task, not deferred.
@@ -179,7 +179,7 @@ guidance.
 - Depends on: T-013 (needs `core.households` to exist for the FK).
 - Parallel: sequential (first Finance migration).
 
-### T-019: `finance.category_templates` + `finance.categories` migration
+### T-019 [x] DONE: `finance.category_templates` + `finance.categories` migration
 - Migration `finance_category_templates.sql` (catalog) and the `finance.categories` portion of `finance_schema.sql`, exactly per design.md §3.2/§3.5.
 - `finance.category_templates`: catalog table, no `household_id`, `tmpl_one_level` CHECK, seeded with the full Spanish taxonomy table from design.md §3.5 (housing seeds as **"Casa"**, not "Hogar" — literal requirement from the proposal's UI-language success criterion).
 - `finance.categories`: `household_id NOT NULL` (no globally-shared rows — this is the option-1 mechanism decision from design.md §3.5, chosen over global-rows-plus-override), `template_key` FK `on delete set null` (provenance only, never restricts rename/deactivate), `categories_unique_name` unique index (household_id, coalesce(parent_id, zero-uuid), lower(btrim(name))), `categories_unique_template` partial unique index (arbiter for `ON CONFLICT` in T-022).
@@ -190,14 +190,14 @@ guidance.
 - Depends on: T-013.
 - Parallel: yes, parallel with T-018 (different tables, same migration file group, can be authored together or split).
 
-### T-020: `finance.transactions` migration
+### T-020 [x] DONE: `finance.transactions` migration
 - Migration `finance_schema.sql` (transactions portion) exactly per design.md §3.3: signed `amount_cents` (income > 0, expense < 0, transfer legs ±), all CHECK constraints (`tx_sign_matches_type`, `tx_transfer_group`, `tx_category_required`, `tx_transfer_has_no_category`, `tx_void_fields`, `tx_origin_requires_keys`), `tx_idempotency` partial unique index on `(household_id, origin_module, origin_entity_id, idempotency_key) WHERE idempotency_key IS NOT NULL`, all four secondary indexes.
 - **Trap**: the idempotency unique index is household-prefixed (`household_id` first column) specifically so one tenant's key can never collide with another tenant's — this sharpens the proposal's bare `(origin_module, origin_entity_id, idempotency_key)` tuple. Do not drop the `household_id` prefix.
 - Satisfies: `finance-transactions/Transaction Types and Money Representation`, `finance-transactions/Linked Transfer Pairs` (schema half), `finance-module-api/Idempotent recordTransaction` (schema half).
 - Depends on: T-018 (FK to accounts), T-019 (FK to categories).
 - Parallel: sequential after T-018/T-019.
 
-### T-021: `finance.account_balances` and `finance.household_summary` views
+### T-021 [x] DONE: `finance.account_balances` and `finance.household_summary` views
 - Exact DDL per design.md §3.3.
 - **CRITICAL TRAP — do not omit `security_invoker = true` on EITHER view.** Without it, the view runs as its owner and silently bypasses RLS on `accounts`/`transactions` — the classic Supabase data-leak footgun (flagged by the Supabase linter as `security_definer_view`). Both `finance.account_balances` and `finance.household_summary` need this, not just one.
 - `finance.household_summary.available_cents` = `sum(balance) where class = 'asset'` (includes `cash`, `checking`, `savings`, `savings_goal`); `debt_cents` = `sum(-balance) where class = 'liability'` as a **positive magnitude** (includes `credit_card`, `liability`), rendered separately and **never subtracted from `available_cents`**.
@@ -206,7 +206,7 @@ guidance.
 - Depends on: T-020.
 - Parallel: sequential.
 
-### T-022: `finance.ensure_default_categories()` — idempotent per-space seed
+### T-022 [x] DONE: `finance.ensure_default_categories()` — idempotent per-space seed
 - Exact function per design.md §3.5: two-pass insert (top-level templates, then children resolved via the just-inserted parent rows), `ON CONFLICT (household_id, template_key) WHERE template_key IS NOT NULL DO NOTHING`.
 - **Trap**: `DO NOTHING` must never overwrite a user's rename or un-archive something they deactivated — this is what makes it safe to re-run on every sign-in (top-up semantics when new templates are added later). Do not implement this as an upsert that touches `name`/`archived_at`.
 - `perform core.assert_member(p_household_id)` guard at the top (design.md §4.3 pattern — definer functions re-implement the assertion RLS would otherwise provide).
@@ -214,7 +214,7 @@ guidance.
 - Depends on: T-019.
 - Parallel: sequential, but can run parallel with T-020/T-021 (different function, same schema).
 
-### T-023: `finance.can_read_account()` + RLS policies on `finance.*`
+### T-023 [x] DONE: `finance.can_read_account()` + RLS policies on `finance.*`
 - `finance.can_read_account(p_account_id)` per design.md §4.1: `SECURITY DEFINER`, checks `core.is_member` plus `visibility = 'household' OR owner_user_id = auth.uid()`.
 - Migration `finance_security.sql`: RLS enabled on every `finance` table, policies exactly per design.md §4.2 table. Note the deliberate asymmetry: `finance.accounts`/`finance.transactions` have **SELECT-only** policies (writes are seam-only, no INSERT/UPDATE/DELETE policy); `finance.categories` has SELECT+INSERT+UPDATE policies (no DELETE — deactivate via `archived_at`); `finance.category_templates` has **no grant at all** for `authenticated` — read only by definer functions.
 - Grant revocation per design.md §5.5: `revoke all on all tables/functions in schema finance from anon, authenticated`, then explicit re-grants (SELECT on read tables/views, INSERT+UPDATE only on `categories`, EXECUTE on seam functions — seam functions themselves land in T-025/T-026, this task does the revoke/base-grant scaffolding).
@@ -222,14 +222,14 @@ guidance.
 - Depends on: T-021, T-022.
 - Parallel: sequential.
 
-### T-024: Vitest — pure domain logic unit tests
+### T-024 [x] DONE: Vitest — pure domain logic unit tests
 - `modules/finance/domain/` pure functions + tests: signed-amount normalization (positive UI input + type → signed cents), transfer-pair construction (two rows, opposite signs, same `transfer_group_id`, sum zero), balance arithmetic helper, `class` → headline-inclusion mapping, category depth/kind rules (pure validation before hitting the DB trigger), `es-MX` MXN formatting (centavos → display string), calendar-month boundary helper (day 1 → end of month).
 - No DB dependency — Vitest against `modules/*/domain/` only, per design.md §9 testing strategy table row "Unit (pure, no DB)".
 - Satisfies: cross-cutting — underlies `finance-transactions/Transaction Types and Money Representation`, `finance-transactions/Linked Transfer Pairs`, `finance-accounts/Derived Balances`, `finance-categories/Two-Level Taxonomy`. This is the pure-logic layer the pgTAP suites (T-032–T-035) do not duplicate.
 - Depends on: T-020 (needs the transaction shape settled), but is otherwise DB-independent and can be authored in parallel with T-021–T-023.
 - Parallel: yes.
 
-### T-025: pgTAP — money invariants (balances, transfers, idempotency, headline split, account creation)
+### T-025 [x] DONE: pgTAP — money invariants (balances, transfers, idempotency, headline split, account creation)
 - Cases per design.md §9 row "Database — money": derived-balance view correctness including voids; transfer sum-zero invariant; idempotency (same key twice → exactly one row); `available_cents` excludes `credit_card` and `liability`; savings-goal balance included in the hero.
 - Explicit `security_invoker` regression test: query the view as a low-privilege user who is NOT a member of the household and confirm zero rows returned (this is the direct regression test for the T-021 trap).
 - **Cases per design.md §9 row "Database — account creation"** (`finance.create_account()`, T-026, design.md §5.6):
@@ -248,7 +248,7 @@ guidance.
 
 ## Sub-slice 2B — Finance Security + `finance/api` Seam
 
-### T-026: `finance.record_transaction()`, `finance.record_transfer()`, and `finance.create_account()` RPC functions
+### T-026 [x] DONE: `finance.record_transaction()`, `finance.record_transfer()`, and `finance.create_account()` RPC functions
 - `SECURITY DEFINER`, `set search_path = ''`, `perform core.assert_member(p_household_id)` guard.
 - `record_transaction`: derives signed `amount_cents` from `kind` (income/expense) + positive magnitude input; enforces the idempotency insert pattern from design.md §5.3 exactly (`INSERT ... ON CONFLICT ... DO NOTHING RETURNING id INTO v_id; IF v_id IS NULL THEN SELECT ... follow-up`).
 - `record_transfer`: inserts both legs of a transfer pair in one statement (same `transfer_group_id`, opposite signs, sum zero) — this is the design's chosen enforcement point for "transfer group = exactly two rows, opposite signs, sum zero" (deliberately not a deferred constraint trigger, per design.md §3.4).
@@ -266,7 +266,7 @@ guidance.
 - Depends on: T-023.
 - Parallel: sequential.
 
-### T-027: `finance.update_transaction()` / `finance.update_origin_transaction()` RPC functions
+### T-027 [x] DONE: `finance.update_transaction()` / `finance.update_origin_transaction()` RPC functions
 - Exact function per design.md §5.4: guard checks (not found → `P0002`; membership via `core.assert_member`; caller can read the account via `can_read_account`; voided transaction rejected with `22023`).
 - **Trap — transfer-leg-reject rule**: if `p_account_id` is supplied, differs from the current `account_id`, AND `v_tx.type = 'transfer'` → raise with errcode `22023`, mapped by the facade to `TRANSFER_LEG_NOT_MOVABLE`. This must be checked before the destination-account validation, not after.
 - **Trap — cross-space move rejection**: destination account must satisfy `a.household_id = v_tx.household_id AND a.archived_at IS NULL AND finance.can_read_account(p_account_id)`, evaluated **inside the definer** where RLS is bypassed — this is the concrete instance of "no RLS policy can express a cross-object same-tenant assertion" from design.md §4.3.
@@ -276,21 +276,21 @@ guidance.
 - Depends on: T-026.
 - Parallel: sequential.
 
-### T-028: `finance.void_transaction()` and `finance.find_by_origin()` RPC functions
+### T-028 [x] DONE: `finance.void_transaction()` and `finance.find_by_origin()` RPC functions
 - `void_transaction`: transitions `status` to `void`, sets `voided_at`/`voided_by_user_id`/`void_reason`. **Voiding one leg of a transfer pair must void the linked leg in the same operation** (same `transfer_group_id`) — single transaction, both rows or neither.
 - `find_by_origin`: resolves `(household_id, origin_module, origin_entity_id)` → `TransactionRef` or NULL — never throws when absent.
 - Satisfies: `finance-transactions/Void Lifecycle, Never Hard-Delete` (both scenarios, incl. "voiding one side of a transfer voids both sides"), `finance-module-api/Update and Void Follow the Source Record` (void half), `finance-module-api/findByOrigin Returns Null, Not an Error, When Absent`.
 - Depends on: T-026.
 - Parallel: yes, parallel with T-027 (different functions, same dependency on T-026).
 
-### T-029: Grant EXECUTE on seam functions; finalize `finance_api.sql` migration
+### T-029 [x] DONE: Grant EXECUTE on seam functions; finalize `finance_api.sql` migration
 - Migration `finance_api.sql`: `grant execute on function finance.create_account(...), finance.record_transaction(...), finance.record_transfer(...), finance.update_transaction(...), finance.update_origin_transaction(...), finance.void_transaction(...), finance.find_by_origin(...) to authenticated` (design.md §5.5).
 - Confirm no direct DML grants exist anywhere on `finance.accounts`/`finance.account_liability_details`/`finance.account_goal_details`/`finance.transactions` for `authenticated` (T-023 already revoked; this task is the final audit + the pgTAP regression test target for T-033) — `finance.accounts` INSERT is "none — seam only, via `finance.create_account()`" per design.md §4.2.
 - Satisfies: `finance-module-api/Public API Is the Only Cross-Module Write Surface` (grant half — completes what T-023 started), `finance-accounts/Six Account Types` (grant half — the seam is the only reachable write path).
 - Depends on: T-026, T-027, T-028.
 - Parallel: sequential.
 
-### T-030: `CREATE OR REPLACE app.bootstrap_user()` to add the Finance step
+### T-030 [x] DONE: `CREATE OR REPLACE app.bootstrap_user()` to add the Finance step
 - Migration `app_bootstrap_finance.sql`: `app.bootstrap_user()` now calls `core.ensure_personal_space()` **then** `finance.ensure_default_categories(v_household)` in the same transaction.
 - **Trap — this is the composition-root correctness requirement called out explicitly in the task brief**: both steps must commit or roll back together so a user never ends up with a space but no categories. Do not implement this as two separate RPC calls from the client — it must be one function body, one transaction.
 - `finance.ensure_default_categories` remains NOT granted directly to `authenticated` — reachable only through `app.bootstrap_user()`.
@@ -298,7 +298,7 @@ guidance.
 - Depends on: T-022, T-013.
 - Parallel: sequential (must land after both the core bootstrap and the category-seed function exist).
 
-### T-031: `src/modules/finance/api/index.ts` — TS facade over the RPC seam
+### T-031 [x] DONE: `src/modules/finance/api/index.ts` — TS facade over the RPC seam
 - `import 'server-only'` as the first line — any client component importing this file fails the build.
 - Zod validation of every input type (`CreateAccountInput`, `RecordTransactionInput`, `TransactionPatch`, `OriginRef`) before the `.rpc()` call.
 - Exactly one `.rpc()` call per exported function: `createAccount`, `recordTransaction`, `recordTransfer`, `updateTransaction`, `updateOriginTransaction`, `voidTransaction`, `findByOrigin` — matching the interface in design.md §"Interfaces/Contracts" verbatim (note `kind: 'income' | 'expense'` + always-positive `amountCents` on the transaction-input side; sign is a seam-internal concern).
