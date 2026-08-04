@@ -98,14 +98,14 @@ guidance.
 
 ## Sub-slice 1B — Identity Kernel (`core` schema, RLS, bootstrap, Google auth)
 
-### T-009: `core` schema migration — profiles, households, household_members
+### T-009 [x] DONE: `core` schema migration — profiles, households, household_members
 - Migration `core_schema.sql`: `core.profiles`, `core.households` (incl. `personal_owner_user_id uuid unique` — the race-free bootstrap anchor), `core.household_members` (`role` CHECK `in ('owner','member')`, composite PK, index on `user_id`).
 - Exact DDL per design.md §3.1.
 - Satisfies: `identity/Roles Are Owner or Member Only` (schema-level CHECK), `module-architecture/Schema-Per-Module`.
 - Depends on: T-001 (repo scaffold exists so `supabase/migrations/` has a home).
 - Parallel: sequential (first DB migration).
 
-### T-010: `core.is_member()` and membership helper functions
+### T-010 [x] DONE: `core.is_member()` and membership helper functions
 - `core.is_member(p_household_id)` — **MUST be `SECURITY DEFINER`, language `sql stable`, `set search_path = ''`, using `(select auth.uid())`** (not bare `auth.uid()`, for InitPlan caching).
 - **Known trap**: a plain (non-definer) SQL function used inside a policy on `core.household_members` that itself queries `core.household_members` produces `infinite recursion detected in policy`. `SECURITY DEFINER` is what breaks the cycle — do not "simplify" this to a regular function.
 - `core.assert_member(p_household_id)` raising `insufficient_privilege` (42501) — used inside every later `SECURITY DEFINER` seam function per design.md §4.3.
@@ -114,7 +114,7 @@ guidance.
 - Depends on: T-009.
 - Parallel: sequential.
 
-### T-011: RLS policies — `core.*` tables + grants
+### T-011 [x] DONE: RLS policies — `core.*` tables + grants
 - Migration `core_security.sql`: `alter table ... enable row level security` on all three `core` tables, zero permissive default (deny-by-default floor).
 - Policies exactly per design.md §4.2 table for `core.profiles`, `core.households`, `core.household_members` — all `TO authenticated`.
 - No INSERT policy on `households`/`household_members` — bootstrap/invite function only (enforced via SECURITY DEFINER, not RLS INSERT policy).
@@ -122,14 +122,14 @@ guidance.
 - Depends on: T-010.
 - Parallel: sequential.
 
-### T-012: `core.ensure_personal_space()` — idempotent bootstrap
+### T-012 [x] DONE: `core.ensure_personal_space()` — idempotent bootstrap
 - Exact function per design.md §6.2: creates/updates `core.profiles`, inserts `core.households` with `ON CONFLICT (personal_owner_user_id) DO NOTHING`, falls back to `SELECT` on conflict (race resolution), inserts `core.household_members` with `ON CONFLICT DO NOTHING`.
 - **Known trap**: the `personal_owner_user_id UNIQUE` index is the actual concurrency guarantee — two concurrent first sign-ins race on the index, the loser's `DO NOTHING` yields no row, and the follow-up `SELECT` returns the winner's household. Both callers must end up in the same space; write a pgTAP or integration test that actually issues two concurrent calls, not just a single-call happy path.
 - Satisfies: `identity/Auto-Created Personal Space on First Sign-In` (both scenarios: first sign-in creates silently, returning user does not duplicate).
 - Depends on: T-011.
 - Parallel: sequential.
 
-### T-013: `app` schema + `app.bootstrap_user()` composition root (core-only step)
+### T-013 [x] DONE: `app` schema + `app.bootstrap_user()` composition root (core-only step)
 - Migration `app_bootstrap.sql`: `create schema app`, `app.bootstrap_user()` calling `core.ensure_personal_space()` only at this point (finance step added in T-020).
 - `grant execute on function app.bootstrap_user() to authenticated`. `core.ensure_personal_space` itself NOT granted to `authenticated` — reachable only through `app.bootstrap_user()`.
 - **Design rationale to preserve**: this exists so `core` never has to call `finance` (which would invert the `finance → core` dependency direction enforced by ESLint). `app` is the DB-layer mirror of `src/app/` as composition root — the only schema allowed to call into two modules.
@@ -137,7 +137,7 @@ guidance.
 - Depends on: T-012.
 - Parallel: sequential.
 
-### T-014: Three Supabase clients + middleware session refresh
+### T-014 [x] DONE: Three Supabase clients + middleware session refresh
 - `src/shared/supabase/browser.ts` (`createBrowserClient`), `server.ts` (`createServerClient` over `next/headers` cookies, `setAll` wrapped in try/catch), `middleware.ts` (refresh path).
 - `src/middleware.ts`: builds a server client whose `setAll` writes cookies to **both** `request.cookies` and the response, calls `await supabase.auth.getUser()` (never `getSession()` for authorization decisions), returns that exact response object.
 - **Known trap**: constructing a fresh `NextResponse` without copying its cookies silently logs users out — the most common `@supabase/ssr` mistake. Verify the returned response object is the one whose cookies were mutated, not a new one.
@@ -145,7 +145,7 @@ guidance.
 - Depends on: T-001.
 - Parallel: yes, can run parallel with T-009–T-013 (pure TS/Next code, no DB dependency until T-015).
 
-### T-015: Google OAuth sign-in flow + callback
+### T-015 [x] DONE: Google OAuth sign-in flow + callback
 - `(public)/entrar/page.tsx` — Spanish sign-in screen offering **only** "Iniciar sesión con Google," calling `signInWithOAuth({ provider: 'google', options: { redirectTo: '/auth/callback?next=/' } })`.
 - `auth/callback/route.ts` — `exchangeCodeForSession(code)`, then `supabase.rpc('bootstrap_user')` (schema `app`), then `redirect(next ?? '/')`.
 - `auth/salir/route.ts` — sign-out.
@@ -153,14 +153,14 @@ guidance.
 - Depends on: T-013, T-014.
 - Parallel: sequential.
 
-### T-016: pgTAP — `core` RLS + bootstrap race tests
+### T-016 [x] DONE (written, unexecuted — no local DB access this session): pgTAP — `core` RLS + bootstrap race tests
 - Mandatory cases per design.md §4.4 for `core.profiles`, `core.households`, `core.household_members`: member sees own rows, non-member sees zero rows, `anon` sees zero rows.
 - Concurrency test for `core.ensure_personal_space()`: two concurrent first-sign-in calls end up in the same household with no duplicate rows (the race-resolution scenario from T-012).
 - Satisfies: `identity/RLS Enforced by Household Membership`, `identity/Auto-Created Personal Space on First Sign-In` (test coverage per design.md §9 testing strategy table, row "Database — tenancy").
 - Depends on: T-012, T-011.
 - Parallel: yes, can run parallel with T-014/T-015 once T-011/T-012 land.
 
-### T-017: "No household/hogar in UI" verification checklist + minimal auth shell
+### T-017 [x] DONE: "No household/hogar in UI" verification checklist + minimal auth shell
 - Minimal authenticated shell (`(app)/layout.tsx`, home page stub) that never renders "household"/"hogar" text and has no space-selection control.
 - Add a static-text-scan check (grep-based or Playwright text-assertion) as part of the E2E smoke set (T-029) asserting neither string appears on any authenticated screen.
 - Satisfies: `identity/Household Terminology Hidden From UI`.
