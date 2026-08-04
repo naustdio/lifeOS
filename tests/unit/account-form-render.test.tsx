@@ -1,0 +1,67 @@
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import * as React from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * Closes verify-report-2c Issue C-1 for `AccountForm` (T-036): an RTL
+ * smoke-render proving the component actually mounts through React (never
+ * proven before — `next build` only compiles/type-checks this dynamic
+ * route, it never executes the render). Also exercises the component's one
+ * real branch of logic: which conditional fieldset (liability vs.
+ * savings_goal) appears per selected account `type`.
+ *
+ * `./actions` is a `"use server"` module that reaches `next/cache`,
+ * `next/navigation`, and `@/shared/supabase/server` at import time (via
+ * `createAccountAction`'s body) — mocked the same way
+ * `tests/integration/account-creation-ui.test.ts` mocks them, even though
+ * this test never submits the form, to avoid any real server/module
+ * resolution surprises during import.
+ */
+
+vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
+
+const { AccountForm } = await import("@/app/(app)/cuentas/AccountForm");
+
+describe("AccountForm — smoke render (T-036 / C-1)", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders without throwing for the default (cash) type", () => {
+    render(<AccountForm />);
+    expect(screen.getByLabelText("Nombre")).toBeInTheDocument();
+    expect(screen.getByLabelText("Tipo de cuenta")).toBeInTheDocument();
+    // Neither conditional fieldset is present for a plain asset type.
+    expect(screen.queryByText("Datos del préstamo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Meta de ahorro", { selector: "legend" })).not.toBeInTheDocument();
+  });
+
+  it("shows the liability fieldset (and hides the goal fieldset) when type=liability", () => {
+    render(<AccountForm />);
+    const select = screen.getByLabelText("Tipo de cuenta") as HTMLSelectElement;
+
+    fireEvent.change(select, { target: { value: "liability" } });
+
+    expect(screen.getByText("Datos del préstamo")).toBeInTheDocument();
+    expect(screen.getByLabelText("Monto original (MXN)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Tasa de interés (puntos base)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Plazo (meses)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Pago mensual (MXN)")).toBeInTheDocument();
+    expect(screen.queryByText("Meta de ahorro", { selector: "legend" })).not.toBeInTheDocument();
+  });
+
+  it("shows the savings_goal fieldset (and hides the liability fieldset) when type=savings_goal", () => {
+    render(<AccountForm />);
+    const select = screen.getByLabelText("Tipo de cuenta") as HTMLSelectElement;
+
+    fireEvent.change(select, { target: { value: "savings_goal" } });
+
+    expect(screen.getByText("Meta de ahorro", { selector: "legend" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Monto objetivo (MXN)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Fecha objetivo (opcional)")).toBeInTheDocument();
+    expect(screen.queryByText("Datos del préstamo")).not.toBeInTheDocument();
+  });
+});
