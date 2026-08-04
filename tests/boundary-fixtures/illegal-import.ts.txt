@@ -1,0 +1,7 @@
+// Deliberate boundary violation used ONLY by tests/unit/boundary-lint.test.ts.
+// `core`'s domain layer reaches directly into `finance`'s data layer instead
+// of going through `finance`'s `api/` barrel. This MUST trip exactly one
+// `boundaries/element-types` ESLint error (design.md §2 Gate C).
+import { nothing } from "../../finance/data";
+
+export const illegal = nothing;

@@ -1,0 +1,59 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Project: LifeOS — mobile-first responsive web app to track a person's
+  entire life across modules: Finance (base module everything links back
+  to), Health, Nutrition, Recipes, Shopping List, Car Control, and Goals,
+  with more modules planned later.
+  Tech stack: none selected yet (greenfield, empty directory at init time).
+  Architecture: not decided yet.
+  Testing: no test runner detected (greenfield).
+  Style: not decided yet.
+
+strict_tdd: false
+
+testing:
+  test_runner: none detected
+  test_layers:
+    unit: false
+    integration: false
+    e2e: false
+  coverage: false
+  quality_tools:
+    linter: none detected
+    type_checker: none detected
+    formatter: none detected
+  detected: 2026-08-03
+  note: >
+    Greenfield project — no package manager or test runner exists yet.
+    Re-run sdd-init (or update this file) once the stack is chosen so
+    strict_tdd and test/quality commands can be resolved from real evidence.
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Note that Finance is the base module; flag any change in another
+      module that assumes or requires Finance data
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Mobile-first: scenarios should account for small-viewport behavior
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Document cross-module dependencies explicitly (e.g. Health -> Finance)
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow existing code patterns once a stack is established
+    tdd: false           # Set to true once a test runner is chosen and strict_tdd is enabled
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
