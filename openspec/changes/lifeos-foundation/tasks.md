@@ -390,6 +390,21 @@ guidance.
 > required. Playwright itself is not installed in this repo. If a future
 > cycle wants real browser automation, `finance-ui-smoke-checklist.md`
 > already enumerates the exact scenarios to encode.
+>
+> **Gap-closure note (verify-report-2c Issue C-1, post-2C apply run):**
+> the CRITICAL finding that none of `AccountForm`, `TransactionForm`,
+> `EditTransactionForm` had ever been rendered by any tool (not
+> Playwright, not RTL, not even Next's static prerender) is now closed —
+> `tests/unit/account-form-render.test.tsx`,
+> `tests/unit/transaction-form-render.test.tsx`,
+> `tests/unit/edit-transaction-form-render.test.tsx` mount all three
+> components via React Testing Library (the pattern already established by
+> `tests/unit/theme-selection.test.tsx`), proving they render without
+> throwing and that their conditional-field branching (account type,
+> income/expense/transfer tab, transfer-leg-reject remedy) actually works.
+> This closes C-1 specifically; it does not add Playwright, so the
+> remaining Playwright/manual-checklist gap (W-2, S-2) is still open and
+> T-040 stays PARTIAL for that reason alone.
 - Per design.md §9 row "E2E (thin smoke set)": sign-in → dashboard with zero ceremony and categories already present; record expense; correct an expense onto the right account and see both balances update; record transfer and confirm it is absent from month income/expense; 375px layout; light and dark render.
 - **Auth caveat**: do not automate the real Google consent screen. Authenticate against the local stack with an admin-minted session (`auth.admin.generateLink` or a seeded password user) and inject cookies; the real Google flow is verified manually once per environment.
 - Also folds in the "no household/hogar text" scan from T-017 and the 375px check from T-007.
