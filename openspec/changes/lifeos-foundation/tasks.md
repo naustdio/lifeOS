@@ -308,13 +308,13 @@ guidance.
 - Depends on: T-029, T-030.
 - Parallel: sequential.
 
-### T-032: Vitest contract tests — `finance/api` facade against local Supabase
+### T-032 [x] DONE: Vitest contract tests — `finance/api` facade against local Supabase
 - Against `supabase start`, per design.md §9 row "Contract": Zod rejection of malformed input (incl. a `CreateAccountInput` with a `type` mismatched to its detail block, or a detail block on a type that forbids one); each PG error code → `AppError` mapping case from T-031 (incl. `create_account`'s `22023`→`ACCOUNT_DETAIL_REQUIRED` and `42501`→`NOT_A_MEMBER`); a replay of `recordTransaction` with the same idempotency key returns the same `TransactionRef` (not a new one).
 - Satisfies: `finance-module-api/Idempotent recordTransaction` (facade-level replay assertion), all facade error-mapping requirements, `finance-accounts/Six Account Types` (facade-level Zod rejection coverage).
 - Depends on: T-031.
 - Parallel: sequential.
 
-### T-033: pgTAP — RLS direct-DML-denied regression + definer-recursion-guard
+### T-033 [x] DONE: pgTAP — RLS direct-DML-denied regression + definer-recursion-guard
 - Direct `INSERT`/`UPDATE`/`DELETE` on `finance.accounts`/`finance.transactions` as `authenticated` (bypassing the seam) MUST raise `insufficient_privilege` (42501) — this is the regression test that the seam cannot be bypassed (design.md §4.4 case (e)).
 - Definer-function membership-assertion test: calling any seam function as a non-member of the target household raises the assertion error from `core.assert_member`.
 - **Definer-recursion-guard test**: exercise `core.is_member()` from a policy context and confirm no `infinite recursion detected in policy` error — regression test for the T-010 trap.
@@ -323,7 +323,7 @@ guidance.
 - Depends on: T-029, T-023.
 - Parallel: yes, parallel with T-032.
 
-### T-034: pgTAP — corrections (account move, transfer-leg-reject, void-lock)
+### T-034 [x] DONE: pgTAP — corrections (account move, transfer-leg-reject, void-lock)
 - Moving a transaction between accounts leaves **both** balances correct (query `finance.account_balances` for source and destination after the move — this is the "balance correctness is free" claim from design.md §5.4, verify it is actually true, not just architecturally plausible).
 - Moving a transfer leg is rejected with `TRANSFER_LEG_NOT_MOVABLE`/`22023`.
 - Moving to an account in another space is rejected with `INVALID_DESTINATION_ACCOUNT`/`42501`.
@@ -333,7 +333,7 @@ guidance.
 - Depends on: T-027, T-028.
 - Parallel: yes, parallel with T-032/T-033.
 
-### T-035: pgTAP — category rename/deactivate isolation + idempotent top-up
+### T-035 [x] DONE: pgTAP — category rename/deactivate isolation + idempotent top-up
 - Seeded defaults land per space; renaming a default in space A does not change space B's copy; `ensure_default_categories` re-run inserts only missing templates and never overwrites a rename or un-archives a deactivation; sibling-name collision rejected (`categories_unique_name` → `23505` → facade maps to `CATEGORY_NAME_TAKEN`); transactions still resolve a renamed and an archived category correctly.
 - Satisfies: `finance-categories/Rename Any Category` (both scenarios), `finance-categories/Deactivate Categories Instead of Deleting` (both scenarios), `finance-categories/Seeded Spanish Defaults`, `finance-accounts/Account Archiving` (the analogous archived-but-queryable pattern, cross-checked against categories).
 - Depends on: T-022, T-023.
