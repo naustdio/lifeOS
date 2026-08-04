@@ -2,7 +2,7 @@
 -- (design.md §3.4, §3.5, tasks.md T-022/T-035 subset explicitly in this run's scope)
 
 begin;
-select plan(8);
+select plan(10);
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
@@ -83,6 +83,35 @@ select throws_ok(
              (select id from finance.categories where household_id = '00000000-0000-0000-0000-0000000006aa' and template_key = 'expense.home.rent'),
              'Nieto', 'expense') $$,
   '22023', null, 'a category may not be nested more than one level deep'
+);
+
+-- ---------------------------------------------------------------------------
+-- Sibling-name-collision (tasks.md T-035, categories_unique_name index): creating or renaming
+-- a top-level category to the same name (case/whitespace-insensitive) as an existing sibling in
+-- the same space is rejected with 23505 -> facade maps to CATEGORY_NAME_TAKEN, not silently
+-- allowed and not silently ignored.
+-- ---------------------------------------------------------------------------
+select throws_ok(
+  $$ insert into finance.categories (household_id, name, kind)
+     values ('00000000-0000-0000-0000-0000000006aa', '  renombrada  ', 'expense') $$,
+  '23505', null,
+  'creating a top-level category whose name collides (case/whitespace-insensitive) with an existing sibling is rejected with 23505'
+);
+
+do $$
+declare v_other uuid;
+begin
+  insert into finance.categories (household_id, name, kind)
+  values ('00000000-0000-0000-0000-0000000006aa', 'Otra Categoria', 'expense')
+  returning id into v_other;
+  perform set_config('lifeos.test.other_cat', v_other::text, false);
+end $$;
+
+select throws_ok(
+  $$ update finance.categories set name = 'Renombrada'
+     where id = current_setting('lifeos.test.other_cat')::uuid $$,
+  '23505', null,
+  'renaming a category to collide with an existing sibling name is rejected with 23505'
 );
 
 select * from finish();

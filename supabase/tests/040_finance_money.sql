@@ -2,7 +2,7 @@
 -- (design.md §9 "Database — money" / "Database — account creation", tasks.md T-025)
 
 begin;
-select plan(28);
+select plan(30);
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
@@ -239,6 +239,28 @@ select is(
 select is(
   (select balance_cents::bigint from finance.account_balances where account_id = current_setting('lifeos.test.credit_card')::uuid) < 0,
   true, 'the credit_card account balance itself is negative (debt)'
+);
+
+-- ---------------------------------------------------------------------------
+-- Non-MXN currency CHECK constraint (design.md §3.2/§3.3, finance-accounts spec scenario;
+-- verify-report-2a new finding — this constraint had no dedicated pgTAP assertion).
+-- Reverts to member A's session; direct INSERT bypasses the seam deliberately here because the
+-- goal is exercising the raw DDL CHECK, not the seam's own validation.
+-- ---------------------------------------------------------------------------
+reset role; reset request.jwt.claims;
+select throws_ok(
+  $$ insert into finance.accounts (household_id, name, type, visibility, owner_user_id, currency)
+     values ('00000000-0000-0000-0000-0000000005aa', 'USD Account', 'cash', 'household',
+             '00000000-0000-0000-0000-00000000005a', 'USD') $$,
+  '23514', null, 'a non-MXN currency on finance.accounts is rejected by the currency CHECK constraint'
+);
+select throws_ok(
+  $$ insert into finance.transactions (household_id, account_id, category_id, type, amount_cents,
+       occurred_on, created_by_user_id, currency)
+     values ('00000000-0000-0000-0000-0000000005aa', current_setting('lifeos.test.src')::uuid,
+       '00000000-0000-0000-0000-000000005c01', 'expense', -100, current_date,
+       '00000000-0000-0000-0000-00000000005a', 'USD') $$,
+  '23514', null, 'a non-MXN currency on finance.transactions is rejected by the currency CHECK constraint'
 );
 
 -- security_invoker regression: a non-member sees zero rows from the view

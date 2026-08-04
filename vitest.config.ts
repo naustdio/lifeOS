@@ -15,6 +15,13 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx"],
+    include: [
+      "tests/unit/**/*.test.ts",
+      "tests/unit/**/*.test.tsx",
+      "tests/integration/**/*.test.ts",
+    ],
+    // tests/integration/finance-facade.test.ts (T-032) overrides this to "node" per-file via
+    // the `// @vitest-environment node` directive — it hits the real local Supabase stack and
+    // has no use for a DOM.
   },
 });
