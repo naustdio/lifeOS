@@ -124,6 +124,8 @@ const eslintConfig = [
       "public/sw.js",
       "tests/boundary-fixtures/**",
       "next-env.d.ts",
+      "supabase/.temp/**",
+      "supabase/.branches/**",
     ],
   },
 ];
