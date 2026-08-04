@@ -9,6 +9,29 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/shared/supabase/server";
 import { type AppError, type Result, err, ok } from "@/shared/result";
 
+/**
+ * Read-only re-exports (T-036/T-037/T-039, sub-slice 2C): the boundary rule
+ * actually enforced by `eslint.config.mjs` only allows `app` to import a
+ * module's `api/` barrel, not its `data/` layer directly — sharper than
+ * design.md's task-level prose ("reads ... go through `finance/data`
+ * repositories directly"), which described the *reading mechanism* (client-
+ * direct Supabase under RLS) without accounting for the *TS import*
+ * boundary. Routing reads through this barrel too keeps `finance/api` as
+ * the single documented cross-module door for both reads and writes,
+ * without weakening Gate A.
+ */
+export {
+  listActiveAccounts,
+  type AccountListItem,
+  listActiveCategories,
+  type CategoryListItem,
+  listRecentTransactions,
+  getTransactionById,
+  type TransactionListItem,
+  getHouseholdSummary,
+  type HouseholdSummary,
+} from "../data";
+
 export type OriginModule = "manual" | "shopping_list" | "car_control";
 
 /**
@@ -72,7 +95,15 @@ export const CreateAccountInputSchema = z.discriminatedUnion("type", [
     }),
   }),
 ]);
-export type CreateAccountInput = z.infer<typeof CreateAccountInputSchema>;
+/**
+ * `z.input` (not `z.infer`/`z.output`), sub-slice 2C addition: several
+ * fields (`openingBalanceCents`, `visibility`, `sortOrder`) carry a Zod
+ * `.default()`, so the OUTPUT type marks them required even though callers
+ * are meant to omit them (design.md's own contract snippet marks them
+ * `?`). Using the input type keeps the exported contract matching
+ * design.md exactly and lets UI call sites (T-036) omit them.
+ */
+export type CreateAccountInput = z.input<typeof CreateAccountInputSchema>;
 
 export const RecordTransactionInputSchema = z.object({
   householdId: z.string().uuid(),
@@ -85,7 +116,9 @@ export const RecordTransactionInputSchema = z.object({
   origin: OriginRefSchema.pick({ module: true, entityId: true }).default({ module: "manual", entityId: "" }),
   idempotencyKey: z.string().optional(),
 });
-export type RecordTransactionInput = z.infer<typeof RecordTransactionInputSchema>;
+/** `z.input`, same reasoning as `CreateAccountInput`: `description`/`origin`
+ * carry defaults, so callers should be able to omit them. */
+export type RecordTransactionInput = z.input<typeof RecordTransactionInputSchema>;
 
 export const RecordTransferInputSchema = z.object({
   householdId: z.string().uuid(),
@@ -97,7 +130,8 @@ export const RecordTransferInputSchema = z.object({
   origin: OriginRefSchema.pick({ module: true, entityId: true }).default({ module: "manual", entityId: "" }),
   idempotencyKey: z.string().optional(),
 });
-export type RecordTransferInput = z.infer<typeof RecordTransferInputSchema>;
+/** `z.input`, same reasoning as `CreateAccountInput`. */
+export type RecordTransferInput = z.input<typeof RecordTransferInputSchema>;
 
 export const TransactionPatchSchema = z.object({
   accountId: z.string().uuid().optional(),
