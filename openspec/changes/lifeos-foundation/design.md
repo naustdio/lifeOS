@@ -1202,7 +1202,18 @@ injects the cookies; the real Google flow is verified manually once per environm
 // src/modules/finance/api/index.ts — the ONLY surface other modules may import
 import 'server-only';
 
-export type OriginRef  = { module: 'manual' | 'shopping_list' | 'car_control'; entityId: string };
+/**
+ * `householdId` is REQUIRED here (confirmed correct by sub-slice 2A/2B implementation, not a
+ * design inconsistency): `(origin_module, origin_entity_id)` is only unique WITHIN a household
+ * — the `tx_idempotency` unique index itself is household-prefixed (§3.3) — so resolving an
+ * origin reference without the household would be ambiguous across tenants. Every
+ * origin-resolving seam function (`update_origin_transaction`, `void_origin_transaction`,
+ * `find_by_origin`) takes `p_household_id` explicitly, consistent with the established
+ * "household_id is a parameter, not session-resolved" convention applied everywhere else in
+ * the seam (§5.6). This field was missing from earlier revisions of this snippet — closed here
+ * to match the shipped `src/modules/finance/api/index.ts`, not the other way around.
+ */
+export type OriginRef  = { householdId: string; module: 'manual' | 'shopping_list' | 'car_control'; entityId: string };
 export type TransactionRef = { id: string; householdId: string; status: 'posted' | 'void' };
 export type AccountRef = { id: string; householdId: string; type: AccountType; class: 'asset' | 'liability' };
 
