@@ -28,14 +28,14 @@ guidance.
 
 ## Sub-slice 1A — Scaffold, Design System, Boundary Lint
 
-### T-001: Initialize Next.js + TypeScript + Tailwind scaffold
+### T-001 [x] DONE: Initialize Next.js + TypeScript + Tailwind scaffold
 - Create `package.json`, `tsconfig.json`, `next.config.ts`, `@/*` path alias.
 - Add the `pnpm verify` script wired to `eslint . --max-warnings=0 && tsc --noEmit && node scripts/check-tokens.mjs && next build` (design.md §2 Gate C).
 - Initialize git repository (none exists yet at repo root per proposal Dependencies).
 - Satisfies: `module-architecture/Module Folder Structure` (scaffolding prerequisite).
 - Parallel: sequential (must land first — everything depends on it).
 
-### T-002: ESLint boundary rules (`eslint-plugin-boundaries`)
+### T-002 [x] DONE: ESLint boundary rules (`eslint-plugin-boundaries`)
 - Add `eslint.config.mjs` flat config exactly per design.md §2 Gate A: `boundaries/elements` for `app`, `design-system`, `shared`, `module-api`, `module-domain`, `module-data`, `module-ui`; `boundaries/element-types` disallow-by-default with the allow list from design.md.
 - Add Gate B: forbid `finance → {shopping_list, car_control, ...}` and forbid any module reaching into `core`'s internals; `core` may never import `finance`.
 - Create `src/modules/core/` and `src/modules/finance/` folder skeletons (`domain/`, `data/`, `ui/`, `api/`) even though they are empty, so the rule has real targets.
@@ -45,14 +45,14 @@ guidance.
 - Depends on: T-001.
 - Parallel: sequential (governs everything built after — must land before T-005+ and all module code).
 
-### T-003: `scripts/check-tokens.mjs` raw-hex gate
+### T-003 [x] DONE: `scripts/check-tokens.mjs` raw-hex gate
 - Script fails on any `#rrggbb` literal or `-[#...]` Tailwind arbitrary color found outside `src/design-system/tokens/`.
 - Wire into `pnpm verify` (already referenced by T-001's script; this task implements the script itself).
 - Satisfies: `design-system/No Raw Hex in Components` (enforcement mechanism).
 - Depends on: T-001.
 - Parallel: yes, parallel with T-002.
 
-### T-004: Design tokens — primitives + semantic layers (light + dark)
+### T-004 [x] DONE: Design tokens — primitives + semantic layers (light + dark)
 - `src/design-system/tokens/primitives.css` — raw OKLCH palette (`--lime-400`, `--ink-950`, `--neutral-050`, etc.). Components never reference these directly.
 - `src/design-system/tokens/semantic.css` — `:root { --background; --surface; --foreground; --accent; --income; --expense; --radius-card; --shadow-soft; ... }` plus `.dark { ... }` overriding the same names with distinct values (design.md §7).
 - Tailwind v4 `@theme inline` mapping in `globals.css`.
@@ -60,7 +60,7 @@ guidance.
 - Depends on: T-001.
 - Parallel: yes, parallel with T-002/T-003.
 
-### T-005: Retokenized base component set (shadcn primitives + patterns)
+### T-005 [x] DONE: Retokenized base component set (shadcn primitives + patterns)
 - Copy shadcn primitives into `src/design-system/ui/` (button, card, sheet, input, etc.), retokenized by overriding `--background/--foreground/--primary/--card/--border/--radius` values only — no component forking.
 - Build patterns: `BalanceHero`, `MoneyAmount`, `CategoryChip`, `FabMenu` in `src/design-system/patterns/`.
 - Pill-shaped buttons/chips/nav (`--radius-pill: 9999px`), 20-24px card radius (`--radius-card: 22px`).
@@ -69,7 +69,7 @@ guidance.
 - Depends on: T-003, T-004.
 - Parallel: sequential after T-003/T-004.
 
-### T-006: Theme selection (system preference + persisted override)
+### T-006 [x] DONE: Theme selection (system preference + persisted override)
 - `next-themes` with `attribute="class"`, `defaultTheme="system"`, `suppressHydrationWarning` on `<html>`, inline pre-hydration script to prevent flash.
 - Explicit user override control (light/dark) that persists across sessions and takes precedence until the user returns to "system-following," which clears the stored override.
 - Two `<meta name="theme-color" media="(prefers-color-scheme: ...)">` tags for mobile browser chrome sync.
@@ -77,13 +77,13 @@ guidance.
 - Depends on: T-004, T-005.
 - Parallel: sequential.
 
-### T-007: Mobile-first layout verification harness
+### T-007 [x] DONE: Mobile-first layout verification harness
 - Base layout shell tested/verified at 375px viewport (Playwright or manual checklist wired into `pnpm verify`'s E2E smoke pass — see T-029).
 - Satisfies: `design-system/Mobile-First Layout`.
 - Depends on: T-005.
 - Parallel: yes, can run alongside T-006.
 
-### T-008: PWA shell — manifest + service worker
+### T-008 [x] DONE: PWA shell — manifest + service worker
 - `src/app/manifest.ts` returning `MetadataRoute.Manifest`: `id: '/'`, `start_url: '/'`, `scope: '/'`, `display: 'standalone'`, `orientation: 'portrait'`, `theme_color: '#111111'`, icons at 192/512 plus one 512 `purpose: 'maskable'`.
 - Hand-written `public/sw.js` (no build plugin, per design.md §8 rejection of Serwist/next-pwa): network-first + `/offline.html` fallback for navigations; cache-first for `/_next/static/**` and `/icons/**`; **network-only, never cached** for Supabase calls, `/auth/**`, Server Actions, and any non-GET request.
 - Empty `push`/`notificationclick` listeners as web-push readiness scaffolding (no `core.push_subscriptions` table — deliberately deferred).

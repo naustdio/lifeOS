@@ -1,0 +1,49 @@
+# DAG state for change `lifeos-foundation` (survives compaction).
+# Updated by sdd-apply as sub-slices land.
+
+change: lifeos-foundation
+schema: spec-driven
+
+apply_progress:
+  sub_slice_1A:
+    name: "Scaffold, Design System, Boundary Lint"
+    status: complete
+    tasks_done: [T-001, T-002, T-003, T-004, T-005, T-006, T-007, T-008]
+    tasks_total: 8
+    branch: feat/lifeos-foundation-1a-scaffold
+    commits:
+      - sha_ref: HEAD~1 # feat(scaffold): initialize Next.js/TS/Tailwind scaffold with ESLint module boundaries
+        covers: [T-001, T-002, T-003]
+        authored_lines: 458
+      - sha_ref: HEAD # feat(design-system): tokens, retokenized components, theme selection, PWA shell
+        covers: [T-004, T-005, T-006, T-007, T-008]
+        authored_lines: 1075
+    verify_gate: "pnpm verify — eslint + tsc --noEmit + check-tokens.mjs + next build — PASS"
+    test_gate: "pnpm test (vitest) — 4/4 tests pass (boundary-lint smoke test + 3 theme-selection scenarios) — PASS"
+    review_budget_note: >
+      Cached session budget is 800 changed lines. Total authored diff for
+      1A is ~1533 lines (excludes generated pnpm-lock.yaml, binary icon
+      assets, and pre-existing openspec artifacts), split across two
+      commits on one branch per tasks.md's own recommended (a)/(b) split.
+      Commit (a) ~458 lines is within budget; commit (b) ~1075 lines
+      exceeds the ~600-850 forecast band, driven by the full retokenized
+      component set + patterns + PWA shell landing together. Flagged for
+      the user/orchestrator to decide whether commit (b) needs a further
+      split into two PRs before opening one, since a single branch was
+      requested for the whole 1A sub-slice.
+    deviations:
+      - "T-007 (mobile-first layout harness) shipped as a manual checklist
+         (tests/e2e/mobile-first-checklist.md) with structural reasoning,
+         not an automated Playwright assertion — full automation is wired
+         in at T-040 (sub-slice 2C) once real screens exist, per the
+         task's own 'Playwright or manual checklist' allowance."
+      - "shared/{result,money}.ts (listed in design.md's File Changes
+         table) were NOT created in 1A — they belong to sub-slices
+         1B/2A per tasks.md's own T-001..T-008 scope and were correctly
+         out of scope here."
+  sub_slice_1B: { name: "Identity Kernel", status: not_started, tasks_total: 9 }
+  sub_slice_2A: { name: "Finance Schema", status: not_started, tasks_total: 8 }
+  sub_slice_2B: { name: "Finance Security + API Seam", status: not_started, tasks_total: 10 }
+  sub_slice_2C: { name: "Minimal Finance UI", status: not_started, tasks_total: 5 }
+
+next_recommended: sdd-verify (for sub-slice 1A), then sdd-apply again for sub-slice 1B

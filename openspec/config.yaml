@@ -6,29 +6,38 @@ context: |
   entire life across modules: Finance (base module everything links back
   to), Health, Nutrition, Recipes, Shopping List, Car Control, and Goals,
   with more modules planned later.
-  Tech stack: none selected yet (greenfield, empty directory at init time).
-  Architecture: not decided yet.
-  Testing: no test runner detected (greenfield).
-  Style: not decided yet.
+  Tech stack: Next.js (App Router) + TypeScript + Tailwind v4 + shadcn/ui
+  (retokenized), pnpm. Supabase (Postgres + Auth + Storage) lands in
+  sub-slice 1B/2A.
+  Architecture: modular monolith, schema-per-module, src/modules/{name}/
+  {domain,data,ui,api} with a single public api/ barrel per module, enforced
+  by eslint-plugin-boundaries (see design.md §2).
+  Testing: Vitest (unit) set up in sub-slice 1A; pgTAP and Playwright land
+  in sub-slices 1B/2A/2C once there is a database/UI surface to test
+  against. Critical-logic focus, not strict TDD (design.md §9).
+  Style: design-token driven (src/design-system/tokens), light+dark from
+  day one, pill-shaped interactive elements, 20-24px card radius.
 
 strict_tdd: false
 
 testing:
-  test_runner: none detected
+  test_runner: vitest
   test_layers:
-    unit: false
+    unit: true
     integration: false
     e2e: false
   coverage: false
   quality_tools:
-    linter: none detected
-    type_checker: none detected
+    linter: eslint (flat config, eslint-plugin-boundaries)
+    type_checker: tsc --noEmit
     formatter: none detected
-  detected: 2026-08-03
+  detected: 2026-08-04
   note: >
-    Greenfield project — no package manager or test runner exists yet.
-    Re-run sdd-init (or update this file) once the stack is chosen so
-    strict_tdd and test/quality commands can be resolved from real evidence.
+    Sub-slice 1A (scaffold + design system + boundary lint) landed. Unit
+    layer covers the ESLint boundary rule and theme-selection mechanism.
+    pgTAP (database) and Playwright (e2e) are intentionally deferred until
+    sub-slices 1B (core schema) and 2C (minimal Finance UI) give them a
+    real subject, per design.md §9's testing strategy table.
 
 rules:
   proposal:
@@ -48,12 +57,12 @@ rules:
     - Keep tasks completable in one session
   apply:
     guidelines:
-      - Follow existing code patterns once a stack is established
-    tdd: false           # Set to true once a test runner is chosen and strict_tdd is enabled
-    test_command: ""
+      - Follow existing code patterns established in sub-slice 1A
+    tdd: false           # critical-logic focus per design.md §9, not blanket TDD
+    test_command: "pnpm test"
   verify:
-    test_command: ""
-    build_command: ""
+    test_command: "pnpm test"
+    build_command: "pnpm verify"
     coverage_threshold: 0
   archive:
     - Warn before merging destructive deltas
