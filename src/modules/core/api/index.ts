@@ -3,3 +3,4 @@
 // nothing else (module-architecture spec: "Allowed Dependency Direction").
 export type { Profile } from "../domain/profile";
 export { getCurrentProfile } from "../data/profile-repository";
+export { getCurrentHouseholdId } from "../data/household-repository";

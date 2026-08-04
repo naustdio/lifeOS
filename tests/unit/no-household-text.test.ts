@@ -60,7 +60,18 @@ describe("Household Terminology Hidden From UI", () => {
 
       for (const file of files) {
         const code = stripComments(readFileSync(file, "utf8"));
-        if (/household|hogar/i.test(code)) {
+        // Word-boundary match (sub-slice 2C addition): the requirement is
+        // about USER-FACING text, per this file's own docstring. Sub-slice
+        // 2C introduces `householdId`/`household_id` as internal
+        // parameter/schema-reference identifiers inside `src/app/(app)`
+        // Server Actions that call the `finance/api` seam (e.g. resolving
+        // the current space id before `createAccount(...)`) — those are
+        // never rendered to the user. A bare substring match previously
+        // flagged such identifiers as false positives; `\b` correctly
+        // excludes "household" when it is immediately followed by another
+        // word character (as in "householdId" or "household_id") while
+        // still catching the standalone word wherever it actually appears.
+        if (/\bhousehold\b|\bhogar\b/i.test(code)) {
           offenders.push(file);
         }
       }

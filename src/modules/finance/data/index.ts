@@ -1,5 +1,7 @@
 // `finance` data layer — Supabase repositories and row <-> entity mappers.
-//
-// Sub-slice 1A ships only the folder shape. Real repositories land in
-// sub-slice 2A once the `finance` schema exists.
-export {};
+// Read-only per design.md's approach (client-direct reads under RLS remain
+// fine for lists and dashboards); every write goes through `finance/api`.
+export * from "./account-repository";
+export * from "./category-repository";
+export * from "./transaction-repository";
+export * from "./summary-repository";
