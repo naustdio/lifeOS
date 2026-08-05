@@ -50,7 +50,7 @@ See the Review Workload Forecast at the end for line estimates and PR chaining g
 
 ## (b) Domain Layer
 
-- [ ] B-003 — `src/modules/finance/domain/budget.ts` (pure)
+- [x] B-003 — `src/modules/finance/domain/budget.ts` (pure)
   - `evaluateBudgetImpact({ limitCents, spentCents, deltaCents }): BudgetImpact` — confirmation warranted only when `deltaCents > 0` and the projected spend meets or exceeds the limit (`>=`); a delta of zero or less never prompts. Unbudgeted (`limitCents = null`) never prompts.
   - `budgetDeltaForEdit({ previousCategoryId, previousAmountCents, nextCategoryId, nextAmountCents })` — per `design.md §4` table: same category → `next − previous` against that category; category changed → `+next` against the **new** category only (old category is never re-checked on a move).
   - No Supabase import — pure functions only.
@@ -63,7 +63,7 @@ See the Review Workload Forecast at the end for line estimates and PR chaining g
 
 ## (c) Data Layer
 
-- [ ] B-004 — `src/modules/finance/data/budget-repository.ts`
+- [x] B-004 — `src/modules/finance/data/budget-repository.ts`
   - `listBudgetsWithProgress(supabase, householdId): Promise<BudgetProgressItem[]>` and `getProgressForCategory(supabase, householdId, categoryId): Promise<BudgetProgressItem | null>` — client-direct RLS reads via `supabase.schema("finance").from("budget_progress")`, matching the `category-repository.ts`/`summary-repository.ts` pattern: `Number()` every `bigint`-backed column, degrade to `[]`/`null` on error rather than throwing.
   - `upsertBudgetLimit(supabase, householdId, categoryId, limitCents): Promise<{ error: string | null }>` — RLS-guarded upsert on the `(household_id, category_id)` unique constraint.
   - `removeBudget(supabase, householdId, categoryId): Promise<{ error: string | null }>` — RLS-guarded hard `DELETE`. Budgets have no dependents, so no soft-delete flag is involved.
