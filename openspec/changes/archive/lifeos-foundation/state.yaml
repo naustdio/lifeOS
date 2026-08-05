@@ -1,5 +1,6 @@
 # DAG state for change `lifeos-foundation` (survives compaction).
-# Updated by sdd-apply as sub-slices land.
+# Updated by sdd-apply as sub-slices land; tracker-normalized 2026-08-04
+# (2C marked complete, next_recommended = verify).
 
 change: lifeos-foundation
 schema: spec-driven
@@ -95,6 +96,68 @@ apply_progress:
     db_gate: "EXECUTED 2026-08-04 — 83/83 pgTAP assertions pass for real against the local stack (finance schema RLS, derived-balance views with security_invoker regression check, transfer sum-zero invariant, idempotency replay, create_account atomic detail-row insert + positive-opening-balance rejection, SECURITY DEFINER recursion guard, cross-space move rejection, edit-voided rejection, sibling-category-name collision, non-MXN currency CHECK). Independently re-verified twice by sdd-verify (verify-report-2a.md, verify-report-2a-gaps.md), both PASS with 0 CRITICAL."
     test_gate: "pnpm test — 35/35 pass (unit tests + real HTTP integration tests against local Supabase via tests/integration/finance-facade.test.ts). pnpm verify PASS."
     notes: "Folds in most of the originally-separate sub_slice_2B scope (the API seam and TS facade) per the apply agent's task grouping. A real pre-existing bug was found and fixed during gap closure: mapPgError() could not distinguish TRANSFER_LEG_NOT_MOVABLE from VOID_TRANSACTION_NOT_EDITABLE (both raise sqlstate 22023), making the latter unreachable dead code until fixed."
-  sub_slice_2C: { name: "Minimal Finance UI", status: not_started, tasks_total: 5 }
+  sub_slice_2C:
+    name: "Minimal Finance UI"
+    status: complete
+    tasks_done: [T-036, T-037, T-038, T-039, T-040]
+    tasks_total: 5
+    branch: feat/lifeos-foundation-2c-finance-ui
+    started_from: pr/2a-3-finance-schema (merged to main; branch rebuilt clean on main before PR split)
+    commits:
+      - sha_ref: e020af8 # feat(finance): read repositories + minimal account screen (T-036) (#7)
+        covers: [T-036]
+      - sha_ref: dff5d1c # feat(finance): transaction entry + correction screens (T-037, T-038) (#8)
+        covers: [T-037, T-038]
+      - sha_ref: 263bf6e # feat(finance): wire real balance hero, RTL render tests, verify report (T-039, T-040) (#9)
+        covers: [T-039, T-040]
+    verify_gate: "pnpm verify — clean PASS (eslint + tsc --noEmit + check-tokens.mjs + next build, 10 routes generated) after rm -rf .next — PASS"
+    test_gate: "pnpm test (vitest) — 43/43 pass at 2C report time (7 files); 52/52 after the C-1 gap-closure run (3 new RTL render tests) — PASS"
+    db_gate: "supabase test db — Files=7, Tests=83, Result: PASS — unchanged from 2A/2B (zero migration changes in 2C, no regression)"
+    review_budget_note: >
+      2C shipped as 3 separate PRs (#7, #8, #9) merged to main, each
+      independently reviewable — a finer split than tasks.md's "single PR
+      is acceptable" forecast, so no 800-line budget pressure arose.
+      Verified by sdd-verify (verify-report-2c.md): PASS WITH WARNINGS;
+      0 CRITICAL remaining after C-1 gap closure.
+    deviations:
+      - "T-040 (E2E smoke suite) delivered as manual checklist
+         (tests/e2e/finance-ui-smoke-checklist.md) + integration tests,
+         not Playwright — orchestrator-waived for this run, precedent
+         T-007 ('manual checklist or Playwright'). C-1 (no component had
+         ever been rendered) closed via 3 RTL render tests; W-2/S-2
+         (unexecuted checklist rows) accepted by the orchestrator as
+         carried-forward risk (verify-report-2c.md §8)."
+      - "Reads routed through finance/api instead of finance/data — forced
+         by the actual ESLint Gate A allow list (app may import only
+         module-api/design-system/shared); legitimate constraint, residual
+         design-hygiene tension tracked as verify-report-2c W-1."
+      - "CreateAccountInput/RecordTransactionInput/RecordTransferInput
+         widened from z.infer to z.input — correct Zod fix for
+         default-bearing fields, confirmed by verify-report-2c (not scope
+         drift)."
+      - "no-household-text.test.ts regex narrowed to word boundaries —
+         correct fix excluding internal identifiers (householdId etc.),
+         confirmed by verify-report-2c."
+      - "Transfer-leg-reject remedy simplified (void both legs, no
+         auto-redirect/prefill) — honestly-scoped narrowing of design.md's
+         Open Question, error path handled end-to-end (verify-report-2c
+         deviation (d); brittle substring match tracked as W-3)."
 
-next_recommended: sdd-apply for sub-slice 2C (minimal Finance UI). Google OAuth provider configuration deferred to end of cycle per user request.
+next_recommended: archived
+# Rationale: all 40 tasks (T-001..T-040) delivered across 9 merged PRs; final cycle
+# verification (1A-2C) PASSED WITH WARNINGS (0 CRITICAL) per verify-report.md
+# (2026-08-05, fresh re-executed evidence: pnpm verify clean, 83/83 pgTAP, 52/52 vitest).
+# Google OAuth provider configuration landed in commit e8f43fd and was confirmed working
+# by the user via a real local sign-in.
+#
+# CLOSURE NOTE (2026-08-05): archived MANUALLY, not via the native gentle-ai review/archive
+# gate. The native review gate could not complete in this session because the review-*
+# subagent definitions expose no Bash tool, so gentle-ai review inspect-candidate (which
+# needs shell access to the frozen Git trees) could never run; all 4 lenses honestly
+# reported inspection: incomplete rather than fabricating a result. The dispatcher then
+# kept verify/archive blocked pending a gentle-ai.verify-result/v1 envelope and that same
+# bounded review transaction. The user explicitly directed a manual close based on the
+# real, independently re-executed test evidence instead of pursuing the native gate. Full
+# detail in archive-report.md.
+archived: true
+archived_date: "2026-08-05"
