@@ -100,12 +100,22 @@ apply_progress:
     test_gate: "pnpm vitest run tests/unit/home-page-render.test.tsx tests/unit/accounts-page-render.test.tsx tests/unit/movements-list-render.test.tsx — 6/6 pass. pnpm test (full suite) — 18 files / 91 tests pass, zero regression."
     verify_gate: "pnpm verify — PASS (eslint --max-warnings=0, tsc --noEmit, check-tokens.mjs, next build, 12 routes)."
     zero_diff_check: "git diff main -- src/modules/finance/ — CONFIRMED zero diff (final gate, cumulative across all 4 PRs)."
-    pr: "https://github.com/naustdio/lifeOS/pull/17 — OPEN, not merged"
+    pr: "https://github.com/naustdio/lifeOS/pull/17 — MERGED to main"
 
-next_recommended: sdd-verify
-# All 22 tasks (P-001..P-022) implemented across 4 stacked PRs (#14, #15, #16, #17), each
-# targeting the previous PR's branch (stacked-to-main). Every PR's verify/test gates were
-# executed for real (pnpm verify, pnpm vitest run, pnpm test) against the live working tree,
-# not assumed. Final cumulative `git diff main -- src/modules/finance/` is empty, confirming
-# the presentation-only success criterion. No PR merged — all left open for user review per
-# the finance-budgets (#10-13) precedent.
+next_recommended: archived
+# All 22 tasks (P-001..P-022) implemented across 4 stacked PRs (#14-#17), merged to main in
+# order. verify-report.md: PASS WITH WARNINGS, 0 CRITICAL (2026-08-05).
+#
+# POST-VERIFY FIXES (2026-08-05): two real gaps found during the user's live browser review —
+# unstyled native <select> dropdowns and text-only bottom nav — fixed via new
+# src/design-system/ui/select.tsx (Radix-based, now a standing app-wide convention) and
+# icon-only nav links. Both were committed to the PR #17 tip branch but never pushed before
+# `gh pr merge` ran, so the merge silently dropped them from main. Caught via `git branch -vv`
+# immediately after merge; recovered by cherry-picking both commits directly onto main
+# (d0a0ae3, 22b53f9) and pushing. Full detail in archive-report.md.
+#
+# CLOSURE NOTE (2026-08-05): archived MANUALLY, not via the native gentle-ai review/archive
+# gate — same tooling gap documented in the lifeos-foundation and finance-budgets archive
+# reports (review-* subagents have no Bash access). Full rationale in archive-report.md.
+archived: true
+archived_date: "2026-08-05"
