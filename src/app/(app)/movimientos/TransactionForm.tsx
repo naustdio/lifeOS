@@ -5,6 +5,13 @@ import type { FormEvent } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/design-system/ui/select";
+import {
   evaluateBudgetImpact,
   type BudgetImpact,
   type BudgetProgressItem,
@@ -106,25 +113,40 @@ export function TransactionForm({
             <label htmlFor="accountId" className="text-sm font-medium">
               Cuenta
             </label>
-            <select id="accountId" name="accountId" required className="h-11 rounded-card border border-input bg-surface px-4 text-sm">
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+            <Select name="accountId" defaultValue={accounts[0]?.id}>
+              <SelectTrigger id="accountId">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="categoryId" className="text-sm font-medium">
               Categoría
             </label>
-            <select id="categoryId" name="categoryId" required className="h-11 rounded-card border border-input bg-surface px-4 text-sm">
-              {visibleCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            {/* keyed on `tab`: visibleCategories changes when the tab flips
+                between expense/income, so remounting re-applies defaultValue
+                to the new list's first item — matching a native <select>'s
+                auto-fallback-to-first-option behavior when its previously
+                selected <option> disappears. */}
+            <Select key={tab} name="categoryId" defaultValue={visibleCategories[0]?.id}>
+              <SelectTrigger id="categoryId">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {visibleCategories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="amount" className="text-sm font-medium">
@@ -157,25 +179,35 @@ export function TransactionForm({
             <label htmlFor="fromAccountId" className="text-sm font-medium">
               Desde
             </label>
-            <select id="fromAccountId" name="fromAccountId" required className="h-11 rounded-card border border-input bg-surface px-4 text-sm">
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+            <Select name="fromAccountId" defaultValue={accounts[0]?.id}>
+              <SelectTrigger id="fromAccountId">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="toAccountId" className="text-sm font-medium">
               Hacia
             </label>
-            <select id="toAccountId" name="toAccountId" required className="h-11 rounded-card border border-input bg-surface px-4 text-sm">
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+            <Select name="toAccountId" defaultValue={accounts[1]?.id ?? accounts[0]?.id}>
+              <SelectTrigger id="toAccountId">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="transferAmount" className="text-sm font-medium">

@@ -5,6 +5,13 @@ import type { FormEvent } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/design-system/ui/select";
+import {
   budgetDeltaForEdit,
   evaluateBudgetImpact,
   type BudgetImpact,
@@ -108,18 +115,18 @@ export function EditTransactionForm({
           <label htmlFor="accountId" className="text-sm font-medium">
             Cuenta
           </label>
-          <select
-            id="accountId"
-            name="accountId"
-            defaultValue={transaction.accountId}
-            className="h-11 rounded-card border border-input bg-surface px-4 text-sm"
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <Select name="accountId" defaultValue={transaction.accountId}>
+            <SelectTrigger id="accountId">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {transaction.type !== "transfer" && (
@@ -127,18 +134,18 @@ export function EditTransactionForm({
             <label htmlFor="categoryId" className="text-sm font-medium">
               Categoría
             </label>
-            <select
-              id="categoryId"
-              name="categoryId"
-              defaultValue={transaction.categoryId ?? ""}
-              className="h-11 rounded-card border border-input bg-surface px-4 text-sm"
-            >
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <Select name="categoryId" defaultValue={transaction.categoryId ?? undefined}>
+              <SelectTrigger id="categoryId">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 

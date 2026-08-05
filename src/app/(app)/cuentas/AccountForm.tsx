@@ -3,6 +3,13 @@
 import { useActionState, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/design-system/ui/select";
 import { createAccountAction, type AccountFormState } from "./actions";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -36,19 +43,18 @@ export function AccountForm() {
         <label htmlFor="type" className="text-sm font-medium">
           Tipo de cuenta
         </label>
-        <select
-          id="type"
-          name="type"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="h-11 rounded-card border border-input bg-surface px-4 text-sm"
-        >
-          {Object.entries(TYPE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <Select name="type" value={type} onValueChange={setType}>
+          <SelectTrigger id="type">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(TYPE_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-1">

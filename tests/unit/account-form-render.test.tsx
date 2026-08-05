@@ -41,9 +41,9 @@ describe("AccountForm — smoke render (T-036 / C-1)", () => {
 
   it("shows the liability fieldset (and hides the goal fieldset) when type=liability", () => {
     render(<AccountForm />);
-    const select = screen.getByLabelText("Tipo de cuenta") as HTMLSelectElement;
 
-    fireEvent.change(select, { target: { value: "liability" } });
+    fireEvent.click(screen.getByLabelText("Tipo de cuenta"));
+    fireEvent.click(screen.getByRole("option", { name: "Préstamo / deuda" }));
 
     expect(screen.getByText("Datos del préstamo")).toBeInTheDocument();
     expect(screen.getByLabelText("Monto original (MXN)")).toBeInTheDocument();
@@ -55,9 +55,9 @@ describe("AccountForm — smoke render (T-036 / C-1)", () => {
 
   it("shows the savings_goal fieldset (and hides the liability fieldset) when type=savings_goal", () => {
     render(<AccountForm />);
-    const select = screen.getByLabelText("Tipo de cuenta") as HTMLSelectElement;
 
-    fireEvent.change(select, { target: { value: "savings_goal" } });
+    fireEvent.click(screen.getByLabelText("Tipo de cuenta"));
+    fireEvent.click(screen.getByRole("option", { name: "Meta de ahorro" }));
 
     expect(screen.getByText("Meta de ahorro", { selector: "legend" })).toBeInTheDocument();
     expect(screen.getByLabelText("Monto objetivo (MXN)")).toBeInTheDocument();

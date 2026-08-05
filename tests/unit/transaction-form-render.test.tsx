@@ -49,8 +49,13 @@ describe("TransactionForm — smoke render (T-037 / C-1)", () => {
 
     expect(screen.getByLabelText("Cuenta")).toBeInTheDocument();
     expect(screen.getByLabelText("Categoría")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Categoría"));
     expect(screen.getByRole("option", { name: "Café" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Sueldo" })).not.toBeInTheDocument();
+    // Close the Select (Radix aria-hides the rest of the page while its
+    // listbox is open) before asserting on siblings outside the dropdown.
+    fireEvent.keyDown(screen.getByRole("listbox"), { key: "Escape" });
     expect(screen.getByRole("button", { name: "Registrar gasto" })).toBeInTheDocument();
     // Transfer-only fields are not present.
     expect(screen.queryByLabelText("Desde")).not.toBeInTheDocument();
@@ -61,8 +66,10 @@ describe("TransactionForm — smoke render (T-037 / C-1)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Ingreso" }));
 
+    fireEvent.click(screen.getByLabelText("Categoría"));
     expect(screen.getByRole("option", { name: "Sueldo" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Café" })).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("listbox"), { key: "Escape" });
     expect(screen.getByRole("button", { name: "Registrar ingreso" })).toBeInTheDocument();
   });
 

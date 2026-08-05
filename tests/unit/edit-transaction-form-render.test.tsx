@@ -190,7 +190,8 @@ describe("EditTransactionForm — over-budget confirmation gate (B-011)", () => 
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Categoría"), { target: { value: "cat-1" } });
+    fireEvent.click(screen.getByLabelText("Categoría"));
+    fireEvent.click(screen.getByRole("option", { name: "Café" }));
     fireEvent.change(screen.getByLabelText("Monto (MXN)"), { target: { value: "10" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
