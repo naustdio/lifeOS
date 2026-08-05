@@ -1,3 +1,4 @@
+import { Home, Target, Wallet } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type * as React from "react";
@@ -40,24 +41,27 @@ export default async function AppLayout({
       <NavPill>
         <Link
           href="/"
-          className="rounded-pill px-3 py-1.5 text-sm transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
+          aria-label="Inicio"
+          className="flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
         >
-          Inicio
+          <Home className="h-5 w-5" aria-hidden />
         </Link>
-        <Link href="/movimientos">
+        <Link href="/movimientos" aria-label="Nuevo movimiento">
           <FabMenu />
         </Link>
         <Link
           href="/cuentas"
-          className="rounded-pill px-3 py-1.5 text-sm transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
+          aria-label="Cuentas"
+          className="flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
         >
-          Cuentas
+          <Wallet className="h-5 w-5" aria-hidden />
         </Link>
         <Link
           href="/presupuestos"
-          className="rounded-pill px-3 py-1.5 text-sm transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
+          aria-label="Presupuestos"
+          className="flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
         >
-          Presupuestos
+          <Target className="h-5 w-5" aria-hidden />
         </Link>
       </NavPill>
     </div>
