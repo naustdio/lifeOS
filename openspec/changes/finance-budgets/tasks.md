@@ -114,7 +114,7 @@ See the Review Workload Forecast at the end for line estimates and PR chaining g
 
 ## (f) pgTAP Suites
 
-- [ ] B-009 — pgTAP: RLS, `security_invoker` regression, expense-kind trigger, current-month progress, uniqueness & archive
+- [x] B-009 — pgTAP: RLS, `security_invoker` regression, expense-kind trigger, current-month progress, uniqueness & archive
   - `supabase/tests/*_budgets.sql`, per `design.md §8` (five DB rows):
     - **Tenancy**: member sees own `finance.budgets` rows; non-member and `anon` see zero; a member can `DELETE` their own household's budget row; a non-member's `DELETE` affects zero rows.
     - **`security_invoker` regression**: a non-member session reading `finance.budget_progress` for a space with budgeted spend returns zero rows — this MUST fail if `with (security_invoker = true)` is dropped from the view.
@@ -129,7 +129,7 @@ See the Review Workload Forecast at the end for line estimates and PR chaining g
 
 ## (g) Vitest Unit + RTL Render Tests
 
-- [ ] B-010 — Vitest: pure domain evaluation tests
+- [x] B-010 — Vitest: pure domain evaluation tests
   - `tests/unit/finance-budget-domain.test.ts` against `modules/finance/domain/budget.ts`, per `design.md §8`:
     - `evaluateBudgetImpact`: under limit → no prompt; exactly at limit → prompt (`>=` boundary); over → prompt; unbudgeted (`limitCents = null`) → never prompt; zero/negative delta → never prompt even when already over.
     - `budgetDeltaForEdit`: same-category delta is `next − previous`; category-change delta is `+next` against the new category; unchanged submission yields delta 0.
@@ -138,7 +138,7 @@ See the Review Workload Forecast at the end for line estimates and PR chaining g
   - Depends on: B-003.
   - Parallel: yes, parallel with B-004–B-009.
 
-- [ ] B-011 — RTL render tests: `BudgetForm`, `TransactionForm`, `EditTransactionForm`
+- [x] B-011 — RTL render tests: `BudgetForm`, `TransactionForm`, `EditTransactionForm`
   - `tests/unit/budget-form-render.test.tsx` (new, per the `*-form-render.test.tsx` precedent): renders a row per active expense category; shows a progress bar and a "quitar presupuesto" action only for budgeted rows; offers no income category; removing a budget reverts the row to unbudgeted.
   - `tests/unit/transaction-form-render.test.tsx` (modify): new `budgets` prop; crossing the limit renders the dialog and does **not** dispatch; confirming dispatches once; cancelling dispatches never; staying under the limit dispatches with no dialog.
   - `tests/unit/edit-transaction-form-render.test.tsx` (modify): new `budgets` prop; raising an amount past the limit prompts; lowering it does not; switching to a budgeted category over its limit prompts.

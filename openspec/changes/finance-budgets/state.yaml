@@ -106,11 +106,31 @@ apply_progress:
 
   pr_4_tests:
     name: "Tests — pgTAP suites, Vitest unit + RTL render"
-    status: pending
-    tasks_done: []
+    status: complete
+    tasks_done: [B-009, B-010, B-011]
     tasks_total: 3
     branch: feat/finance-budgets-4-tests
     base: feat/finance-budgets-3-ui
+    files:
+      - supabase/tests/080_finance_budgets.sql
+      - tests/unit/finance-budget-domain.test.ts
+      - tests/unit/budget-form-render.test.tsx
+      - tests/unit/transaction-form-render.test.tsx (modified)
+      - tests/unit/edit-transaction-form-render.test.tsx (modified)
+    db_gate: "EXECUTED for real via `supabase test db --local` — 080_finance_budgets.sql: 20/20 pgTAP assertions PASS (tenancy incl. member DELETE + non-member DELETE-affects-zero, security_invoker regression, expense-kind trigger incl. cross-space + UPDATE case, current-month progress incl. void/transfer/income exclusion + LEFT JOIN zero-spend, uniqueness, archived-category-untouched). Full suite re-run: Files=8, Tests=103, PASS (zero regression across all prior migrations)."
+    verify_gate: "pnpm verify — PASS (eslint + tsc --noEmit + check-tokens.mjs + next build, 12 routes incl. /presupuestos)."
+    test_gate: "pnpm test — 74/74 pass (12 files): 10 new pure-domain unit tests, 5 new BudgetForm RTL tests, 4 new TransactionForm gate RTL tests, 3 new EditTransactionForm gate RTL tests, all pre-existing tests green with zero regression."
+    debugging_note: >
+      Two real bugs were found and fixed while getting the pgTAP suite green (not
+      speculative — actual `throws_ok`/`is` failures against the live local stack):
+      (1) the void-transaction fixture needed `voided_at` set to satisfy the pre-existing
+      `tx_void_fields` CHECK constraint; (2) the "non-member's DELETE affects zero rows"
+      assertion was re-checking existence AS the non-member, whose own SELECT is already
+      RLS-filtered to zero rows regardless of the DELETE's outcome — fixed by re-checking
+      as the owning member instead, which actually distinguishes "deleted" from
+      "invisible."
+    pr: "PENDING — branch pushed, gh pr create pending in this apply run"
 
-next_recommended: sdd-apply
-# PR 1 (database) complete and verified for real. PR 2 (domain + data) is next.
+next_recommended: sdd-verify
+# All 11 tasks (B-001..B-011) implemented and verified for real across 4 stacked PRs.
+# Every PR's verify/test/db gates were executed against the live local stack, not assumed.
