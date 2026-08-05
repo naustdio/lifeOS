@@ -33,11 +33,20 @@ apply_progress:
 
   pr_2_domain_data:
     name: "Domain + Data — pure evaluation functions, budget-repository incl. removeBudget"
-    status: pending
-    tasks_done: []
+    status: complete
+    tasks_done: [B-003, B-004]
     tasks_total: 2
     branch: feat/finance-budgets-2-domain-data
     base: feat/finance-budgets-1-db
+    files:
+      - src/modules/finance/domain/budget.ts
+      - src/modules/finance/domain/index.ts
+      - src/modules/finance/data/budget-repository.ts
+      - src/modules/finance/data/index.ts
+    verify_gate: "pnpm verify — PASS (eslint + tsc --noEmit + check-tokens.mjs + next build, 10 routes)."
+    test_gate: "pnpm test — 52/52 pass (includes live-Supabase integration tests, unaffected). Unit tests for budget.ts land in PR4 (B-010) per tasks.md grouping."
+    zero_diff_check: "git diff --exit-code main -- src/modules/finance/api/index.ts — CONFIRMED zero diff."
+    pr: "PENDING — branch pushed, gh pr create pending in this apply run"
 
   pr_3_ui:
     name: "UI — presupuestos screen, OverBudgetDialog, gate wiring"
