@@ -1,8 +1,16 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
+import type { FormEvent } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
+import {
+  evaluateBudgetImpact,
+  type BudgetImpact,
+  type BudgetProgressItem,
+} from "@/modules/finance/api/budget-evaluation";
+import { pesosToCents } from "@/shared/money";
+import { OverBudgetDialog } from "./OverBudgetDialog";
 import { recordMovementAction, recordTransferAction, type MovementFormState } from "./actions";
 
 type AccountOption = { id: string; name: string };
@@ -14,19 +22,62 @@ const today = () => new Date().toISOString().slice(0, 10);
 /** Income/expense/transfer entry form (T-037). No "who paid" field — that
  * field is hidden in personal-mode UI (`finance-transactions/
  * paid_by_user_id Hidden From Personal-Mode UI`). Category picker only
- * receives active categories (already excluded upstream). */
+ * receives active categories (already excluded upstream).
+ *
+ * `budgets` prop (finance-budgets B-007): the expense tab only gates
+ * submission behind a non-blocking over-budget confirmation
+ * (`evaluateBudgetImpact`) before dispatching the SAME `FormData` to the
+ * existing `useActionState` action — confirming records the transaction
+ * unchanged, per design.md §5. Income/transfer tabs are unaffected. */
 export function TransactionForm({
   accounts,
   categories,
+  budgets = [],
 }: {
   accounts: AccountOption[];
   categories: CategoryOption[];
+  budgets?: BudgetProgressItem[];
 }) {
   const [tab, setTab] = useState<"expense" | "income" | "transfer">("expense");
   const [movementState, movementAction, movementPending] = useActionState(recordMovementAction, INITIAL_STATE);
   const [transferState, transferAction, transferPending] = useActionState(recordTransferAction, INITIAL_STATE);
+  const [, startTransition] = useTransition();
+  const [pendingOverBudget, setPendingOverBudget] = useState<{ formData: FormData; impact: BudgetImpact } | null>(
+    null,
+  );
 
   const visibleCategories = categories.filter((c) => c.kind === tab);
+
+  function handleMovementSubmit(event: FormEvent<HTMLFormElement>) {
+    if (tab !== "expense") return;
+
+    const formData = new FormData(event.currentTarget);
+    const categoryId = String(formData.get("categoryId") ?? "");
+    const amountCents = pesosToCents(Number(formData.get("amount") ?? 0));
+    const budget = budgets.find((b) => b.categoryId === categoryId);
+
+    const impact = evaluateBudgetImpact({
+      limitCents: budget?.limitCents ?? null,
+      spentCents: budget?.spentCents ?? 0,
+      deltaCents: amountCents,
+    });
+
+    if (impact.crossesLimit) {
+      event.preventDefault();
+      setPendingOverBudget({ formData, impact });
+    }
+  }
+
+  function confirmOverBudget() {
+    if (!pendingOverBudget) return;
+    const { formData } = pendingOverBudget;
+    setPendingOverBudget(null);
+    startTransition(() => movementAction(formData));
+  }
+
+  function cancelOverBudget() {
+    setPendingOverBudget(null);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -47,7 +98,7 @@ export function TransactionForm({
       </div>
 
       {tab !== "transfer" && (
-        <form action={movementAction} className="flex flex-col gap-4">
+        <form action={movementAction} onSubmit={handleMovementSubmit} className="flex flex-col gap-4">
           <input type="hidden" name="kind" value={tab} />
           <div className="flex flex-col gap-1">
             <label htmlFor="accountId" className="text-sm font-medium">
@@ -147,6 +198,15 @@ export function TransactionForm({
             {transferPending ? "Guardando…" : "Registrar transferencia"}
           </Button>
         </form>
+      )}
+
+      {pendingOverBudget && pendingOverBudget.impact.limitCents !== null && (
+        <OverBudgetDialog
+          limitCents={pendingOverBudget.impact.limitCents}
+          projectedSpentCents={pendingOverBudget.impact.projectedSpentCents}
+          onConfirm={confirmOverBudget}
+          onCancel={cancelOverBudget}
+        />
       )}
     </div>
   );

@@ -77,7 +77,7 @@ See the Review Workload Forecast at the end for line estimates and PR chaining g
 
 ## (d) Presupuestos Screen
 
-- [ ] B-005 — `(app)/presupuestos/` screen: list, opt-in, edit, remove
+- [x] B-005 — `(app)/presupuestos/` screen: list, opt-in, edit, remove
   - `src/app/(app)/presupuestos/page.tsx` (server): `listActiveCategories(supabase, hh, "expense")` + `listBudgetsWithProgress(supabase, hh)`, passed as props to `<BudgetForm>`.
   - `src/app/(app)/presupuestos/BudgetForm.tsx` (client): one row per active expense category — category name, opt-in control, MXN limit input, progress bar (`spentCents / limitCents`, clamped at 100%, `text-expense` token once at/over limit, no raw hex per `check-tokens.mjs`). A budgeted row shows a **"quitar presupuesto"** action; confirming reverts the row to unbudgeted (no limit, no progress bar), re-enabling the opt-in control. Single-column layout, usable at 375px, light and dark.
   - `src/app/(app)/presupuestos/actions.ts`: `setBudgetLimitAction` (→ `upsertBudgetLimit`) and `removeBudgetAction` (→ `removeBudget`) Server Actions.
@@ -90,20 +90,20 @@ See the Review Workload Forecast at the end for line estimates and PR chaining g
 
 ## (e) Over-Budget Gate Wiring
 
-- [ ] B-006 — `OverBudgetDialog.tsx` (presentational)
+- [x] B-006 — `OverBudgetDialog.tsx` (presentational)
   - `src/app/(app)/movimientos/OverBudgetDialog.tsx` — new component, props in (`onConfirm`/`onCancel`), Spanish copy, no data access, no domain import beyond the `BudgetImpact` type shape.
   - Satisfies: `finance-budgets/Non-Blocking Over-Budget Confirmation on Entry` (confirmation UI shell — dispatch wiring lands in B-007/B-008).
   - Depends on: B-003 (consumes the `BudgetImpact` type).
   - Parallel: yes, parallel with B-004/B-005.
 
-- [ ] B-007 — Wire the over-budget gate into `TransactionForm` + `movimientos/page.tsx`
+- [x] B-007 — Wire the over-budget gate into `TransactionForm` + `movimientos/page.tsx`
   - `src/app/(app)/movimientos/page.tsx` (server, modify): fetch `listBudgetsWithProgress(supabase, hh)`, pass `budgets` down.
   - `src/app/(app)/movimientos/TransactionForm.tsx` (client, modify): accepts a `budgets: BudgetProgressItem[]` prop; gate applies to the **expense tab only** (income/transfer tabs unaffected — transfers carry no `category_id`). Switch submission from `<form action={dispatch}>` to `<form onSubmit={...}>`: `event.preventDefault()` only when `evaluateBudgetImpact(...).crossesLimit`, stash the `FormData`, render `<OverBudgetDialog>`; on confirm, `startTransition(() => dispatch(pendingFormData))` — the confirmed submission is byte-identical to the unconfirmed one, per `design.md §5`. **Verify at implementation time** (design's own open item) that `useActionState`'s dispatch accepts a stashed `FormData` inside `startTransition` on the pinned React/Next versions.
   - Satisfies: `finance-budgets/Non-Blocking Over-Budget Confirmation on Entry` (all four scenarios: shown when crossing, confirming records unchanged, cancelling records nothing, no prompt when under limit).
   - Depends on: B-003, B-004, B-006.
   - Parallel: yes, parallel with B-008 (disjoint files).
 
-- [ ] B-008 — Wire the over-budget gate into `EditTransactionForm` + `editar/page.tsx`
+- [x] B-008 — Wire the over-budget gate into `EditTransactionForm` + `editar/page.tsx`
   - `src/app/(app)/movimientos/[id]/editar/page.tsx` (server, modify): fetch `listBudgetsWithProgress(supabase, hh)`, pass `budgets` down.
   - `src/app/(app)/movimientos/[id]/editar/EditTransactionForm.tsx` (client, modify): accepts a `budgets` prop; uses `budgetDeltaForEdit` against the `transaction` prop it already receives (`categoryId`, `amountCents`) versus submitted values; same `onSubmit`/`OverBudgetDialog`/`startTransition` pattern as B-007, imported as `../../OverBudgetDialog`. The void form is untouched.
   - Satisfies: `finance-budgets/Over-Budget Check Re-Runs on Edit` (both scenarios: amount increase past limit, category change to a budgeted category past its limit).

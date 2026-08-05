@@ -3,7 +3,12 @@ import { getCurrentHouseholdId } from "@/modules/core/api";
 import { CategoryChip } from "@/design-system/patterns/CategoryChip";
 import { MoneyAmount } from "@/design-system/patterns/MoneyAmount";
 import { Card, CardContent } from "@/design-system/ui/card";
-import { listActiveAccounts, listActiveCategories, listRecentTransactions } from "@/modules/finance/api";
+import {
+  listActiveAccounts,
+  listActiveCategories,
+  listBudgetsWithProgress,
+  listRecentTransactions,
+} from "@/modules/finance/api";
 import { formatCentsAsMXN } from "@/shared/money";
 import { createClient } from "@/shared/supabase/server";
 import { TransactionForm } from "./TransactionForm";
@@ -21,13 +26,14 @@ export default async function MovementsPage() {
   const supabase = await createClient();
   const spaceId = await getCurrentHouseholdId(supabase);
 
-  const [accounts, categories, transactions] = spaceId
+  const [accounts, categories, transactions, budgets] = spaceId
     ? await Promise.all([
         listActiveAccounts(supabase, spaceId),
         listActiveCategories(supabase, spaceId),
         listRecentTransactions(supabase, spaceId),
+        listBudgetsWithProgress(supabase, spaceId),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
 
   return (
     <main className="flex flex-col gap-6">
@@ -38,6 +44,7 @@ export default async function MovementsPage() {
           <TransactionForm
             accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
             categories={categories.map((c) => ({ id: c.id, name: c.name, kind: c.kind }))}
+            budgets={budgets}
           />
         </CardContent>
       </Card>

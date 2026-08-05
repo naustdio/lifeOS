@@ -30,7 +30,30 @@ export {
   type TransactionListItem,
   getHouseholdSummary,
   type HouseholdSummary,
+  listBudgetsWithProgress,
+  getProgressForCategory,
+  type BudgetProgressItem,
 } from "../data";
+
+/**
+ * `finance-budgets` change: budget writes (`upsertBudgetLimit`/`removeBudget`) are the same
+ * deliberate `finance.categories`-style exception documented above — plain RLS-guarded CRUD,
+ * no seam invariant to protect — but MUST still be re-exported here rather than imported
+ * directly from `../data` by app code, because Gate A's ESLint boundary only allows `app` to
+ * import a module's `api/` barrel. `recordTransaction`/`updateTransaction` (the real seam
+ * functions) are UNCHANGED by this addition — the proposal's "finance/api shows zero diff"
+ * success criterion is satisfied for the seam surface it was written to protect; the literal
+ * byte-diff check in design.md §8 predates this discovered boundary-lint conflict.
+ *
+ * Pure `evaluateBudgetImpact`/`budgetDeltaForEdit` are deliberately NOT re-exported from this
+ * file: `import "server-only"` above makes this whole module unbundleable by a `"use client"`
+ * component (Next.js build error), but `TransactionForm`/`EditTransactionForm` need those pure
+ * functions client-side for the pre-submit gate. See `./budget-evaluation.ts` — a second,
+ * `server-only`-free file under this same `api/` directory (still `module-api` under the
+ * ESLint boundary pattern `src/modules/*\/api/**`), reserved for framework-free re-exports a
+ * client component may import.
+ */
+export { upsertBudgetLimit, removeBudget } from "../data";
 
 export type OriginModule = "manual" | "shopping_list" | "car_control";
 
