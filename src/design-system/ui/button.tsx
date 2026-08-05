@@ -10,14 +10,14 @@ import { cn } from "./utils";
  * proposal's design-direction table.
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill text-sm font-medium transition-all duration-200 ease-out active:scale-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
   {
     variants: {
       variant: {
         primary: "bg-primary text-primary-foreground shadow-soft hover:opacity-90",
         dark: "bg-nav-pill text-nav-pill-foreground shadow-soft hover:opacity-90",
         secondary: "bg-secondary text-secondary-foreground hover:opacity-90",
-        ghost: "bg-transparent text-foreground hover:bg-accent",
+        ghost: "bg-transparent text-foreground hover:bg-accent active:bg-accent",
         destructive: "bg-destructive text-destructive-foreground hover:opacity-90",
       },
       size: {

@@ -12,7 +12,7 @@ export const Chip = React.forwardRef<
   <span
     ref={ref}
     className={cn(
-      "inline-flex items-center gap-2 rounded-pill bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground",
+      "inline-flex items-center gap-2 rounded-pill bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground transition-colors duration-200 ease-out",
       className,
     )}
     {...props}

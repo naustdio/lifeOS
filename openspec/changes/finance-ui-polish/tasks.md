@@ -71,19 +71,19 @@ needed**: confirm the stacked-to-main 4-PR order before `sdd-apply` begins PR 1.
 
 ## Group (b): Base `ui/` Interaction States
 
-- [ ] P-008 `src/design-system/ui/button.tsx` — base class `transition-colors` → `transition-all duration-200 ease-out active:scale-95`; `ghost` variant gains `active:bg-accent`.
+- [x] P-008 `src/design-system/ui/button.tsx` — base class `transition-colors` → `transition-all duration-200 ease-out active:scale-95`; `ghost` variant gains `active:bg-accent`.
   - Satisfies: `finance-ui-polish/Interaction States on Interactive Elements` (both scenarios).
   - Depends on: none.
   - Parallel: yes, with P-009/P-010/P-011.
-- [ ] P-009 `src/design-system/ui/card.tsx` — drop `border border-border` (Decision 8); no new variant, interactivity stays caller-`className`-only.
+- [x] P-009 `src/design-system/ui/card.tsx` — drop `border border-border` (Decision 8); no new variant, interactivity stays caller-`className`-only.
   - Satisfies: `finance-ui-polish/No New Raw Token Values`, `finance-ui-polish/Interaction States on Interactive Elements`.
   - Depends on: none.
   - Parallel: yes.
-- [ ] P-010 `src/design-system/ui/chip.tsx` — add `transition-colors duration-200 ease-out`.
+- [x] P-010 `src/design-system/ui/chip.tsx` — add `transition-colors duration-200 ease-out`.
   - Satisfies: `finance-ui-polish/Interaction States on Interactive Elements`.
   - Depends on: none.
   - Parallel: yes.
-- [ ] P-011 `src/design-system/ui/nav-pill.tsx` + `src/app/(app)/layout.tsx` — nav `<Link>`s get `rounded-pill px-3 py-1.5 transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10`.
+- [x] P-011 `src/design-system/ui/nav-pill.tsx` + `src/app/(app)/layout.tsx` — nav `<Link>`s get `rounded-pill px-3 py-1.5 transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10`.
   - Satisfies: `finance-ui-polish/Interaction States on Interactive Elements`.
   - Depends on: none.
   - Parallel: yes.

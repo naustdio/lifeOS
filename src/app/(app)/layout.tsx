@@ -38,16 +38,25 @@ export default async function AppLayout({
       </div>
       {children}
       <NavPill>
-        <Link href="/" className="text-sm">
+        <Link
+          href="/"
+          className="rounded-pill px-3 py-1.5 text-sm transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
+        >
           Inicio
         </Link>
         <Link href="/movimientos">
           <FabMenu />
         </Link>
-        <Link href="/cuentas" className="text-sm">
+        <Link
+          href="/cuentas"
+          className="rounded-pill px-3 py-1.5 text-sm transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
+        >
           Cuentas
         </Link>
-        <Link href="/presupuestos" className="text-sm">
+        <Link
+          href="/presupuestos"
+          className="rounded-pill px-3 py-1.5 text-sm transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
+        >
           Presupuestos
         </Link>
       </NavPill>
