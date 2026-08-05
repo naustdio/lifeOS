@@ -1,10 +1,13 @@
 "use client";
 
+import { Target } from "lucide-react";
+import Link from "next/link";
 import { useActionState } from "react";
+import { EmptyState } from "@/design-system/patterns/EmptyState";
+import { ProgressBar } from "@/design-system/patterns/ProgressBar";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
 import type { BudgetProgressItem } from "@/modules/finance/api/budget-evaluation";
-import { centsToPesos } from "@/shared/money";
 import { removeBudgetAction, setBudgetLimitAction, type BudgetFormState } from "./actions";
 
 type CategoryOption = { id: string; name: string };
@@ -29,7 +32,16 @@ export function BudgetForm({
   return (
     <div className="flex flex-col gap-4">
       {categories.length === 0 && (
-        <p className="text-sm text-muted-foreground">Aún no hay categorías de gasto disponibles.</p>
+        <EmptyState
+          icon={Target}
+          heading="Aún no hay categorías de gasto"
+          description="Registra un gasto en Movimientos para crear categorías."
+          action={
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/movimientos">Ir a movimientos</Link>
+            </Button>
+          }
+        />
       )}
       {categories.map((category) => (
         <BudgetRow
@@ -52,24 +64,13 @@ function BudgetRow({
   const [setState, setAction, setPending] = useActionState(setBudgetLimitAction, INITIAL_STATE);
   const [removeState, removeAction, removePending] = useActionState(removeBudgetAction, INITIAL_STATE);
 
-  const pctSpent = budget ? Math.min(100, Math.round((budget.spentCents / budget.limitCents) * 100)) : 0;
-  const overOrAtLimit = budget ? budget.spentCents >= budget.limitCents : false;
-
   return (
     <div className="flex flex-col gap-2 border-b border-border pb-4 last:border-b-0 last:pb-0">
       <span className="text-sm font-medium">{category.name}</span>
 
       {budget ? (
         <>
-          <div className="h-2 w-full overflow-hidden rounded-pill bg-secondary">
-            <div
-              className={"h-full rounded-pill " + (overOrAtLimit ? "bg-expense" : "bg-primary")}
-              style={{ width: `${pctSpent}%` }}
-            />
-          </div>
-          <p className={"text-xs " + (overOrAtLimit ? "text-expense" : "text-muted-foreground")}>
-            {centsToPesos(budget.spentCents).toFixed(2)} / {centsToPesos(budget.limitCents).toFixed(2)} MXN
-          </p>
+          <ProgressBar valueCents={budget.spentCents} limitCents={budget.limitCents} />
           <form action={removeAction}>
             <input type="hidden" name="categoryId" value={category.id} />
             {removeState.error && <p className="text-xs text-expense">{removeState.error}</p>}

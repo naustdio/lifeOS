@@ -1,6 +1,13 @@
+import { ArrowDownLeft, Plus, Target, Wallet } from "lucide-react";
+import Link from "next/link";
 import { getCurrentHouseholdId, getCurrentProfile } from "@/modules/core/api";
 import { BalanceHero } from "@/design-system/patterns/BalanceHero";
+import { EmptyState } from "@/design-system/patterns/EmptyState";
 import { MoneyAmount } from "@/design-system/patterns/MoneyAmount";
+import { ProgressBar } from "@/design-system/patterns/ProgressBar";
+import { QuickActionRow } from "@/design-system/patterns/QuickActionRow";
+import { TransactionRow } from "@/design-system/patterns/TransactionRow";
+import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
 import { getHouseholdSummary, listActiveAccounts } from "@/modules/finance/api";
 import { formatCentsAsMXN } from "@/shared/money";
@@ -15,11 +22,20 @@ const TYPE_LABELS: Record<string, string> = {
   savings_goal: "Meta de ahorro",
 };
 
+const QUICK_ACTIONS = [
+  { label: "Nueva transacción", icon: ArrowDownLeft, href: "/movimientos" },
+  { label: "Nueva cuenta", icon: Plus, href: "/cuentas/nueva" },
+  { label: "Presupuestos", icon: Target, href: "/presupuestos" },
+];
+
 /**
  * Home screen (T-039). `available_cents` is the hero figure — ASSETS ONLY
  * (`cash`/`checking`/`savings`/`savings_goal`); `debt_cents` is a separate
  * card and is NEVER subtracted from the hero (design.md §3.3). Zero
  * "household" ceremony anywhere on screen (T-017, unchanged from 1B).
+ * Finance UI polish: `QuickActionRow` sits immediately below the hero, above
+ * the debt card; accounts render via `TransactionRow`; zero accounts render
+ * `EmptyState`.
  */
 export default async function HomePage() {
   const supabase = await createClient();
@@ -34,6 +50,7 @@ export default async function HomePage() {
   return (
     <main className="flex flex-col gap-6">
       <BalanceHero formatted={formatCentsAsMXN(summary.availableCents)} />
+      <QuickActionRow actions={QUICK_ACTIONS} />
 
       {summary.debtCents > 0 && (
         <Card>
@@ -46,23 +63,31 @@ export default async function HomePage() {
         </Card>
       )}
 
-      {accounts.length > 0 && (
+      {accounts.length === 0 ? (
+        <EmptyState
+          icon={Wallet}
+          heading="Empieza por tu primera cuenta"
+          description="Registra una cuenta para ver tu balance aquí."
+          action={
+            <Button asChild size="sm">
+              <Link href="/cuentas/nueva">Nueva cuenta</Link>
+            </Button>
+          }
+        />
+      ) : (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm text-muted-foreground">Tus cuentas</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3">
+          <CardContent className="divide-y divide-border/60 py-2">
             {accounts.map((account) => (
-              <div key={account.id} className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">{account.name}</p>
-                  <p className="text-xs text-muted-foreground">{TYPE_LABELS[account.type] ?? account.type}</p>
-                </div>
-                <MoneyAmount
-                  formatted={formatCentsAsMXN(account.balanceCents)}
-                  kind={account.class === "asset" ? "income" : "expense"}
-                />
-              </div>
+              <TransactionRow
+                key={account.id}
+                title={account.name}
+                subtitle={TYPE_LABELS[account.type] ?? account.type}
+                formattedAmount={formatCentsAsMXN(account.balanceCents)}
+                kind={account.class === "asset" ? "income" : "expense"}
+              />
             ))}
           </CardContent>
         </Card>
@@ -74,10 +99,7 @@ export default async function HomePage() {
             <CardTitle className="text-sm">{account.name}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {formatCentsAsMXN(account.balanceCents)} de {formatCentsAsMXN(account.goal!.targetAmountCents)} (
-              {Math.min(100, Math.round((account.balanceCents / account.goal!.targetAmountCents) * 100))}%)
-            </p>
+            <ProgressBar valueCents={account.balanceCents} limitCents={account.goal!.targetAmountCents} />
           </CardContent>
         </Card>
       ))}
