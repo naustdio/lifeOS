@@ -16,6 +16,14 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
 
+const recordMovementAction = vi.fn();
+const recordTransferAction = vi.fn();
+
+vi.mock("@/app/(app)/movimientos/actions", () => ({
+  recordMovementAction,
+  recordTransferAction,
+}));
+
 const { TransactionForm } = await import("@/app/(app)/movimientos/TransactionForm");
 
 const ACCOUNTS = [
@@ -26,10 +34,14 @@ const CATEGORIES = [
   { id: "cat-income-1", name: "Sueldo", kind: "income" as const },
   { id: "cat-expense-1", name: "Café", kind: "expense" as const },
 ];
+const BUDGETED_CATEGORY = [{ id: "cat-expense-1", name: "Café", kind: "expense" as const }];
+const BUDGETS = [{ budgetId: "b1", categoryId: "cat-expense-1", limitCents: 5000, spentCents: 4000 }];
 
 describe("TransactionForm — smoke render (T-037 / C-1)", () => {
   afterEach(() => {
     cleanup();
+    recordMovementAction.mockReset();
+    recordTransferAction.mockReset();
   });
 
   it("renders the expense tab by default with only expense categories", () => {
@@ -64,5 +76,67 @@ describe("TransactionForm — smoke render (T-037 / C-1)", () => {
     expect(screen.getByRole("button", { name: "Registrar transferencia" })).toBeInTheDocument();
     // Income/expense-only fields are gone.
     expect(screen.queryByLabelText("Categoría")).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Over-budget confirmation gate (finance-budgets B-007/B-011): crossing the
+ * limit renders the dialog and does NOT dispatch immediately; confirming
+ * dispatches once; cancelling never dispatches; staying under the limit
+ * dispatches with no dialog. `recordMovementAction` is the real
+ * `useActionState` action (its own transitive deps are already mocked
+ * above), so "dispatches" is observed as the dialog closing / no dialog
+ * appearing rather than a spy call — matching how the rest of this file
+ * treats the action as an opaque `useActionState` reducer.
+ */
+describe("TransactionForm — over-budget confirmation gate (B-011)", () => {
+  afterEach(() => {
+    cleanup();
+    recordMovementAction.mockReset();
+    recordTransferAction.mockReset();
+  });
+
+  it("shows the confirmation dialog when the entered expense crosses the limit and does not submit immediately", () => {
+    render(<TransactionForm accounts={ACCOUNTS} categories={BUDGETED_CATEGORY} budgets={BUDGETS} />);
+
+    fireEvent.change(screen.getByLabelText("Monto (MXN)"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar gasto" }));
+
+    expect(screen.getByText("Vas a superar tu presupuesto")).toBeInTheDocument();
+  });
+
+  it("dispatches immediately with no dialog when the expense stays under the limit", () => {
+    recordMovementAction.mockResolvedValue({ error: null });
+    render(<TransactionForm accounts={ACCOUNTS} categories={BUDGETED_CATEGORY} budgets={BUDGETS} />);
+
+    fireEvent.change(screen.getByLabelText("Monto (MXN)"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar gasto" }));
+
+    expect(screen.queryByText("Vas a superar tu presupuesto")).not.toBeInTheDocument();
+  });
+
+  it("cancelling the confirmation dismisses it without submitting", () => {
+    render(<TransactionForm accounts={ACCOUNTS} categories={BUDGETED_CATEGORY} budgets={BUDGETS} />);
+
+    fireEvent.change(screen.getByLabelText("Monto (MXN)"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar gasto" }));
+    expect(screen.getByText("Vas a superar tu presupuesto")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByText("Vas a superar tu presupuesto")).not.toBeInTheDocument();
+  });
+
+  it("confirming dismisses the dialog (dispatch proceeds via startTransition)", () => {
+    recordMovementAction.mockResolvedValue({ error: null });
+    render(<TransactionForm accounts={ACCOUNTS} categories={BUDGETED_CATEGORY} budgets={BUDGETS} />);
+
+    fireEvent.change(screen.getByLabelText("Monto (MXN)"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar gasto" }));
+    expect(screen.getByText("Vas a superar tu presupuesto")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(screen.queryByText("Vas a superar tu presupuesto")).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -56,6 +56,17 @@ const TRANSFER_LEG_TRANSACTION = {
   description: "Ahorro",
 };
 
+const BUDGETED_EXPENSE_TRANSACTION = {
+  id: "tx-3",
+  accountId: "acc-1",
+  categoryId: "cat-1",
+  type: "expense" as const,
+  amountCents: -1000,
+  occurredOn: "2026-02-03",
+  description: "Café",
+};
+const BUDGETS = [{ budgetId: "b1", categoryId: "cat-1", limitCents: 4500, spentCents: 4500 }];
+
 describe("EditTransactionForm — smoke render (T-038 / C-1)", () => {
   afterEach(() => {
     cleanup();
@@ -111,5 +122,78 @@ describe("EditTransactionForm — smoke render (T-038 / C-1)", () => {
       ).toBeInTheDocument();
     });
     expect(screen.getByRole("button", { name: "Anular y volver a registrar" })).toBeInTheDocument();
+  });
+});
+
+/**
+ * Over-budget confirmation gate on edit (finance-budgets B-008/B-011):
+ * raising the amount past the limit prompts; lowering it does not;
+ * switching to a budgeted category over its limit prompts.
+ */
+describe("EditTransactionForm — over-budget confirmation gate (B-011)", () => {
+  afterEach(() => {
+    cleanup();
+    updateMovementAction.mockReset();
+    voidMovementAction.mockReset();
+  });
+
+  it("prompts when raising the amount past the limit", () => {
+    render(
+      <EditTransactionForm
+        transaction={BUDGETED_EXPENSE_TRANSACTION}
+        accounts={ACCOUNTS}
+        categories={CATEGORIES}
+        budgets={BUDGETS}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Monto (MXN)"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(screen.getByText("Vas a superar tu presupuesto")).toBeInTheDocument();
+  });
+
+  it("does not prompt when lowering the amount", () => {
+    updateMovementAction.mockResolvedValue({ error: null });
+    render(
+      <EditTransactionForm
+        transaction={BUDGETED_EXPENSE_TRANSACTION}
+        accounts={ACCOUNTS}
+        categories={CATEGORIES}
+        budgets={BUDGETS}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Monto (MXN)"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(screen.queryByText("Vas a superar tu presupuesto")).not.toBeInTheDocument();
+  });
+
+  it("prompts when switching to a budgeted category whose limit the amount would cross", () => {
+    const unbudgetedTransaction = {
+      id: "tx-4",
+      accountId: "acc-1",
+      categoryId: null,
+      type: "expense" as const,
+      amountCents: -1000,
+      occurredOn: "2026-02-04",
+      description: "Sin categoría",
+    };
+
+    render(
+      <EditTransactionForm
+        transaction={unbudgetedTransaction}
+        accounts={ACCOUNTS}
+        categories={CATEGORIES}
+        budgets={BUDGETS}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Categoría"), { target: { value: "cat-1" } });
+    fireEvent.change(screen.getByLabelText("Monto (MXN)"), { target: { value: "10" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(screen.getByText("Vas a superar tu presupuesto")).toBeInTheDocument();
   });
 });
