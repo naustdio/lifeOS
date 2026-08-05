@@ -29,7 +29,7 @@ apply_progress:
       violates the unique constraint (23505).
     verify_gate: "pnpm verify — PASS (eslint + tsc --noEmit + check-tokens.mjs + next build, 10 routes) — no TS changes in this PR, confirms no regression."
     test_gate: "pnpm test — 52/52 pass (one flaky boundary-lint timeout on the full-suite run, confirmed passing in isolation — pre-existing test-runner flake unrelated to this change, not a regression)."
-    pr: "PENDING — branch pushed, gh pr create pending in this apply run"
+    pr: "https://github.com/naustdio/lifeOS/pull/10 — OPEN, not merged"
 
   pr_2_domain_data:
     name: "Domain + Data — pure evaluation functions, budget-repository incl. removeBudget"
@@ -46,7 +46,7 @@ apply_progress:
     verify_gate: "pnpm verify — PASS (eslint + tsc --noEmit + check-tokens.mjs + next build, 10 routes)."
     test_gate: "pnpm test — 52/52 pass (includes live-Supabase integration tests, unaffected). Unit tests for budget.ts land in PR4 (B-010) per tasks.md grouping."
     zero_diff_check: "git diff --exit-code main -- src/modules/finance/api/index.ts — CONFIRMED zero diff."
-    pr: "PENDING — branch pushed, gh pr create pending in this apply run"
+    pr: "https://github.com/naustdio/lifeOS/pull/11 — OPEN, not merged"
 
   pr_3_ui:
     name: "UI — presupuestos screen, OverBudgetDialog, gate wiring"
@@ -102,7 +102,7 @@ apply_progress:
       prompt when lowering it; (c) BudgetForm renders one row per category, an opt-in
       limit input for the unbudgeted one, and a progress bar + "Quitar presupuesto" for
       the budgeted one.
-    pr: "PENDING — branch pushed, gh pr create pending in this apply run"
+    pr: "https://github.com/naustdio/lifeOS/pull/12 — OPEN, not merged"
 
   pr_4_tests:
     name: "Tests — pgTAP suites, Vitest unit + RTL render"
@@ -129,7 +129,7 @@ apply_progress:
       RLS-filtered to zero rows regardless of the DELETE's outcome — fixed by re-checking
       as the owning member instead, which actually distinguishes "deleted" from
       "invisible."
-    pr: "PENDING — branch pushed, gh pr create pending in this apply run"
+    pr: "https://github.com/naustdio/lifeOS/pull/13 — OPEN, not merged"
 
 next_recommended: sdd-verify
 # All 11 tasks (B-001..B-011) implemented and verified for real across 4 stacked PRs.
