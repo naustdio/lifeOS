@@ -1,0 +1,111 @@
+# DAG state for change `finance-ui-polish` (survives compaction).
+# Updated by sdd-apply as PR groups land.
+
+change: finance-ui-polish
+schema: spec-driven
+delivery_strategy: ask-on-risk
+chain_strategy: stacked-to-main
+resolved_pr_count: 4
+
+apply_progress:
+  pr_1_patterns:
+    name: "Patterns — TransactionRow, ProgressBar, QuickActionRow, EmptyState + unit tests"
+    status: complete
+    tasks_done: [P-001, P-002, P-003, P-004, P-005, P-006, P-007]
+    tasks_total: 7
+    branch: feat/finance-ui-polish-1-patterns
+    base: main
+    files:
+      - src/design-system/patterns/TransactionRow.tsx
+      - src/design-system/patterns/ProgressBar.tsx
+      - src/design-system/patterns/QuickActionRow.tsx
+      - src/design-system/patterns/EmptyState.tsx
+      - tests/unit/pattern-progress-bar.test.tsx
+      - tests/unit/pattern-transaction-row.test.tsx
+      - tests/unit/pattern-quick-action-row.test.tsx
+    test_gate: "pnpm vitest run tests/unit/pattern-*.test.tsx — 11/11 pass. pnpm test — 15 files / 85 tests pass."
+    verify_gate: "pnpm verify — PASS (eslint --max-warnings=0, tsc --noEmit, check-tokens.mjs, next build, 12 routes)."
+    pr: "https://github.com/naustdio/lifeOS/pull/14 — OPEN, not merged"
+
+  pr_2_ui_states:
+    name: "Base ui/ interaction states — button/card/chip/nav-pill hover+active"
+    status: complete
+    tasks_done: [P-008, P-009, P-010, P-011]
+    tasks_total: 4
+    branch: feat/finance-ui-polish-2-ui-states
+    base: feat/finance-ui-polish-1-patterns
+    files:
+      - src/design-system/ui/button.tsx
+      - src/design-system/ui/card.tsx
+      - src/design-system/ui/chip.tsx
+      - src/app/(app)/layout.tsx
+    test_gate: "pnpm vitest run tests/unit/*-form-render.test.tsx — 21/21 pass (regression)."
+    verify_gate: "pnpm verify — PASS."
+    pr: "https://github.com/naustdio/lifeOS/pull/15 — OPEN, not merged"
+
+  pr_3_screens:
+    name: "Screen adoption — Home/Cuentas/Movimientos/Presupuestos consume shared patterns + empty states"
+    status: complete
+    tasks_done: [P-012, P-013, P-014, P-015, P-016, P-017, P-018]
+    tasks_total: 7
+    branch: feat/finance-ui-polish-3-screens
+    base: feat/finance-ui-polish-2-ui-states
+    files:
+      - src/design-system/patterns/BalanceHero.tsx (modified — optional footer slot, tighter label tracking)
+      - src/app/(app)/page.tsx (modified — QuickActionRow, TransactionRow, ProgressBar, EmptyState)
+      - src/app/(app)/cuentas/page.tsx (modified — TransactionRow, ProgressBar, EmptyState)
+      - src/app/(app)/movimientos/page.tsx (modified — TransactionRow, EmptyState)
+      - src/app/(app)/movimientos/TransactionForm.tsx (modified — tab pill transitions only)
+      - src/app/(app)/movimientos/[id]/editar/EditTransactionForm.tsx (modified — spacing/heading polish only)
+      - src/app/(app)/presupuestos/BudgetForm.tsx (modified — ProgressBar, EmptyState)
+      - tests/unit/budget-form-render.test.tsx (modified — updated empty-state copy assertion)
+    deviation: >
+      CategoryChip.tsx was NOT touched directly — it already inherits `transition-colors
+      duration-200 ease-out` for free via the `Chip` base component change in PR 2 (P-010),
+      since CategoryChip composes Chip without overriding that class. No separate diff was
+      needed to satisfy the "CategoryChip gains a transition" line in design.md's File
+      Changes table; the requirement is met through composition. QuickActionRow renders as
+      a sibling of BalanceHero on Home (not via the new `footer` prop) to match the design's
+      literal "Placed in page.tsx immediately below <BalanceHero />" rollout instruction —
+      the `footer` slot itself still exists on BalanceHero as an unused, available extension
+      point per the File Changes table.
+    test_gate: "pnpm vitest run tests/unit/*-form-render.test.tsx — 21/21 pass (regression; budget-form-render.test.tsx updated for new empty-state copy, not behavior)."
+    verify_gate: "pnpm verify — PASS."
+    zero_diff_check: "git diff main -- src/modules/finance/ — CONFIRMED zero diff (263 changed lines total in this PR, presentation-only)."
+    pr: "https://github.com/naustdio/lifeOS/pull/16 — OPEN, not merged"
+
+  pr_4_tests:
+    name: "Tests — RTL render tests for Home/Cuentas/Movimientos list screens"
+    status: complete
+    tasks_done: [P-019, P-020, P-021, P-022]
+    tasks_total: 4
+    branch: feat/finance-ui-polish-4-tests
+    base: feat/finance-ui-polish-3-screens
+    files:
+      - tests/unit/home-page-render.test.tsx
+      - tests/unit/accounts-page-render.test.tsx
+      - tests/unit/movements-list-render.test.tsx
+    resolution_approach: >
+      Approach (ii) from design.md/tasks.md group (d): each async Server Component page
+      (`HomePage`, `AccountsPage`, `MovementsPage`) is directly `await`ed to get its returned
+      JSX element, then that element is rendered with RTL — mirroring
+      tests/unit/account-form-render.test.tsx's exact mock set (`vi.mock("server-only")`,
+      `next/cache`, `next/navigation`, `@/shared/supabase/server`), plus explicit mocks for
+      `@/modules/core/api` and `@/modules/finance/api` (the two module-api barrels each page
+      reads through) so no real Supabase call happens. No presentational subtree extraction
+      was needed since the pages already delegate all real rendering complexity to
+      design-system patterns; text/label/role assertions only, zero className assertions,
+      per the established `*-form-render.test.tsx` convention.
+    db_gate: "N/A — RTL test-only, no runtime/DB boundary; explicitly noted in tasks.md's Work Unit forecast."
+    test_gate: "pnpm vitest run tests/unit/home-page-render.test.tsx tests/unit/accounts-page-render.test.tsx tests/unit/movements-list-render.test.tsx — 6/6 pass. pnpm test (full suite) — 18 files / 91 tests pass, zero regression."
+    verify_gate: "pnpm verify — PASS (eslint --max-warnings=0, tsc --noEmit, check-tokens.mjs, next build, 12 routes)."
+    zero_diff_check: "git diff main -- src/modules/finance/ — CONFIRMED zero diff (final gate, cumulative across all 4 PRs)."
+    pr: "https://github.com/naustdio/lifeOS/pull/17 — OPEN, not merged"
+
+next_recommended: sdd-verify
+# All 22 tasks (P-001..P-022) implemented across 4 stacked PRs (#14, #15, #16, #17), each
+# targeting the previous PR's branch (stacked-to-main). Every PR's verify/test gates were
+# executed for real (pnpm verify, pnpm vitest run, pnpm test) against the live working tree,
+# not assumed. Final cumulative `git diff main -- src/modules/finance/` is empty, confirming
+# the presentation-only success criterion. No PR merged — all left open for user review per
+# the finance-budgets (#10-13) precedent.

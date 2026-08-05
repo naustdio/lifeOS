@@ -130,19 +130,19 @@ needed**: confirm the stacked-to-main 4-PR order before `sdd-apply` begins PR 1.
 > `next/cache`, `next/navigation`, and `@/shared/supabase/server` exactly as the existing form-render
 > tests do. Each task below must record which approach it used.
 
-- [ ] P-019 `tests/unit/home-page-render.test.tsx` — populated (accounts + `QuickActionRow` + `TransactionRow` list) and empty (zero accounts → `EmptyState`) renders; text/label/role assertions only, zero className assertions.
+- [x] P-019 `tests/unit/home-page-render.test.tsx` — populated (accounts + `QuickActionRow` + `TransactionRow` list) and empty (zero accounts → `EmptyState`) renders; text/label/role assertions only, zero className assertions.
   - Satisfies: `finance-ui-polish/Shared Presentation Patterns`, `finance-ui-polish/Polished Empty States`, `finance-ui-polish/Quick Action Row Contains Only Real Destinations`.
   - Depends on: P-013.
   - Parallel: yes, with P-020/P-021.
-- [ ] P-020 `tests/unit/accounts-page-render.test.tsx` — populated (`TransactionRow` list + `ProgressBar`) and empty (zero accounts → `EmptyState`) renders.
+- [x] P-020 `tests/unit/accounts-page-render.test.tsx` — populated (`TransactionRow` list + `ProgressBar`) and empty (zero accounts → `EmptyState`) renders.
   - Satisfies: `finance-ui-polish/Shared Presentation Patterns`, `finance-ui-polish/Polished Empty States`.
   - Depends on: P-014.
   - Parallel: yes.
-- [ ] P-021 `tests/unit/movements-list-render.test.tsx` — populated (`TransactionRow` list) and empty (zero movements → `EmptyState`) renders.
+- [x] P-021 `tests/unit/movements-list-render.test.tsx` — populated (`TransactionRow` list) and empty (zero movements → `EmptyState`) renders.
   - Satisfies: `finance-ui-polish/Shared Presentation Patterns`, `finance-ui-polish/Polished Empty States`.
   - Depends on: P-015.
   - Parallel: yes.
-- [ ] P-022 Regression pass: run existing 4 `*-form-render.test.tsx` unchanged; run `pnpm verify` (`scripts/check-tokens.mjs`, ESLint boundaries, `tsc --noEmit`); confirm `git diff` on `src/modules/finance/**` is empty.
+- [x] P-022 Regression pass: run existing 4 `*-form-render.test.tsx` unchanged; run `pnpm verify` (`scripts/check-tokens.mjs`, ESLint boundaries, `tsc --noEmit`); confirm `git diff` on `src/modules/finance/**` is empty.
   - Satisfies: `finance-ui-polish/Presentation-Only Change Boundary`, `finance-ui-polish/No New Raw Token Values`.
   - Depends on: P-019, P-020, P-021.
   - Parallel: no — final gate task.
