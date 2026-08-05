@@ -47,6 +47,9 @@ export default async function AppLayout({
         <Link href="/cuentas" className="text-sm">
           Cuentas
         </Link>
+        <Link href="/presupuestos" className="text-sm">
+          Presupuestos
+        </Link>
       </NavPill>
     </div>
   );
