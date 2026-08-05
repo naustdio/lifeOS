@@ -50,11 +50,59 @@ apply_progress:
 
   pr_3_ui:
     name: "UI — presupuestos screen, OverBudgetDialog, gate wiring"
-    status: pending
-    tasks_done: []
+    status: complete
+    tasks_done: [B-005, B-006, B-007, B-008]
     tasks_total: 4
     branch: feat/finance-budgets-3-ui
     base: feat/finance-budgets-2-domain-data
+    files:
+      - src/app/(app)/presupuestos/page.tsx
+      - src/app/(app)/presupuestos/BudgetForm.tsx
+      - src/app/(app)/presupuestos/actions.ts
+      - src/app/(app)/movimientos/OverBudgetDialog.tsx
+      - src/app/(app)/movimientos/TransactionForm.tsx (modified)
+      - src/app/(app)/movimientos/page.tsx (modified)
+      - src/app/(app)/movimientos/[id]/editar/EditTransactionForm.tsx (modified)
+      - src/app/(app)/movimientos/[id]/editar/page.tsx (modified)
+      - src/modules/finance/api/index.ts (modified — budget read/write re-exports)
+      - src/modules/finance/api/budget-evaluation.ts (new — client-safe pure re-exports)
+    deviation: >
+      Design.md's Testing Strategy (§8) and the proposal's success criteria state
+      "finance/api shows zero diff" / "git diff --exit-code src/modules/finance/api/". Two
+      real implementation-time conflicts with the ESLint boundary Gate A (app may import
+      only module-api/design-system/shared) forced touching src/modules/finance/api/:
+      (1) app-layer server code (presupuestos/actions.ts, movimientos/page.tsx,
+      editar/page.tsx) needs listBudgetsWithProgress/getProgressForCategory/
+      upsertBudgetLimit/removeBudget, which the boundary rule forbids importing directly
+      from finance/data — resolved by re-exporting them from the EXISTING
+      finance/api/index.ts, the same precedent that file's own header comment already
+      establishes for listActiveCategories/getHouseholdSummary; (2) TransactionForm.tsx
+      and EditTransactionForm.tsx are "use client" components that need the pure
+      evaluateBudgetImpact/budgetDeltaForEdit functions, but finance/api/index.ts starts
+      with `import "server-only"`, which breaks the Next.js client build if imported from
+      a client component (this was verified for real: `pnpm verify` failed with a
+      concrete "You're importing a component that needs server-only" build error before
+      the fix) — resolved by adding a SECOND file,
+      src/modules/finance/api/budget-evaluation.ts, still under the module-api ESLint
+      pattern (src/modules/*/api/**) but with no server-only import, reserved for
+      framework-free re-exports a client component may import. recordTransaction/
+      updateTransaction (the real write seam design.md's zero-diff criterion was written
+      to protect) are byte-for-byte unchanged. This is reported as a deviation, not
+      silently absorbed, per the apply-phase rule to note discovered design gaps.
+    verify_gate: "pnpm verify — PASS (eslint + tsc --noEmit + check-tokens.mjs + next build; /presupuestos now in the route list, 12 routes total)."
+    test_gate: >
+      pnpm test — 52/52 pass (existing transaction-form-render.test.tsx /
+      edit-transaction-form-render.test.tsx pass unmodified since `budgets` is an optional
+      prop defaulting to []; formal budgets prop assertions land in PR4/B-011). Three
+      throwaway RTL smoke checks (written, run, and DELETED — not committed, real RTL
+      suite is B-011 in PR4) proved for real: (a) TransactionForm shows the
+      "Vas a superar tu presupuesto" dialog when the entered expense crosses the limit
+      and does not show it when staying under; cancel dismisses it; (b)
+      EditTransactionForm prompts when raising the amount past the limit and does not
+      prompt when lowering it; (c) BudgetForm renders one row per category, an opt-in
+      limit input for the unbudgeted one, and a progress bar + "Quitar presupuesto" for
+      the budgeted one.
+    pr: "PENDING — branch pushed, gh pr create pending in this apply run"
 
   pr_4_tests:
     name: "Tests — pgTAP suites, Vitest unit + RTL render"

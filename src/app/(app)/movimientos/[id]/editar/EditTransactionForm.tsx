@@ -1,8 +1,17 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
+import type { FormEvent } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
+import {
+  budgetDeltaForEdit,
+  evaluateBudgetImpact,
+  type BudgetImpact,
+  type BudgetProgressItem,
+} from "@/modules/finance/api/budget-evaluation";
+import { pesosToCents } from "@/shared/money";
+import { OverBudgetDialog } from "../../OverBudgetDialog";
 import { updateMovementAction, voidMovementAction, type MovementFormState } from "../../actions";
 
 type AccountOption = { id: string; name: string };
@@ -16,11 +25,17 @@ const INITIAL_STATE: MovementFormState = { error: null };
  * leg the seam rejects the account change with `TRANSFER_LEG_NOT_MOVABLE`
  * (design.md §5.4) — the one-tap remedy is "Anular y volver a registrar",
  * which voids both legs so the user can re-enter the transfer from scratch.
+ *
+ * `budgets` prop (finance-budgets B-008): re-runs the same over-budget
+ * check on edit via `budgetDeltaForEdit`, comparing the submitted
+ * amount/category against the `transaction` prop's pre-edit values. The
+ * void form is untouched.
  */
 export function EditTransactionForm({
   transaction,
   accounts,
   categories,
+  budgets = [],
 }: {
   transaction: {
     id: string;
@@ -33,15 +48,59 @@ export function EditTransactionForm({
   };
   accounts: AccountOption[];
   categories: CategoryOption[];
+  budgets?: BudgetProgressItem[];
 }) {
   const [editState, editAction, editPending] = useActionState(updateMovementAction, INITIAL_STATE);
   const [voidState, voidAction, voidPending] = useActionState(voidMovementAction, INITIAL_STATE);
+  const [, startTransition] = useTransition();
+  const [pendingOverBudget, setPendingOverBudget] = useState<{ formData: FormData; impact: BudgetImpact } | null>(
+    null,
+  );
 
   const isTransferLegError = editState.error?.toLowerCase().includes("transferencia");
 
+  function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
+    const formData = new FormData(event.currentTarget);
+
+    const nextCategoryId =
+      transaction.type === "transfer" ? null : String(formData.get("categoryId") ?? "") || null;
+    const amountRaw = formData.get("amount");
+    const nextAmountCents = amountRaw ? pesosToCents(Number(amountRaw)) : Math.abs(transaction.amountCents);
+
+    const { categoryId, deltaCents } = budgetDeltaForEdit({
+      previousCategoryId: transaction.categoryId,
+      previousAmountCents: Math.abs(transaction.amountCents),
+      nextCategoryId,
+      nextAmountCents,
+    });
+
+    const budget = categoryId ? budgets.find((b) => b.categoryId === categoryId) : undefined;
+    const impact = evaluateBudgetImpact({
+      limitCents: budget?.limitCents ?? null,
+      spentCents: budget?.spentCents ?? 0,
+      deltaCents,
+    });
+
+    if (impact.crossesLimit) {
+      event.preventDefault();
+      setPendingOverBudget({ formData, impact });
+    }
+  }
+
+  function confirmOverBudget() {
+    if (!pendingOverBudget) return;
+    const { formData } = pendingOverBudget;
+    setPendingOverBudget(null);
+    startTransition(() => editAction(formData));
+  }
+
+  function cancelOverBudget() {
+    setPendingOverBudget(null);
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <form action={editAction} className="flex flex-col gap-4">
+      <form action={editAction} onSubmit={handleEditSubmit} className="flex flex-col gap-4">
         <input type="hidden" name="id" value={transaction.id} />
 
         <div className="flex flex-col gap-1">
@@ -131,6 +190,15 @@ export function EditTransactionForm({
               : "Anular movimiento"}
         </Button>
       </form>
+
+      {pendingOverBudget && pendingOverBudget.impact.limitCents !== null && (
+        <OverBudgetDialog
+          limitCents={pendingOverBudget.impact.limitCents}
+          projectedSpentCents={pendingOverBudget.impact.projectedSpentCents}
+          onConfirm={confirmOverBudget}
+          onCancel={cancelOverBudget}
+        />
+      )}
     </div>
   );
 }

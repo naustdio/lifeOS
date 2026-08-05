@@ -1,6 +1,11 @@
 import { notFound } from "next/navigation";
 import { getCurrentHouseholdId } from "@/modules/core/api";
-import { listActiveAccounts, listActiveCategories, getTransactionById } from "@/modules/finance/api";
+import {
+  listActiveAccounts,
+  listActiveCategories,
+  listBudgetsWithProgress,
+  getTransactionById,
+} from "@/modules/finance/api";
 import { createClient } from "@/shared/supabase/server";
 import { EditTransactionForm } from "./EditTransactionForm";
 
@@ -10,10 +15,11 @@ export default async function EditMovementPage({ params }: { params: Promise<{ i
   const spaceId = await getCurrentHouseholdId(supabase);
   if (!spaceId) notFound();
 
-  const [transaction, accounts, categories] = await Promise.all([
+  const [transaction, accounts, categories, budgets] = await Promise.all([
     getTransactionById(supabase, spaceId, id),
     listActiveAccounts(supabase, spaceId),
     listActiveCategories(supabase, spaceId),
+    listBudgetsWithProgress(supabase, spaceId),
   ]);
 
   if (!transaction) notFound();
@@ -25,6 +31,7 @@ export default async function EditMovementPage({ params }: { params: Promise<{ i
         transaction={transaction}
         accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
         categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+        budgets={budgets}
       />
     </main>
   );
