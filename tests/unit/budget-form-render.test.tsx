@@ -64,10 +64,11 @@ describe("BudgetForm — smoke render (B-011)", () => {
     expect(screen.queryByRole("button", { name: "Quitar presupuesto" })).not.toBeInTheDocument();
   });
 
-  it("renders a fallback message when there are no expense categories", () => {
+  it("renders a polished empty state when there are no expense categories", () => {
     render(<BudgetForm categories={[]} budgets={[]} />);
 
-    expect(screen.getByText("Aún no hay categorías de gasto disponibles.")).toBeInTheDocument();
+    expect(screen.getByText("Aún no hay categorías de gasto")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ir a movimientos" })).toBeInTheDocument();
   });
 
   it("clicking 'Quitar presupuesto' submits the remove action form", () => {

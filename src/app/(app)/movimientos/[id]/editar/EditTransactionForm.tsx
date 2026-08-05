@@ -99,8 +99,9 @@ export function EditTransactionForm({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <form action={editAction} onSubmit={handleEditSubmit} className="flex flex-col gap-4">
+        <h3 className="text-sm font-medium text-muted-foreground">Detalles del movimiento</h3>
         <input type="hidden" name="id" value={transaction.id} />
 
         <div className="flex flex-col gap-1">
@@ -175,7 +176,8 @@ export function EditTransactionForm({
         </Button>
       </form>
 
-      <form action={voidAction} className="flex flex-col gap-3 border-t border-border pt-4">
+      <form action={voidAction} className="flex flex-col gap-3 border-t border-border pt-6">
+        <h3 className="text-sm font-medium text-muted-foreground">Anular movimiento</h3>
         <input type="hidden" name="id" value={transaction.id} />
         <label htmlFor="reason" className="text-sm font-medium">
           Motivo de anulación

@@ -90,31 +90,31 @@ needed**: confirm the stacked-to-main 4-PR order before `sdd-apply` begins PR 1.
 
 ## Group (c): Screen Adoption + Empty States
 
-- [ ] P-012 `src/design-system/patterns/BalanceHero.tsx` (modify) + `src/design-system/patterns/CategoryChip.tsx` (modify) — tighter label tracking, optional `footer` slot for `QuickActionRow` adjacency; `CategoryChip` transition added, stays inline-tag-only.
+- [x] P-012 `src/design-system/patterns/BalanceHero.tsx` (modify) + `src/design-system/patterns/CategoryChip.tsx` (modify) — tighter label tracking, optional `footer` slot for `QuickActionRow` adjacency; `CategoryChip` transition added, stays inline-tag-only.
   - Satisfies: `finance-ui-polish/Interaction States on Interactive Elements`, `finance-ui-polish/No New Raw Token Values`.
   - Depends on: P-003, P-010.
   - Parallel: yes, with P-013 prep but sequential before P-013 consumes the `footer` slot.
-- [ ] P-013 `src/app/(app)/page.tsx` (Home) — replace ad hoc account row with `TransactionRow`; mount `QuickActionRow` below `BalanceHero`; wire `EmptyState` for zero accounts.
+- [x] P-013 `src/app/(app)/page.tsx` (Home) — replace ad hoc account row with `TransactionRow`; mount `QuickActionRow` below `BalanceHero`; wire `EmptyState` for zero accounts.
   - Satisfies: `finance-ui-polish/Shared Presentation Patterns`, `finance-ui-polish/Quick Action Row Contains Only Real Destinations`, `finance-ui-polish/Polished Empty States`.
   - Depends on: P-001, P-003, P-004, P-012.
   - Parallel: yes, with P-014/P-015/P-016/P-017 (disjoint files).
-- [ ] P-014 `src/app/(app)/cuentas/page.tsx` — replace per-account `Card` with `TransactionRow`; replace percentage text with `ProgressBar`; wire `EmptyState` for zero accounts.
+- [x] P-014 `src/app/(app)/cuentas/page.tsx` — replace per-account `Card` with `TransactionRow`; replace percentage text with `ProgressBar`; wire `EmptyState` for zero accounts.
   - Satisfies: `finance-ui-polish/Shared Presentation Patterns`, `finance-ui-polish/Polished Empty States`.
   - Depends on: P-001, P-002, P-004.
   - Parallel: yes.
-- [ ] P-015 `src/app/(app)/movimientos/page.tsx` — replace per-transaction `Card` with `TransactionRow`; wire `EmptyState` for zero movements.
+- [x] P-015 `src/app/(app)/movimientos/page.tsx` — replace per-transaction `Card` with `TransactionRow`; wire `EmptyState` for zero movements.
   - Satisfies: `finance-ui-polish/Shared Presentation Patterns`, `finance-ui-polish/Polished Empty States`.
   - Depends on: P-001, P-004.
   - Parallel: yes.
-- [ ] P-016 `src/app/(app)/movimientos/TransactionForm.tsx` — segmented tab pill polish + transitions only, no behavior change.
+- [x] P-016 `src/app/(app)/movimientos/TransactionForm.tsx` — segmented tab pill polish + transitions only, no behavior change.
   - Satisfies: `finance-ui-polish/Interaction States on Interactive Elements`, `finance-ui-polish/Presentation-Only Change Boundary`.
   - Depends on: P-008, P-010.
   - Parallel: yes.
-- [ ] P-017 `src/app/(app)/movimientos/[id]/editar/EditTransactionForm.tsx` — spacing/heading polish only, no behavior change.
+- [x] P-017 `src/app/(app)/movimientos/[id]/editar/EditTransactionForm.tsx` — spacing/heading polish only, no behavior change.
   - Satisfies: `finance-ui-polish/Interaction States on Interactive Elements`, `finance-ui-polish/Presentation-Only Change Boundary`.
   - Depends on: P-008.
   - Parallel: yes.
-- [ ] P-018 `src/app/(app)/presupuestos/BudgetForm.tsx` — consume `ProgressBar` in place of the inline percentage math; wire `EmptyState` for zero expense categories; 0%-progress budget renders `ProgressBar`'s zero-fill state, not an empty state.
+- [x] P-018 `src/app/(app)/presupuestos/BudgetForm.tsx` — consume `ProgressBar` in place of the inline percentage math; wire `EmptyState` for zero expense categories; 0%-progress budget renders `ProgressBar`'s zero-fill state, not an empty state.
   - Satisfies: `finance-ui-polish/Shared Presentation Patterns`, `finance-ui-polish/Polished Empty States` (both scenarios).
   - Depends on: P-002, P-004.
   - Parallel: yes.

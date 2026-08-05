@@ -88,8 +88,10 @@ export function TransactionForm({
             type="button"
             onClick={() => setTab(option)}
             className={
-              "flex-1 rounded-pill px-4 py-2 text-sm font-medium " +
-              (tab === option ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground")
+              "flex-1 rounded-pill px-4 py-2 text-sm font-medium transition-colors duration-200 ease-out active:scale-95 " +
+              (tab === option
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground hover:bg-accent")
             }
           >
             {option === "expense" ? "Gasto" : option === "income" ? "Ingreso" : "Transferencia"}

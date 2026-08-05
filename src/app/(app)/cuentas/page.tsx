@@ -1,8 +1,11 @@
+import { Wallet } from "lucide-react";
 import Link from "next/link";
 import { getCurrentHouseholdId } from "@/modules/core/api";
 import { Button } from "@/design-system/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
-import { MoneyAmount } from "@/design-system/patterns/MoneyAmount";
+import { Card, CardContent } from "@/design-system/ui/card";
+import { EmptyState } from "@/design-system/patterns/EmptyState";
+import { ProgressBar } from "@/design-system/patterns/ProgressBar";
+import { TransactionRow } from "@/design-system/patterns/TransactionRow";
 import { listActiveAccounts } from "@/modules/finance/api";
 import { formatCentsAsMXN } from "@/shared/money";
 import { createClient } from "@/shared/supabase/server";
@@ -19,7 +22,9 @@ const TYPE_LABELS: Record<string, string> = {
 /** Minimal account list (T-036). Excludes archived accounts (`finance-
  * accounts/Account Archiving`). Reads go through `finance/data` repositories
  * directly under RLS — writes exist only via `/cuentas/nueva`'s Server
- * Action calling `finance.api.createAccount()`. */
+ * Action calling `finance.api.createAccount()`. Finance UI polish: accounts
+ * render via `TransactionRow`, goal/liability detail via `ProgressBar`, zero
+ * accounts render `EmptyState`. */
 export default async function AccountsPage() {
   const supabase = await createClient();
   const spaceId = await getCurrentHouseholdId(supabase);
@@ -34,42 +39,45 @@ export default async function AccountsPage() {
         </Button>
       </div>
 
-      {accounts.length === 0 && (
-        <p className="text-sm text-muted-foreground">Todavía no tienes cuentas. Crea la primera.</p>
-      )}
-
-      <div className="flex flex-col gap-3">
-        {accounts.map((account) => (
-          <Card key={account.id}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-base">{account.name}</CardTitle>
-                <p className="text-xs text-muted-foreground">{TYPE_LABELS[account.type] ?? account.type}</p>
+      {accounts.length === 0 ? (
+        <EmptyState
+          icon={Wallet}
+          heading="Todavía no tienes cuentas"
+          description="Crea la primera para empezar a llevar tu balance."
+          action={
+            <Button asChild size="sm">
+              <Link href="/cuentas/nueva">Nueva cuenta</Link>
+            </Button>
+          }
+        />
+      ) : (
+        <Card>
+          <CardContent className="divide-y divide-border/60 py-2">
+            {accounts.map((account) => (
+              <div key={account.id} className="flex flex-col gap-2 py-1">
+                <TransactionRow
+                  title={account.name}
+                  subtitle={TYPE_LABELS[account.type] ?? account.type}
+                  formattedAmount={formatCentsAsMXN(account.balanceCents)}
+                  kind={account.class === "asset" ? "income" : "expense"}
+                />
+                {account.liability && (
+                  <div className="flex flex-col gap-1 px-2 text-xs text-muted-foreground">
+                    <p>Tasa: {(account.liability.interestRateBp / 100).toFixed(2)}%</p>
+                    <p>Plazo: {account.liability.termMonths} meses</p>
+                    <p>Pago mensual: {formatCentsAsMXN(account.liability.monthlyPaymentCents)}</p>
+                  </div>
+                )}
+                {account.goal && (
+                  <div className="px-2">
+                    <ProgressBar valueCents={account.balanceCents} limitCents={account.goal.targetAmountCents} />
+                  </div>
+                )}
               </div>
-              <MoneyAmount
-                formatted={formatCentsAsMXN(account.balanceCents)}
-                kind={account.class === "asset" ? "income" : "expense"}
-              />
-            </CardHeader>
-            {account.liability && (
-              <CardContent className="flex flex-col gap-1 text-xs text-muted-foreground">
-                <p>Tasa: {(account.liability.interestRateBp / 100).toFixed(2)}%</p>
-                <p>Plazo: {account.liability.termMonths} meses</p>
-                <p>Pago mensual: {formatCentsAsMXN(account.liability.monthlyPaymentCents)}</p>
-              </CardContent>
-            )}
-            {account.goal && (
-              <CardContent className="flex flex-col gap-1 text-xs text-muted-foreground">
-                <p>
-                  Progreso: {formatCentsAsMXN(account.balanceCents)} de{" "}
-                  {formatCentsAsMXN(account.goal.targetAmountCents)} (
-                  {Math.min(100, Math.round((account.balanceCents / account.goal.targetAmountCents) * 100))}%)
-                </p>
-              </CardContent>
-            )}
-          </Card>
-        ))}
-      </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </main>
   );
 }

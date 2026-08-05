@@ -1,7 +1,9 @@
+import { Receipt } from "lucide-react";
 import Link from "next/link";
 import { getCurrentHouseholdId } from "@/modules/core/api";
-import { CategoryChip } from "@/design-system/patterns/CategoryChip";
-import { MoneyAmount } from "@/design-system/patterns/MoneyAmount";
+import { EmptyState } from "@/design-system/patterns/EmptyState";
+import { TransactionRow } from "@/design-system/patterns/TransactionRow";
+import { Button } from "@/design-system/ui/button";
 import { Card, CardContent } from "@/design-system/ui/card";
 import {
   listActiveAccounts,
@@ -21,7 +23,8 @@ const TYPE_LABEL: Record<string, string> = {
 
 /** Transaction entry (T-037) + recent history with an edit affordance
  * (T-038). Category picker only receives active categories — the repository
- * already excludes archived rows. */
+ * already excludes archived rows. Finance UI polish: recent transactions
+ * render via `TransactionRow`, zero movements render `EmptyState`. */
 export default async function MovementsPage() {
   const supabase = await createClient();
   const spaceId = await getCurrentHouseholdId(supabase);
@@ -39,7 +42,7 @@ export default async function MovementsPage() {
     <main className="flex flex-col gap-6">
       <h2 className="text-lg font-semibold">Movimientos</h2>
 
-      <Card>
+      <Card id="top">
         <CardContent className="pt-6">
           <TransactionForm
             accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
@@ -51,39 +54,43 @@ export default async function MovementsPage() {
 
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-medium text-muted-foreground">Recientes</h3>
-        {transactions.length === 0 && (
-          <p className="text-sm text-muted-foreground">Aún no hay movimientos registrados.</p>
-        )}
-        {transactions.map((tx) => (
-          <Card key={tx.id} className={tx.status === "void" ? "opacity-50" : undefined}>
-            <CardContent className="flex items-center justify-between gap-3 py-4">
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{tx.accountName}</span>
-                  {tx.categoryName && <CategoryChip name={tx.categoryName} />}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {TYPE_LABEL[tx.type]} · {tx.occurredOn}
-                  {tx.status === "void" ? " · Anulado" : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <MoneyAmount
-                  formatted={formatCentsAsMXN(tx.amountCents)}
+        {transactions.length === 0 ? (
+          <EmptyState
+            icon={Receipt}
+            heading="Aún no hay movimientos"
+            description="Registra tu primer ingreso o gasto arriba."
+            action={
+              <Button asChild variant="ghost" size="sm">
+                <Link href="#top">Registrar movimiento</Link>
+              </Button>
+            }
+          />
+        ) : (
+          <Card>
+            <CardContent className="divide-y divide-border/60 py-2">
+              {transactions.map((tx) => (
+                <TransactionRow
+                  key={tx.id}
+                  title={tx.accountName}
+                  subtitle={`${TYPE_LABEL[tx.type]}${tx.categoryName ? ` · ${tx.categoryName}` : ""} · ${tx.occurredOn}${tx.status === "void" ? " · Anulado" : ""}`}
+                  formattedAmount={formatCentsAsMXN(tx.amountCents)}
                   kind={tx.amountCents >= 0 ? "income" : "expense"}
+                  muted={tx.status === "void"}
+                  trailing={
+                    tx.status === "posted" ? (
+                      <Link
+                        href={`/movimientos/${tx.id}/editar`}
+                        className="text-xs text-muted-foreground underline underline-offset-2"
+                      >
+                        Editar
+                      </Link>
+                    ) : undefined
+                  }
                 />
-                {tx.status === "posted" && (
-                  <Link
-                    href={`/movimientos/${tx.id}/editar`}
-                    className="text-xs text-muted-foreground underline underline-offset-2"
-                  >
-                    Editar
-                  </Link>
-                )}
-              </div>
+              ))}
             </CardContent>
           </Card>
-        ))}
+        )}
       </div>
     </main>
   );
