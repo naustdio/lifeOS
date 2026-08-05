@@ -129,8 +129,18 @@ apply_progress:
       RLS-filtered to zero rows regardless of the DELETE's outcome — fixed by re-checking
       as the owning member instead, which actually distinguishes "deleted" from
       "invisible."
-    pr: "https://github.com/naustdio/lifeOS/pull/13 — OPEN, not merged"
+    pr: "https://github.com/naustdio/lifeOS/pull/13 — MERGED to main"
 
-next_recommended: sdd-verify
+next_recommended: archived
 # All 11 tasks (B-001..B-011) implemented and verified for real across 4 stacked PRs.
 # Every PR's verify/test/db gates were executed against the live local stack, not assumed.
+# verify-report.md: PASS WITH WARNINGS, 0 CRITICAL (2026-08-05).
+# All 4 PRs (#10-#13) merged to main in stacked order, post-verify UI-nav gap fixed (commit
+# d689aab) and folded into PR #13 before merge.
+#
+# CLOSURE NOTE (2026-08-05): archived MANUALLY, not via the native gentle-ai review/archive
+# gate, for the same reason documented in the archived lifeos-foundation cycle: review-*
+# subagents in this session have no Bash tool, so gentle-ai review inspect-candidate cannot
+# run. Full detail in archive-report.md.
+archived: true
+archived_date: "2026-08-05"
