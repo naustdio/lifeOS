@@ -1,0 +1,59 @@
+# DAG state for change `finance-budgets` (survives compaction).
+# Updated by sdd-apply as PR groups land.
+
+change: finance-budgets
+schema: spec-driven
+delivery_strategy: ask-on-risk
+chain_strategy: stacked-to-main
+resolved_pr_count: 4
+
+apply_progress:
+  pr_1_database:
+    name: "Database — finance.budgets, triggers, budget_progress view, RLS + grants"
+    status: complete
+    tasks_done: [B-001, B-002]
+    tasks_total: 2
+    branch: feat/finance-budgets-1-db
+    base: main
+    files:
+      - supabase/migrations/20260804090010_finance_budgets.sql
+      - supabase/migrations/20260804090011_finance_budgets_security.sql
+    db_gate: >
+      EXECUTED against the local Supabase stack (docker exec + `supabase test db --local`):
+      both new migrations applied cleanly via psql, registered in
+      supabase_migrations.schema_migrations. Full existing pgTAP suite re-run after the
+      migrations landed: Files=7, Tests=83, PASS (zero regression). A throwaway pgTAP sanity
+      file (not committed — real suite lands in PR4/B-009) proved: income-category insert
+      rejected 22023, expense-category insert succeeds, budget_progress LEFT JOIN returns
+      spent_cents=0 for a budget with no transactions, second budget on the same category
+      violates the unique constraint (23505).
+    verify_gate: "pnpm verify — PASS (eslint + tsc --noEmit + check-tokens.mjs + next build, 10 routes) — no TS changes in this PR, confirms no regression."
+    test_gate: "pnpm test — 52/52 pass (one flaky boundary-lint timeout on the full-suite run, confirmed passing in isolation — pre-existing test-runner flake unrelated to this change, not a regression)."
+    pr: "PENDING — branch pushed, gh pr create pending in this apply run"
+
+  pr_2_domain_data:
+    name: "Domain + Data — pure evaluation functions, budget-repository incl. removeBudget"
+    status: pending
+    tasks_done: []
+    tasks_total: 2
+    branch: feat/finance-budgets-2-domain-data
+    base: feat/finance-budgets-1-db
+
+  pr_3_ui:
+    name: "UI — presupuestos screen, OverBudgetDialog, gate wiring"
+    status: pending
+    tasks_done: []
+    tasks_total: 4
+    branch: feat/finance-budgets-3-ui
+    base: feat/finance-budgets-2-domain-data
+
+  pr_4_tests:
+    name: "Tests — pgTAP suites, Vitest unit + RTL render"
+    status: pending
+    tasks_done: []
+    tasks_total: 3
+    branch: feat/finance-budgets-4-tests
+    base: feat/finance-budgets-3-ui
+
+next_recommended: sdd-apply
+# PR 1 (database) complete and verified for real. PR 2 (domain + data) is next.
