@@ -1,0 +1,215 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Frequency } from "../domain/recurring";
+
+/**
+ * Repository for `finance.recurring_transactions` + its derived `finance.recurring_due` view
+ * (design.md §7, change: finance-recurring R-007). Client-direct RLS reads/writes in the
+ * `budget-repository.ts` shape: `Number()` every `bigint` column, degrade to `[]`/`null` on
+ * error rather than throwing. CRUD/pause/resume/delete are the same documented
+ * `finance.categories`-style plain-RLS exception; only confirm/discard go through `.rpc()`
+ * (see `finance/api/index.ts`).
+ */
+export type RecurringListItem = {
+  id: string;
+  householdId: string;
+  accountId: string;
+  categoryId: string;
+  amountCents: number;
+  description: string;
+  frequency: Frequency;
+  nextDueDate: string;
+  active: boolean;
+};
+
+export type DueRecurringItem = {
+  recurringId: string;
+  householdId: string;
+  accountId: string;
+  categoryId: string;
+  amountCents: number;
+  description: string;
+  frequency: Frequency;
+  nextDueDate: string;
+  daysOverdue: number;
+};
+
+/** All recurring definitions for the space, most-due-first. */
+export async function listRecurringDefinitions(
+  supabase: SupabaseClient,
+  householdId: string,
+): Promise<RecurringListItem[]> {
+  const { data, error } = await supabase
+    .schema("finance")
+    .from("recurring_transactions")
+    .select("id, household_id, account_id, category_id, amount_cents, description, frequency, next_due_date, active")
+    .eq("household_id", householdId)
+    .order("next_due_date", { ascending: true });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data.map((r) => ({
+    id: r.id as string,
+    householdId: r.household_id as string,
+    accountId: r.account_id as string,
+    categoryId: r.category_id as string,
+    amountCents: Number(r.amount_cents),
+    description: r.description as string,
+    frequency: r.frequency as Frequency,
+    nextDueDate: r.next_due_date as string,
+    active: r.active as boolean,
+  }));
+}
+
+/** Due/overdue items for the space, via the `security_invoker` view (never bypasses RLS). */
+export async function listDueRecurring(supabase: SupabaseClient, householdId: string): Promise<DueRecurringItem[]> {
+  const { data, error } = await supabase
+    .schema("finance")
+    .from("recurring_due")
+    .select("recurring_id, household_id, account_id, category_id, amount_cents, description, frequency, next_due_date, days_overdue")
+    .eq("household_id", householdId)
+    .order("days_overdue", { ascending: false });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data.map((r) => ({
+    recurringId: r.recurring_id as string,
+    householdId: r.household_id as string,
+    accountId: r.account_id as string,
+    categoryId: r.category_id as string,
+    amountCents: Number(r.amount_cents),
+    description: r.description as string,
+    frequency: r.frequency as Frequency,
+    nextDueDate: r.next_due_date as string,
+    daysOverdue: Number(r.days_overdue),
+  }));
+}
+
+/** Count of due/overdue items — the Home banner's data source. Degrades to 0 on error. */
+export async function countDueRecurring(supabase: SupabaseClient, householdId: string): Promise<number> {
+  const { count, error } = await supabase
+    .schema("finance")
+    .from("recurring_due")
+    .select("recurring_id", { count: "exact", head: true })
+    .eq("household_id", householdId);
+
+  if (error || count === null) {
+    return 0;
+  }
+
+  return count;
+}
+
+/** RLS-guarded insert. Creating a definition never posts a transaction (proposal). */
+export async function createRecurringDefinition(
+  supabase: SupabaseClient,
+  input: {
+    householdId: string;
+    accountId: string;
+    categoryId: string;
+    amountCents: number;
+    description: string;
+    frequency: Frequency;
+    nextDueDate: string;
+  },
+): Promise<{ id: string | null; error: string | null }> {
+  const { data, error } = await supabase
+    .schema("finance")
+    .from("recurring_transactions")
+    .insert({
+      household_id: input.householdId,
+      account_id: input.accountId,
+      category_id: input.categoryId,
+      amount_cents: input.amountCents,
+      description: input.description,
+      frequency: input.frequency,
+      next_due_date: input.nextDueDate,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    return { id: null, error: error?.message ?? "insert failed" };
+  }
+
+  return { id: data.id as string, error: null };
+}
+
+/** RLS-guarded update of the editable definition fields (not the cursor — that only advances
+ *  through the confirm/discard seam or a pause/resume transition). */
+export async function updateRecurringDefinition(
+  supabase: SupabaseClient,
+  householdId: string,
+  id: string,
+  patch: {
+    accountId?: string;
+    categoryId?: string;
+    amountCents?: number;
+    description?: string;
+    frequency?: Frequency;
+  },
+): Promise<{ error: string | null }> {
+  const update: Record<string, unknown> = {};
+  if (patch.accountId !== undefined) update.account_id = patch.accountId;
+  if (patch.categoryId !== undefined) update.category_id = patch.categoryId;
+  if (patch.amountCents !== undefined) update.amount_cents = patch.amountCents;
+  if (patch.description !== undefined) update.description = patch.description;
+  if (patch.frequency !== undefined) update.frequency = patch.frequency;
+
+  const { error } = await supabase
+    .schema("finance")
+    .from("recurring_transactions")
+    .update(update)
+    .eq("id", id)
+    .eq("household_id", householdId);
+
+  return { error: error?.message ?? null };
+}
+
+/**
+ * Pause (`active = false`) freezes the definition — `next_due_date` is left untouched. Resume
+ * (`active = true`) MUST pass a `nextDueDate` recomputed via `domain/recurring.ts`'s
+ * `nextFutureDueDate` BEFORE calling this — the repository never computes dates itself, matching
+ * `budget-repository.ts`'s "no domain logic in the data layer" shape.
+ */
+export async function setRecurringActive(
+  supabase: SupabaseClient,
+  householdId: string,
+  id: string,
+  active: boolean,
+  nextDueDate?: string,
+): Promise<{ error: string | null }> {
+  const update: Record<string, unknown> = { active };
+  if (active && nextDueDate) {
+    update.next_due_date = nextDueDate;
+  }
+
+  const { error } = await supabase
+    .schema("finance")
+    .from("recurring_transactions")
+    .update(update)
+    .eq("id", id)
+    .eq("household_id", householdId);
+
+  return { error: error?.message ?? null };
+}
+
+/** RLS-guarded hard delete. Already-posted transactions keep their history; `recurring_id`
+ *  becomes NULL on them via the `on delete set null` FK — never blocked, never cascaded. */
+export async function deleteRecurringDefinition(
+  supabase: SupabaseClient,
+  householdId: string,
+  id: string,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .schema("finance")
+    .from("recurring_transactions")
+    .delete()
+    .eq("id", id)
+    .eq("household_id", householdId);
+
+  return { error: error?.message ?? null };
+}

@@ -12,6 +12,7 @@ export type AppErrorCode =
   | "INVALID_DESTINATION_ACCOUNT"
   | "VOID_TRANSACTION_NOT_EDITABLE"
   | "CATEGORY_NAME_TAKEN"
+  | "RECURRING_INVALID_STATE"
   | "UNKNOWN_ERROR";
 
 export type AppError = {
