@@ -1,18 +1,34 @@
-import { ArrowDownLeft, Plus, Target, Wallet } from "lucide-react";
+import { ArrowDownLeft, Plus, Receipt, Target, Wallet } from "lucide-react";
 import Link from "next/link";
 import { getCurrentHouseholdId, getCurrentProfile } from "@/modules/core/api";
 import { BalanceHero } from "@/design-system/patterns/BalanceHero";
+import { CategorySpendList } from "@/design-system/patterns/CategorySpendList";
 import { DueRecurringBanner } from "@/design-system/patterns/DueRecurringBanner";
 import { EmptyState } from "@/design-system/patterns/EmptyState";
+import { MonthSummaryCard } from "@/design-system/patterns/MonthSummaryCard";
 import { MoneyAmount } from "@/design-system/patterns/MoneyAmount";
 import { ProgressBar } from "@/design-system/patterns/ProgressBar";
 import { QuickActionRow } from "@/design-system/patterns/QuickActionRow";
 import { TransactionRow } from "@/design-system/patterns/TransactionRow";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
-import { countDueRecurring, getHouseholdSummary, listActiveAccounts } from "@/modules/finance/api";
+import {
+  countDueRecurring,
+  getHouseholdSummary,
+  getMonthSummary,
+  listActiveAccounts,
+  listCategorySpend,
+  listRecentTransactions,
+} from "@/modules/finance/api";
 import { formatCentsAsMXN } from "@/shared/money";
 import { createClient } from "@/shared/supabase/server";
+
+/** "Agosto 2026" style label — formatted here, never a Date crossing a component boundary
+ *  (design.md §4.1). */
+function currentMonthLabel(): string {
+  const raw = new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric" }).format(new Date());
+  return raw.replace(" de ", " ").replace(/^./, (c) => c.toUpperCase());
+}
 
 const TYPE_LABELS: Record<string, string> = {
   cash: "Efectivo",
@@ -42,15 +58,25 @@ export default async function HomePage() {
   const supabase = await createClient();
   const [profile, spaceId] = await Promise.all([getCurrentProfile(supabase), getCurrentHouseholdId(supabase)]);
 
-  const [summary, accounts, dueRecurringCount] = spaceId
+  const [summary, accounts, dueRecurringCount, monthSummary, categorySpend, recentTransactions] = spaceId
     ? await Promise.all([
         getHouseholdSummary(supabase, spaceId),
         listActiveAccounts(supabase, spaceId),
         countDueRecurring(supabase, spaceId),
+        getMonthSummary(supabase, spaceId),
+        listCategorySpend(supabase, spaceId),
+        listRecentTransactions(supabase, spaceId, 4, { postedOnly: true }),
       ])
-    : [{ availableCents: 0, debtCents: 0 }, [], 0];
+    : [{ availableCents: 0, debtCents: 0 }, [], 0, { incomeCents: 0, expenseCents: 0 }, [], []];
 
   const goalAccounts = accounts.filter((a) => a.goal);
+  const monthLabel = currentMonthLabel();
+  const categorySpendItems = categorySpend.map((row) => ({
+    categoryId: row.categoryId,
+    categoryName: row.categoryName,
+    spentCents: row.spentCents,
+    formattedAmount: formatCentsAsMXN(row.spentCents),
+  }));
 
   return (
     <main className="flex flex-col gap-6">
@@ -66,6 +92,44 @@ export default async function HomePage() {
           </CardHeader>
           <CardContent>
             <MoneyAmount formatted={formatCentsAsMXN(summary.debtCents)} kind="expense" />
+          </CardContent>
+        </Card>
+      )}
+
+      <MonthSummaryCard
+        monthLabel={monthLabel}
+        incomeCents={monthSummary.incomeCents}
+        expenseCents={monthSummary.expenseCents}
+        formattedIncome={formatCentsAsMXN(monthSummary.incomeCents)}
+        formattedExpense={formatCentsAsMXN(monthSummary.expenseCents)}
+      />
+
+      <CategorySpendList items={categorySpendItems} />
+
+      {recentTransactions.length === 0 ? (
+        <EmptyState
+          icon={Receipt}
+          heading="Sin movimientos recientes"
+          description="Tus últimos movimientos aparecerán aquí."
+        />
+      ) : (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-sm text-muted-foreground">Movimientos recientes</CardTitle>
+            <Link href="/movimientos" className="text-xs text-muted-foreground underline underline-offset-2">
+              Ver todos
+            </Link>
+          </CardHeader>
+          <CardContent className="divide-y divide-border/60 py-2">
+            {recentTransactions.map((t) => (
+              <TransactionRow
+                key={t.id}
+                title={t.description || t.categoryName || t.accountName}
+                subtitle={`${t.type === "expense" ? "Gasto" : t.type === "income" ? "Ingreso" : "Transferencia"} · ${t.occurredOn}`}
+                formattedAmount={formatCentsAsMXN(t.amountCents)}
+                kind={t.amountCents >= 0 ? "income" : "expense"}
+              />
+            ))}
           </CardContent>
         </Card>
       )}

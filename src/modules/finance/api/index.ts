@@ -33,6 +33,10 @@ export {
   listBudgetsWithProgress,
   getProgressForCategory,
   type BudgetProgressItem,
+  getMonthSummary,
+  type MonthSummary,
+  listCategorySpend,
+  type CategorySpendRow,
 } from "../data";
 
 /**
