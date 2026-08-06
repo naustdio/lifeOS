@@ -1,6 +1,5 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
 import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -11,7 +10,11 @@ import { cn } from "../ui/utils";
 export type OverflowMenuItem = {
   href: string;
   label: string;
-  icon: LucideIcon;
+  /** A rendered icon element (e.g. `<Target className="h-5 w-5" aria-hidden />`), NOT a
+   * component reference — a Lucide component/function crossing the Server-to-Client boundary
+   * from `(app)/layout.tsx` fails RSC serialization ("Only plain objects can be passed...").
+   * React elements are serializable across that boundary; bare component functions are not. */
+  icon: React.ReactNode;
 };
 
 export interface OverflowMenuProps {
@@ -61,19 +64,16 @@ export function OverflowMenu({ items }: OverflowMenuProps) {
         >
           <Card className={cn("w-full max-w-sm")} onClick={(event) => event.stopPropagation()}>
             <CardContent className="flex flex-col gap-1 pt-6">
-              {items.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="flex items-center gap-3 rounded-card px-3 py-3 text-sm font-medium transition-colors duration-200 ease-out hover:bg-accent"
-                  >
-                    <Icon className="h-5 w-5" aria-hidden />
-                    {item.label}
-                  </Link>
-                );
-              })}
+              {items.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-3 rounded-card px-3 py-3 text-sm font-medium transition-colors duration-200 ease-out hover:bg-accent"
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+              ))}
             </CardContent>
           </Card>
         </div>

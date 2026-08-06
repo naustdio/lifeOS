@@ -14,9 +14,12 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 const { OverflowMenu } = await import("@/design-system/patterns/OverflowMenu");
 const { Target, Repeat } = await import("lucide-react");
 
+// `icon` is a rendered element, not a component reference — matches the real call site in
+// (app)/layout.tsx, which must pass JSX rather than a bare Lucide component reference (a
+// Server-to-Client function-reference prop fails RSC serialization; see OverflowMenu.tsx).
 const ITEMS = [
-  { href: "/presupuestos", label: "Presupuestos", icon: Target },
-  { href: "/recurrentes", label: "Recurrentes", icon: Repeat },
+  { href: "/presupuestos", label: "Presupuestos", icon: <Target className="h-5 w-5" aria-hidden /> },
+  { href: "/recurrentes", label: "Recurrentes", icon: <Repeat className="h-5 w-5" aria-hidden /> },
 ];
 
 describe.each([

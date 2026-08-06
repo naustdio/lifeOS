@@ -59,8 +59,16 @@ export default async function AppLayout({
         </Link>
         <OverflowMenu
           items={[
-            { href: "/presupuestos", label: "Presupuestos", icon: Target },
-            { href: "/recurrentes", label: "Recurrentes", icon: Repeat },
+            {
+              href: "/presupuestos",
+              label: "Presupuestos",
+              icon: <Target className="h-5 w-5" aria-hidden />,
+            },
+            {
+              href: "/recurrentes",
+              label: "Recurrentes",
+              icon: <Repeat className="h-5 w-5" aria-hidden />,
+            },
           ]}
         />
       </NavPill>
