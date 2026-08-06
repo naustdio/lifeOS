@@ -38,6 +38,25 @@
   --color-income: var(--income);
   --color-expense: var(--expense);
 
+  /* Category palette — 8 hues (finance-categories-icon-color). `neutral` intentionally has
+     no --color-category-neutral* binding; it reuses --color-muted/--color-muted-foreground. */
+  --color-category-red: var(--category-red);
+  --color-category-red-surface: var(--category-red-surface);
+  --color-category-orange: var(--category-orange);
+  --color-category-orange-surface: var(--category-orange-surface);
+  --color-category-amber: var(--category-amber);
+  --color-category-amber-surface: var(--category-amber-surface);
+  --color-category-green: var(--category-green);
+  --color-category-green-surface: var(--category-green-surface);
+  --color-category-teal: var(--category-teal);
+  --color-category-teal-surface: var(--category-teal-surface);
+  --color-category-blue: var(--category-blue);
+  --color-category-blue-surface: var(--category-blue-surface);
+  --color-category-violet: var(--category-violet);
+  --color-category-violet-surface: var(--category-violet-surface);
+  --color-category-pink: var(--category-pink);
+  --color-category-pink-surface: var(--category-pink-surface);
+
   --font-sans: var(--font-sans);
 
   --text-hero: var(--text-hero);

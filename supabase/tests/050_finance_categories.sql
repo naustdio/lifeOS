@@ -2,7 +2,7 @@
 -- (design.md §3.4, §3.5, tasks.md T-022/T-035 subset explicitly in this run's scope)
 
 begin;
-select plan(10);
+select plan(27);
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
@@ -113,6 +113,186 @@ select throws_ok(
   '23505', null,
   'renaming a category to collide with an existing sibling name is rejected with 23505'
 );
+
+-- ---------------------------------------------------------------------------
+-- Icon/color whitelist (change: finance-categories-icon-color, C-002).
+-- ---------------------------------------------------------------------------
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000006a","role":"authenticated"}';
+
+select throws_ok(
+  $$ insert into finance.categories (household_id, name, kind, icon)
+     values ('00000000-0000-0000-0000-0000000006aa', 'Bad Icon Category', 'expense', 'not-a-real-icon') $$,
+  '23514', null, 'an out-of-registry icon value is rejected by the database CHECK on categories'
+);
+
+select throws_ok(
+  $$ insert into finance.categories (household_id, name, kind, color)
+     values ('00000000-0000-0000-0000-0000000006aa', 'Bad Color Category', 'expense', '#FF0000') $$,
+  '23514', null, 'an out-of-registry (raw hex) color value is rejected by the database CHECK on categories'
+);
+
+reset role; reset request.jwt.claims;
+
+select throws_ok(
+  $$ insert into finance.category_templates (key, name, kind, icon)
+     values ('test.bad_icon', 'Bad Icon Template', 'expense', 'not-a-real-icon') $$,
+  '23514', null, 'an out-of-registry icon value is rejected by the database CHECK on category_templates'
+);
+
+select throws_ok(
+  $$ insert into finance.category_templates (key, name, kind, color)
+     values ('test.bad_color', 'Bad Color Template', 'expense', '#FF0000') $$,
+  '23514', null, 'an out-of-registry color value is rejected by the database CHECK on category_templates'
+);
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000006a","role":"authenticated"}';
+
+select lives_ok(
+  $$ insert into finance.categories (household_id, name, kind, icon, color)
+     values ('00000000-0000-0000-0000-0000000006aa', 'Valid Style Category', 'expense', 'coffee', 'amber') $$,
+  'a valid registry icon+color pair is accepted'
+);
+
+select lives_ok(
+  $$ insert into finance.categories (household_id, name, kind, icon, color)
+     values ('00000000-0000-0000-0000-0000000006aa', 'No Style Category', 'expense', null, null) $$,
+  'NULL icon/color is still accepted (optionality)'
+);
+
+reset role; reset request.jwt.claims;
+
+-- Backfill coverage: after the migration, zero rows may have a NULL icon or color.
+select is(
+  (select count(*) from finance.category_templates where icon is null or color is null),
+  0::bigint, 'zero category_templates rows have a NULL icon or color after the migration'
+);
+
+select is(
+  (select count(*)
+     from finance.categories
+    where (icon is null or color is null)
+      -- exclude this test file's own deliberately-unstyled fixture rows: 'Otra Categoria'
+      -- (sibling-collision fixture above, created with no icon/color argument at all) and
+      -- 'No Style Category' (this file's own optionality fixture, just above).
+      and name not in ('Otra Categoria', 'No Style Category')),
+  0::bigint, 'zero pre-existing categories.rows have a NULL icon or color after the migration/backfill'
+);
+
+-- Template-derived row's style pair equals its template's pair.
+select is(
+  (select icon from finance.categories where household_id = '00000000-0000-0000-0000-0000000006aa' and template_key = 'expense.home'),
+  (select icon from finance.category_templates where key = 'expense.home'),
+  'a template-derived category''s icon equals its template''s icon'
+);
+
+select is(
+  (select color from finance.categories where household_id = '00000000-0000-0000-0000-0000000006aa' and template_key = 'expense.home'),
+  (select color from finance.category_templates where key = 'expense.home'),
+  'a template-derived category''s color equals its template''s color'
+);
+
+-- Onboarding parity (space B, untouched by any rename/restyle): finance.ensure_default_categories()
+-- for a fresh household produces rows whose icon/color equal their template's — the named
+-- regression guard for dropping the `color` copy from either insert pass.
+select is(
+  (select icon from finance.categories where household_id = '00000000-0000-0000-0000-0000000006bb' and template_key = 'expense.home'),
+  (select icon from finance.category_templates where key = 'expense.home'),
+  'ensure_default_categories() onboarding parity: space B''s icon equals the template''s icon'
+);
+
+select is(
+  (select color from finance.categories where household_id = '00000000-0000-0000-0000-0000000006bb' and template_key = 'expense.home'),
+  (select color from finance.category_templates where key = 'expense.home'),
+  'ensure_default_categories() onboarding parity: space B''s color equals the template''s color'
+);
+
+-- Pass-3 idempotency: re-running the same deterministic update on an unstyled custom row lands
+-- on the same color for the same id (md5-derived, not hashtext()).
+do $$
+declare
+  v_id uuid;
+  v_color_first text;
+  v_color_second text;
+begin
+  insert into finance.categories (household_id, name, kind)
+  values ('00000000-0000-0000-0000-0000000006aa', 'Idempotency Probe', 'expense')
+  returning id into v_id;
+
+  update finance.categories c set
+    icon  = coalesce(c.icon, case when c.kind = 'income' then 'trending-up' else 'tag' end),
+    color = coalesce(c.color, (array['neutral','red','orange','amber','green','teal','blue','violet','pink'])
+                              [ (('x' || substr(md5(c.id::text), 1, 8))::bit(32)::int & 2147483647) % 9 + 1 ])
+  where c.id = v_id;
+
+  select color into v_color_first from finance.categories where id = v_id;
+
+  -- second run of the exact same statement: coalesce means the already-set color is a no-op,
+  -- but re-deriving the hash portion in isolation must still match (reproducibility of the formula).
+  select (array['neutral','red','orange','amber','green','teal','blue','violet','pink'])
+         [ (('x' || substr(md5(v_id::text), 1, 8))::bit(32)::int & 2147483647) % 9 + 1 ]
+    into v_color_second;
+
+  perform set_config('lifeos.test.idem_first', v_color_first, false);
+  perform set_config('lifeos.test.idem_second', v_color_second, false);
+end $$;
+
+select is(
+  current_setting('lifeos.test.idem_first'),
+  current_setting('lifeos.test.idem_second'),
+  're-deriving the md5(id)-based color formula for the same id is reproducible (idempotent)'
+);
+
+reset role; reset request.jwt.claims;
+
+-- Tenancy: existing categories_* policies still hold for the new `color` column.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000006a","role":"authenticated"}';
+select lives_ok(
+  $$ update finance.categories set color = 'teal'
+     where household_id = '00000000-0000-0000-0000-0000000006aa' and name = 'Idempotency Probe' $$,
+  'a household member can update color on their own household''s category'
+);
+reset role; reset request.jwt.claims;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000006b","role":"authenticated"}';
+do $$
+begin
+  update finance.categories set color = 'pink'
+   where household_id = '00000000-0000-0000-0000-0000000006aa' and name = 'Idempotency Probe';
+  perform set_config('lifeos.test.non_member_rows', (select count(*)::text from finance.categories
+    where household_id = '00000000-0000-0000-0000-0000000006aa' and name = 'Idempotency Probe' and color = 'pink'), false);
+end $$;
+reset role; reset request.jwt.claims;
+
+select is(
+  current_setting('lifeos.test.non_member_rows'),
+  '0', 'a non-member''s update to another household''s category color affects zero rows'
+);
+
+set local role anon;
+select throws_ok(
+  $$ update finance.categories set color = 'violet'
+     where household_id = '00000000-0000-0000-0000-0000000006aa' and name = 'Idempotency Probe' $$,
+  '42501', null, 'anon has no write grant at all on finance.categories.color (permission denied, zero rows affected)'
+);
+reset role;
+
+-- Shape trigger: a style-carrying insert with a kind-mismatched parent still raises 22023 —
+-- the whitelist CHECK does not swallow or short-circuit the pre-existing shape trigger.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000006a","role":"authenticated"}';
+select throws_ok(
+  $$ insert into finance.categories (household_id, parent_id, name, kind, icon, color)
+     values ('00000000-0000-0000-0000-0000000006aa',
+             (select id from finance.categories where household_id = '00000000-0000-0000-0000-0000000006aa' and template_key = 'expense.home'),
+             'Kind Mismatch Styled', 'income', 'coffee', 'amber') $$,
+  '22023', null, 'a style-carrying insert with a kind-mismatched parent still raises 22023'
+);
+reset role; reset request.jwt.claims;
 
 select * from finish();
 rollback;

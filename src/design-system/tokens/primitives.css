@@ -42,4 +42,52 @@
 
   /* Shadow color (used at low opacity for the soft/wide neumorphism look) */
   --shadow-color: 285 6% 10%;
+
+  /*
+   * Category palette: 8 bounded hue keys (finance-categories-icon-color design.md section 3).
+   * Each hue: -500 (light-theme foreground/icon), -400 (dark-theme foreground/icon, lighter
+   * and lower chroma for contrast on a near-black page), -100 (light-theme surface/bubble bg,
+   * pale), -900 (dark-theme surface/bubble bg, low-chroma elevated). The neutral color key
+   * reuses the existing neutral and ink scale above (see tokens/category-style.ts) so it has
+   * no dedicated primitives here.
+   */
+  --cat-red-100: oklch(0.94 0.03 27);
+  --cat-red-500: oklch(0.63 0.22 27);
+  --cat-red-400: oklch(0.78 0.15 27);
+  --cat-red-900: oklch(0.3 0.06 27);
+
+  --cat-orange-100: oklch(0.94 0.04 55);
+  --cat-orange-500: oklch(0.68 0.19 55);
+  --cat-orange-400: oklch(0.8 0.14 55);
+  --cat-orange-900: oklch(0.32 0.06 55);
+
+  --cat-amber-100: oklch(0.95 0.05 75);
+  --cat-amber-500: oklch(0.72 0.17 75);
+  --cat-amber-400: oklch(0.83 0.13 75);
+  --cat-amber-900: oklch(0.33 0.06 75);
+
+  --cat-green-100: oklch(0.94 0.05 149);
+  --cat-green-500: oklch(0.62 0.17 149);
+  --cat-green-400: oklch(0.78 0.14 149);
+  --cat-green-900: oklch(0.3 0.06 149);
+
+  --cat-teal-100: oklch(0.93 0.04 180);
+  --cat-teal-500: oklch(0.6 0.13 180);
+  --cat-teal-400: oklch(0.78 0.11 180);
+  --cat-teal-900: oklch(0.3 0.05 180);
+
+  --cat-blue-100: oklch(0.93 0.03 240);
+  --cat-blue-500: oklch(0.58 0.17 240);
+  --cat-blue-400: oklch(0.78 0.12 240);
+  --cat-blue-900: oklch(0.3 0.06 240);
+
+  --cat-violet-100: oklch(0.93 0.04 290);
+  --cat-violet-500: oklch(0.58 0.18 290);
+  --cat-violet-400: oklch(0.78 0.13 290);
+  --cat-violet-900: oklch(0.3 0.06 290);
+
+  --cat-pink-100: oklch(0.94 0.04 340);
+  --cat-pink-500: oklch(0.65 0.19 340);
+  --cat-pink-400: oklch(0.8 0.13 340);
+  --cat-pink-900: oklch(0.31 0.06 340);
 }
