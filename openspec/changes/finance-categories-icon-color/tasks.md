@@ -93,44 +93,45 @@ Chain strategy: stacked-to-main
 
 ### (c) Data Layer
 
-- [ ] C-010 — `src/modules/finance/data/category-repository.ts` (modify): add `icon`/`color` to `CategoryListItem` and the existing select; add `listCategoryTree`, `createCategory`, `updateCategory` (patch excludes `kind`/`parent_id`), `archiveCategory` (sets `archived_at`, no DELETE grant/policy exists). Client-direct `supabase.schema("finance")`, no `server-only`, degrade to `[]`/`{ error }`, `.eq("household_id", householdId)` on every write.
+- [x] C-010 — `src/modules/finance/data/category-repository.ts` (modify): add `icon`/`color` to `CategoryListItem` and the existing select; add `listCategoryTree`, `createCategory`, `updateCategory` (patch excludes `kind`/`parent_id`), `archiveCategory` (sets `archived_at`, no DELETE grant/policy exists). Client-direct `supabase.schema("finance")`, no `server-only`, degrade to `[]`/`{ error }`, `.eq("household_id", householdId)` on every write.
   - Satisfies: `User-Created Categories` (explicit icon+color scenario), `Household-Scoped Icon and Color` (member-visible scenario), `Categories Management Screen` (restyle scenario, kind/nesting-rule enforcement scenario).
   - Depends on: C-009 (consumes `CategoryChip`'s new prop shape indirectly via the tree item type contract).
   - Parallel: yes, independent of (d) until C-013+.
 
-- [ ] C-011 — `src/modules/finance/data/index.ts` (modify): re-export `listCategoryTree`, `createCategory`, `updateCategory`, `archiveCategory`.
+- [x] C-011 — `src/modules/finance/data/index.ts` (modify): re-export `listCategoryTree`, `createCategory`, `updateCategory`, `archiveCategory`.
   - Depends on: C-010. Parallel: sequential.
+  - Note: `data/index.ts` already does `export * from "./category-repository"`, so this was satisfied automatically by C-010 — verified the four new names are visible through the barrel.
 
-- [ ] C-012 — `src/modules/finance/api/index.ts` (modify): re-export the same four functions (ESLint `app → data` boundary), same barrel-comment convention documenting the plain-RLS exception.
+- [x] C-012 — `src/modules/finance/api/index.ts` (modify): re-export the same four functions (ESLint `app → data` boundary), same barrel-comment convention documenting the plain-RLS exception.
   - Depends on: C-011. Parallel: sequential.
 
 ### (d) Categorias Screen
 
-- [ ] C-013 [RED] — `tests/unit/category-editor-render.test.tsx` (create): failing RTL test — icon/color pickers render exactly the registry options with no free-text/hex input; saving with nothing selected submits `null`/`null`; depth-2 parent or kind-mismatched child is rejected consistent with `validateCategoryShape`. Fails: `CategoryEditor`, `IconPicker`, `ColorPicker` do not exist yet.
+- [x] C-013 [RED] — `tests/unit/category-editor-render.test.tsx` (create): failing RTL test — icon/color pickers render exactly the registry options with no free-text/hex input; saving with nothing selected submits `null`/`null`; depth-2 parent or kind-mismatched child is rejected consistent with `validateCategoryShape`. Fails: `CategoryEditor`, `IconPicker`, `ColorPicker` do not exist yet.
   - Satisfies (drives): `Bounded Icon and Color Registry` (picker-only-registry scenario), `Categories Management Screen` (nesting/kind-rule scenario).
   - Depends on: C-007 (registry), C-012 (repository re-exports the type shape it renders against).
   - Parallel: sequential.
 
-- [ ] C-014 [GREEN] — `src/app/(app)/categorias/IconPicker.tsx` (create): registry-driven icon grid (6/row), `value`/`onChange`, radio semantics, keyboard-navigable, reads options from `CATEGORY_ICONS` only.
+- [x] C-014 [GREEN] — `src/app/(app)/categorias/IconPicker.tsx` (create): registry-driven icon grid (6/row), `value`/`onChange`, radio semantics, keyboard-navigable, reads options from `CATEGORY_ICONS` only.
   - Depends on: C-013. Parallel: yes, parallel with C-015.
 
-- [ ] C-015 [GREEN] — `src/app/(app)/categorias/ColorPicker.tsx` (create): registry-driven swatch row (9 keys), `value`/`onChange`, radio semantics, reads options from `CATEGORY_COLORS` only.
+- [x] C-015 [GREEN] — `src/app/(app)/categorias/ColorPicker.tsx` (create): registry-driven swatch row (9 keys), `value`/`onChange`, radio semantics, reads options from `CATEGORY_COLORS` only.
   - Depends on: C-013. Parallel: yes, parallel with C-014.
 
-- [ ] C-016 [GREEN] — `src/app/(app)/categorias/CategoryEditor.tsx` (create): client Sheet — name input, kind (Radix `select.tsx`, never native `<select>`), parent (Radix Select, top-level only), embeds `IconPicker`/`ColorPicker`, `validateCategoryShape` client-side preview, calls `actions.ts` — implemented to satisfy C-013.
+- [x] C-016 [GREEN] — `src/app/(app)/categorias/CategoryEditor.tsx` (create): client Sheet — name input, kind (Radix `select.tsx`, never native `<select>`), parent (Radix Select, top-level only), embeds `IconPicker`/`ColorPicker`, `validateCategoryShape` client-side preview, calls `actions.ts` — implemented to satisfy C-013.
   - Depends on: C-014, C-015.
   - Parallel: sequential.
 
-- [ ] C-017 — `src/app/(app)/categorias/CategoryList.tsx` (create): client component, two-level tree grouped by kind (Ingresos/Gastos), row renders `<CategoryChip iconKey colorKey name />` + rename/archive actions, "Nueva categoría" opens `CategoryEditor`.
+- [x] C-017 — `src/app/(app)/categorias/CategoryList.tsx` (create): client component, two-level tree grouped by kind (Ingresos/Gastos), row renders `<CategoryChip iconKey colorKey name />` + rename/archive actions, "Nueva categoría" opens `CategoryEditor`.
   - Satisfies: `Categories Management Screen` (tree-listing scenario).
   - Depends on: C-009 (CategoryChip prop shape), C-016 (opens the editor).
   - Parallel: yes, parallel with C-018.
 
-- [ ] C-018 — `src/app/(app)/categorias/actions.ts` (create): `"use server"` — `createCategoryAction`, `updateCategoryAction`, `archiveCategoryAction` following `presupuestos/actions.ts`'s shape (`createClient()`, `getCurrentHouseholdId`, guard, call via `@/modules/finance/api`, `revalidatePath("/categorias")`, return `{ error }`).
+- [x] C-018 — `src/app/(app)/categorias/actions.ts` (create): `"use server"` — `createCategoryAction`, `updateCategoryAction`, `archiveCategoryAction` following `presupuestos/actions.ts`'s shape (`createClient()`, `getCurrentHouseholdId`, guard, call via `@/modules/finance/api`, `revalidatePath("/categorias")`, return `{ error }`).
   - Depends on: C-012.
   - Parallel: yes, parallel with C-017.
 
-- [ ] C-019 — `src/app/(app)/categorias/page.tsx` (create): server container — `getCurrentHouseholdId` → `listCategoryTree(supabase, householdId)` → renders `<CategoryList>`.
+- [x] C-019 — `src/app/(app)/categorias/page.tsx` (create): server container — `getCurrentHouseholdId` → `listCategoryTree(supabase, householdId)` → renders `<CategoryList>`.
   - Satisfies: `Categories Management Screen` (tree-listing scenario, end-to-end wiring).
   - Depends on: C-010, C-017.
   - Parallel: sequential (closes out PR 2).
