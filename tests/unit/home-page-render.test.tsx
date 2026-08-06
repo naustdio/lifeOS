@@ -27,9 +27,11 @@ vi.mock("@/modules/core/api", () => ({
 
 const getHouseholdSummary = vi.fn();
 const listActiveAccounts = vi.fn();
+const countDueRecurring = vi.fn();
 vi.mock("@/modules/finance/api", () => ({
   getHouseholdSummary: (...args: unknown[]) => getHouseholdSummary(...args),
   listActiveAccounts: (...args: unknown[]) => listActiveAccounts(...args),
+  countDueRecurring: (...args: unknown[]) => countDueRecurring(...args),
 }));
 
 const { default: HomePage } = await import("@/app/(app)/page");
@@ -41,6 +43,7 @@ describe("HomePage — smoke render (finance-ui-polish P-019)", () => {
     getCurrentHouseholdId.mockReset();
     getHouseholdSummary.mockReset();
     listActiveAccounts.mockReset();
+    countDueRecurring.mockReset();
   });
 
   it("renders the balance hero, quick actions, and accounts via TransactionRow when populated", async () => {
@@ -50,6 +53,7 @@ describe("HomePage — smoke render (finance-ui-polish P-019)", () => {
     listActiveAccounts.mockResolvedValue([
       { id: "acc-1", name: "Nómina BBVA", type: "checking", class: "asset", balanceCents: 500000 },
     ]);
+    countDueRecurring.mockResolvedValue(0);
 
     const element = await HomePage();
     render(element);
@@ -67,6 +71,7 @@ describe("HomePage — smoke render (finance-ui-polish P-019)", () => {
     getCurrentHouseholdId.mockResolvedValue("space-1");
     getHouseholdSummary.mockResolvedValue({ availableCents: 0, debtCents: 0 });
     listActiveAccounts.mockResolvedValue([]);
+    countDueRecurring.mockResolvedValue(0);
 
     const element = await HomePage();
     render(element);
