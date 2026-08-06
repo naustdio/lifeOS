@@ -79,4 +79,31 @@ describe("HomePage — smoke render (finance-ui-polish P-019)", () => {
     expect(screen.getByText("Empieza por tu primera cuenta")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Nueva cuenta" }).length).toBeGreaterThan(0);
   });
+
+  it("does not render the due-recurring banner when the count is 0", async () => {
+    getCurrentProfile.mockResolvedValue({ displayName: "Ana" });
+    getCurrentHouseholdId.mockResolvedValue("space-1");
+    getHouseholdSummary.mockResolvedValue({ availableCents: 0, debtCents: 0 });
+    listActiveAccounts.mockResolvedValue([]);
+    countDueRecurring.mockResolvedValue(0);
+
+    const element = await HomePage();
+    render(element);
+
+    expect(screen.queryByText(/por confirmar/)).not.toBeInTheDocument();
+  });
+
+  it("renders the due-recurring banner with the count and a link to /recurrentes when items are due", async () => {
+    getCurrentProfile.mockResolvedValue({ displayName: "Ana" });
+    getCurrentHouseholdId.mockResolvedValue("space-1");
+    getHouseholdSummary.mockResolvedValue({ availableCents: 0, debtCents: 0 });
+    listActiveAccounts.mockResolvedValue([]);
+    countDueRecurring.mockResolvedValue(3);
+
+    const element = await HomePage();
+    render(element);
+
+    expect(screen.getByText("3 recurrentes por confirmar")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /recurrentes por confirmar/ })).toHaveAttribute("href", "/recurrentes");
+  });
 });
