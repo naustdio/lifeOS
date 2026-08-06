@@ -12,6 +12,9 @@ export type TransactionListItem = {
   description: string;
   status: "posted" | "void";
   transferGroupId: string | null;
+  /** change: finance-transaction-subtypes. `null` when the row has no sub-type — the pre-change
+   *  default, unaffected. */
+  subtype: string | null;
 };
 
 /** A single transaction by id, scoped to the current space (T-038's edit
@@ -25,7 +28,9 @@ export async function getTransactionById(
   const { data, error } = await supabase
     .schema("finance")
     .from("transactions")
-    .select("id, account_id, category_id, type, amount_cents, occurred_on, description, status, transfer_group_id")
+    .select(
+      "id, account_id, category_id, type, amount_cents, occurred_on, description, status, transfer_group_id, subtype",
+    )
     .eq("household_id", householdId)
     .eq("id", id)
     .maybeSingle();
@@ -44,6 +49,7 @@ export async function getTransactionById(
     description: (data.description as string) ?? "",
     status: data.status as "posted" | "void",
     transferGroupId: (data.transfer_group_id as string | null) ?? null,
+    subtype: (data.subtype as string | null) ?? null,
   };
 }
 
@@ -67,7 +73,9 @@ export async function listRecentTransactions(
   const base = supabase
     .schema("finance")
     .from("transactions")
-    .select("id, account_id, category_id, type, amount_cents, occurred_on, description, status, transfer_group_id")
+    .select(
+      "id, account_id, category_id, type, amount_cents, occurred_on, description, status, transfer_group_id, subtype",
+    )
     .eq("household_id", householdId);
 
   const query = options.postedOnly ? base.eq("status", "posted") : base;
@@ -108,5 +116,6 @@ export async function listRecentTransactions(
     description: (r.description as string) ?? "",
     status: r.status as "posted" | "void",
     transferGroupId: (r.transfer_group_id as string | null) ?? null,
+    subtype: (r.subtype as string | null) ?? null,
   }));
 }

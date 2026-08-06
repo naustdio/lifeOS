@@ -10,6 +10,7 @@ import { MoneyAmount } from "@/design-system/patterns/MoneyAmount";
 import { ProgressBar } from "@/design-system/patterns/ProgressBar";
 import { QuickActionRow } from "@/design-system/patterns/QuickActionRow";
 import { TransactionRow } from "@/design-system/patterns/TransactionRow";
+import { resolveTransactionSubtypeIcon } from "@/design-system/tokens/transaction-subtype-style";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
 import {
@@ -124,6 +125,7 @@ export default async function HomePage() {
             {recentTransactions.map((t) => (
               <TransactionRow
                 key={t.id}
+                icon={resolveTransactionSubtypeIcon(t.subtype)}
                 title={t.description || t.categoryName || t.accountName}
                 subtitle={`${t.type === "expense" ? "Gasto" : t.type === "income" ? "Ingreso" : "Transferencia"} · ${t.occurredOn}`}
                 formattedAmount={formatCentsAsMXN(t.amountCents)}

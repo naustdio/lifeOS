@@ -1,0 +1,121 @@
+# DAG state for change `finance-transaction-subtypes` (survives compaction).
+# Updated by sdd-apply as PR groups land.
+
+change: finance-transaction-subtypes
+schema: spec-driven
+delivery_strategy: ask-on-risk
+chain_strategy: stacked-to-main
+resolved_pr_count: 1
+
+apply_progress:
+  pr_1_single:
+    name: "Sub-types — migration/pgTAP, seam, design system, UI wiring (single PR)"
+    status: complete
+    tasks_done:
+      [T-001, T-002, T-003, T-004, T-005, T-006, T-007, T-008, T-009, T-010, T-011, T-012, T-013, T-014, T-015, T-016]
+    tasks_total: 16
+    branch: feat/finance-transaction-subtypes
+    base: main
+    files:
+      - supabase/migrations/20260804090018_finance_transaction_subtypes.sql
+      - supabase/tests/110_finance_subtypes.sql
+      - src/modules/finance/api/index.ts
+      - src/modules/finance/data/transaction-repository.ts
+      - src/design-system/tokens/transaction-subtype-style.ts
+      - src/app/(app)/movimientos/subtype-options.ts
+      - src/app/(app)/movimientos/TransactionForm.tsx
+      - src/app/(app)/movimientos/[id]/editar/EditTransactionForm.tsx
+      - src/app/(app)/movimientos/[id]/editar/page.tsx (no literal diff — transaction object already carries subtype after transaction-repository.ts's T-004 change)
+      - src/app/(app)/movimientos/actions.ts
+      - src/app/(app)/movimientos/page.tsx
+      - src/app/(app)/page.tsx
+      - src/shared/result.ts (added INVALID_SUBTYPE_FOR_TYPE to AppErrorCode — required by mapPgError, not itself a tasks.md line item)
+      - tests/unit/transaction-subtype-registry.test.ts
+      - tests/unit/transaction-subtype-options.test.ts
+      - tests/unit/transaction-form-subtype.test.tsx
+      - tests/unit/edit-transaction-form-render.test.tsx (added subtype: null to pre-existing fixtures for the now-mandatory transaction.subtype field)
+      - tests/integration/finance-facade.test.ts (T-015 — actual path, see deviations)
+    tdd_evidence: >
+      T-005/T-006 (transaction-subtype-style.ts): RED confirmed first — vitest run against
+      transaction-subtype-registry.test.ts failed with "Failed to resolve import ...
+      transaction-subtype-style" (file did not exist). GREEN confirmed after implementing the
+      registry — 5/5 tests pass. T-007/T-008 (subtype-options.ts): RED confirmed first — vitest
+      run against transaction-subtype-options.test.ts failed the same way (file did not exist).
+      GREEN confirmed after implementing the per-tab option lists — 9/9 tests pass. T-009/T-010/
+      T-011 (TransactionForm/EditTransactionForm sub-type Select): RED confirmed first — vitest
+      run against transaction-form-subtype.test.tsx failed all 6 assertions (neither form
+      rendered a sub-type Select yet; getByLabelText("Sub-tipo") threw). GREEN confirmed after
+      adding the Select blocks — 6/6 tests pass. T-001/T-002 (migration/pgTAP) are non-TDD-gated
+      per tasks.md's explicit convention (matches finance-budgets/finance-categories-icon-color
+      precedent); T-003/T-004/T-012/T-013/T-014/T-015 are non-TDD, verified by the integration
+      suite and pgTAP.
+    db_gate: >
+      EXECUTED for real against the local Supabase Postgres container. `supabase db reset
+      --local` failed with a pre-existing, environment-specific `LegacyDbBootstrapError`
+      ("Could not find the supabase-go binary required to bootstrap the local database") —
+      unrelated to this change (same class of gap documented in finance-categories-icon-color's
+      state.yaml). Resolved the same way: applied the new migration directly via `docker exec
+      supabase_db_LIFE_OS psql -f 20260804090018_finance_transaction_subtypes.sql` (11
+      statements, all clean — ALTER TABLE x2, CREATE FUNCTION x1, DROP FUNCTION x3, CREATE
+      FUNCTION x3, GRANT, NOTIFY), then registered the migration in
+      `supabase_migrations.schema_migrations`. Ran the mandated T-001 verification: `\df
+      finance.record_transaction` / `\df finance.record_transfer` / `\df
+      finance.update_transaction` each show exactly ONE signature (10/10/8 args respectively,
+      trailing new params with defaults) — no ambiguous overload. `select conname from
+      pg_constraint where conname = 'transactions_subtype_whitelist'` confirms the CHECK exists.
+      `supabase test db --local`: full suite PASS, 110_finance_subtypes.sql 26/26 pgTAP
+      assertions — CHECK whitelist (1), pairing guard on all 3 RPCs incl. compra_meses
+      reservation (6), backward compat with pre-change argument counts on all 3 RPCs (3),
+      transfer pair symmetry + idempotent replay (3), update_transaction semantics
+      (unchanged/clear/mismatch/void-lock, 6), update_origin_transaction still resolves
+      post-drop/re-create with its positional 6-arg call (2), CHECK constraint existence (1),
+      plus the initial CHECK-rejection case. One real bug found and fixed during this run: the
+      first CHECK-rejection assertion initially failed with 42501 (permission denied), not
+      23514, because direct DML on finance.transactions is revoked from `authenticated` — fixed
+      by adding `reset role; reset request.jwt.claims;` before that one direct-INSERT case (same
+      precedent as 040_finance_money.sql's currency-CHECK cases), then re-establishing the
+      authenticated session for the rest of the file.
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next build)
+      — PASS on the correctly-based branch (feat/finance-transaction-subtypes off origin/main;
+      see deviations for the branch-base correction). One real tsc error found and fixed:
+      `INVALID_SUBTYPE_FOR_TYPE` was not a member of `AppErrorCode` — added it to
+      src/shared/result.ts. check-tokens: OK, no raw hex outside src/design-system/tokens/.
+      13 routes generated (main's route set, no /categorias — correct since that PR is not yet
+      merged to main), all unchanged besides size deltas on /movimientos, /movimientos/[id]/
+      editar, and /.
+    test_gate: >
+      `pnpm test` (full vitest suite) — 170/171 tests pass across 30 files on the branch's final
+      run; the single failure is the project's documented pre-existing
+      tests/unit/boundary-lint.test.ts 5s-timeout flake (confirmed non-regression: passes in
+      ~2.1s when run in isolation). New: tests/unit/transaction-subtype-registry.test.ts (5/5),
+      tests/unit/transaction-subtype-options.test.ts (9/9), tests/unit/transaction-form-
+      subtype.test.tsx (6/6), tests/integration/finance-facade.test.ts grew from 11 to 13
+      passing tests (2 new INVALID_SUBTYPE_FOR_TYPE regression cases, T-015).
+    deviations: >
+      1. Branch-base correction (process, not code): the prompt specified basing
+      feat/finance-transaction-subtypes on `main`, but implementation began on
+      feat/finance-categories-icon-color-2-crud-screen (that PR is not yet merged to main) with
+      the working tree already containing that PR's changes. Corrected mid-session: stashed the
+      finance-transaction-subtypes work-in-progress separately from an unrelated pre-existing
+      chip.tsx tweak, verified none of the touched files were altered by the pending
+      categories-icon-color PR (only src/modules/finance/api/index.ts differs, in a
+      non-overlapping region — 3 category-tree export lines), created
+      feat/finance-transaction-subtypes from origin/main, and popped the subtypes stash — clean
+      auto-merge, zero conflicts. Re-ran the full verify/test/pgTAP gate on the correctly-based
+      branch (results above) rather than relying on the first, incorrectly-based run.
+      2. tasks.md T-015 names `tests/unit/finance-facade.test.ts`; that file has never existed —
+      the real facade contract-test file is `tests/integration/finance-facade.test.ts`.
+      Implemented the two new regression cases there instead.
+      3. design-system spec.md's "Sub-type Resolver Fallback for Unknown or Null Keys"
+      requirement text says the resolver "MUST return a defined neutral fallback icon, never
+      undefined" — this contradicts design.md Decision 4 and tasks.md T-005 (both explicit:
+      "resolves to undefined, never a throw", specifically to avoid changing the rendered look of
+      every existing subtype=null row, which already relies on TransactionRow's icon-absent
+      first-letter fallback). Followed design.md/tasks.md as implementation-authoritative;
+      spec.md's wording is stale and should be corrected in a follow-up spec pass, not
+      re-litigated silently in code.
+      4. compra_meses reservation: confirmed hidden from the UI (no option in subtype-options.ts,
+      RTL-tested) and confirmed reachable-but-rejected at the RPC layer for all three write paths
+      (pgTAP), exactly as the spec's two paired scenarios require.
+    pr: "not opened — implementation only, per instructions"

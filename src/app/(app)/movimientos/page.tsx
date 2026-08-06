@@ -5,6 +5,7 @@ import { EmptyState } from "@/design-system/patterns/EmptyState";
 import { TransactionRow } from "@/design-system/patterns/TransactionRow";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent } from "@/design-system/ui/card";
+import { resolveTransactionSubtypeIcon } from "@/design-system/tokens/transaction-subtype-style";
 import {
   listActiveAccounts,
   listActiveCategories,
@@ -71,6 +72,7 @@ export default async function MovementsPage() {
               {transactions.map((tx) => (
                 <TransactionRow
                   key={tx.id}
+                  icon={resolveTransactionSubtypeIcon(tx.subtype)}
                   title={tx.accountName}
                   subtitle={`${TYPE_LABEL[tx.type]}${tx.categoryName ? ` · ${tx.categoryName}` : ""} · ${tx.occurredOn}${tx.status === "void" ? " · Anulado" : ""}`}
                   formattedAmount={formatCentsAsMXN(tx.amountCents)}

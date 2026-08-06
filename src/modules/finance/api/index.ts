@@ -160,6 +160,9 @@ export const RecordTransactionInputSchema = z.object({
   description: z.string().default(""),
   origin: OriginRefSchema.pick({ module: true, entityId: true }).default({ module: "manual", entityId: "" }),
   idempotencyKey: z.string().optional(),
+  /** change: finance-transaction-subtypes. Omitted = no sub-type; the database is the
+   *  authority on which values are valid for `kind` (finance.subtype_matches_type). */
+  subtype: z.string().optional(),
 });
 /** `z.input`, same reasoning as `CreateAccountInput`: `description`/`origin`
  * carry defaults, so callers should be able to omit them. */
@@ -174,6 +177,9 @@ export const RecordTransferInputSchema = z.object({
   description: z.string().default(""),
   origin: OriginRefSchema.pick({ module: true, entityId: true }).default({ module: "manual", entityId: "" }),
   idempotencyKey: z.string().optional(),
+  /** change: finance-transaction-subtypes. In practice admits only `undefined`/`pago_tarjeta` —
+   *  the RPC's pairing guard enforces that. */
+  subtype: z.string().optional(),
 });
 /** `z.input`, same reasoning as `CreateAccountInput`. */
 export type RecordTransferInput = z.input<typeof RecordTransferInputSchema>;
@@ -184,6 +190,9 @@ export const TransactionPatchSchema = z.object({
   amountCents: z.number().int().positive().optional(),
   occurredOn: z.string().optional(),
   description: z.string().optional(),
+  /** change: finance-transaction-subtypes. Tri-state, the only place this shape exists:
+   *  `undefined` = leave unchanged, `null` = CLEAR, a string = set. */
+  subtype: z.string().nullable().optional(),
 });
 export type TransactionPatch = z.infer<typeof TransactionPatchSchema>;
 
@@ -212,6 +221,13 @@ function mapPgError(e: PostgrestLikeError, context: "create_account" | "move" | 
     }
     if (context === "recurring") {
       return { code: "RECURRING_INVALID_STATE", message: "That recurring definition is paused or the amount is invalid.", cause: e };
+    }
+    // change: finance-transaction-subtypes. A sub-type/type pairing rejection also arrives as
+    // 22023 (finance.subtype_matches_type) — disambiguate it BEFORE the existing context
+    // branches, same precedent as the `/voided transaction/i` check below, so it is never
+    // mislabeled as a transfer-leg-move or void-lock rejection.
+    if (/subtype/i.test(e.message ?? "")) {
+      return { code: "INVALID_SUBTYPE_FOR_TYPE", message: "That sub-type is not valid for this movement.", cause: e };
     }
     // finance.update_transaction() raises 22023 for TWO distinct reasons under the same
     // sqlstate: moving a transfer leg, and editing an already-voided transaction (the
@@ -288,6 +304,7 @@ export async function recordTransaction(input: RecordTransactionInput): Promise<
     p_origin_module: i.origin.module,
     p_origin_entity_id: i.origin.module === "manual" ? null : i.origin.entityId,
     p_idempotency_key: i.origin.module === "manual" ? null : i.idempotencyKey,
+    p_subtype: i.subtype ?? null,
   });
 
   if (error) {
@@ -318,6 +335,7 @@ export async function recordTransfer(input: RecordTransferInput): Promise<Result
     p_origin_module: i.origin.module,
     p_origin_entity_id: i.origin.module === "manual" ? null : i.origin.entityId,
     p_idempotency_key: i.origin.module === "manual" ? null : i.idempotencyKey,
+    p_subtype: i.subtype ?? null,
   });
 
   if (error) {
@@ -342,6 +360,8 @@ export async function updateTransaction(id: string, patch: TransactionPatch): Pr
     p_amount_cents: p.amountCents ?? null,
     p_occurred_on: p.occurredOn ?? null,
     p_description: p.description ?? null,
+    p_subtype: p.subtype ?? null,
+    p_clear_subtype: p.subtype === null,
   });
 
   if (error) {

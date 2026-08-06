@@ -351,5 +351,61 @@ describe("finance/api facade — live local Supabase (T-032)", () => {
       expect(edited.ok).toBe(false);
       if (!edited.ok) expect(edited.error.code).toBe("VOID_TRANSACTION_NOT_EDITABLE");
     });
+
+    // change: finance-transaction-subtypes. Named regression for the shared 22023
+    // disambiguation added in mapPgError: a sub-type/type mismatch must map to
+    // INVALID_SUBTYPE_FOR_TYPE, and the void-lock case immediately above must keep mapping to
+    // VOID_TRANSACTION_NOT_EDITABLE — neither may shadow the other now that both raise 22023
+    // with a message-based dispatch.
+    it("maps a mismatched subtype/type pairing to INVALID_SUBTYPE_FOR_TYPE (22023) on recordTransaction", async () => {
+      activeClient = userA.client;
+      const account = await financeApi.createAccount(
+        mkAccount({ householdId: householdA, name: "Facade Subtype Test", type: "checking", openingBalanceCents: 5000 }),
+      );
+      expect(account.ok).toBe(true);
+      if (!account.ok) return;
+
+      // reembolso is income-only; forcing it onto an expense must trigger the pairing guard.
+      const rejected = await financeApi.recordTransaction({
+        ...mkTx({
+          householdId: householdA,
+          accountId: account.value.id,
+          categoryId: categoryA,
+          kind: "expense",
+          amountCents: 100,
+          occurredOn: "2026-01-27",
+        }),
+        subtype: "reembolso",
+      });
+
+      expect(rejected.ok).toBe(false);
+      if (!rejected.ok) expect(rejected.error.code).toBe("INVALID_SUBTYPE_FOR_TYPE");
+    });
+
+    it("maps a mismatched subtype/type pairing to INVALID_SUBTYPE_FOR_TYPE (22023) on updateTransaction", async () => {
+      activeClient = userA.client;
+      const account = await financeApi.createAccount(
+        mkAccount({ householdId: householdA, name: "Facade Subtype Edit Test", type: "checking", openingBalanceCents: 5000 }),
+      );
+      expect(account.ok).toBe(true);
+      if (!account.ok) return;
+
+      const tx = await financeApi.recordTransaction(
+        mkTx({
+          householdId: householdA,
+          accountId: account.value.id,
+          categoryId: categoryA,
+          kind: "expense",
+          amountCents: 100,
+          occurredOn: "2026-01-28",
+        }),
+      );
+      expect(tx.ok).toBe(true);
+      if (!tx.ok) return;
+
+      const edited = await financeApi.updateTransaction(tx.value.id, { subtype: "reembolso" });
+      expect(edited.ok).toBe(false);
+      if (!edited.ok) expect(edited.error.code).toBe("INVALID_SUBTYPE_FOR_TYPE");
+    });
   });
 });

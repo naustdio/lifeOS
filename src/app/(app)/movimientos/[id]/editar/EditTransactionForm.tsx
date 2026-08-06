@@ -20,6 +20,7 @@ import {
 import { pesosToCents } from "@/shared/money";
 import { OverBudgetDialog } from "../../OverBudgetDialog";
 import { updateMovementAction, voidMovementAction, type MovementFormState } from "../../actions";
+import { subtypeOptionsForType } from "../../subtype-options";
 
 type AccountOption = { id: string; name: string };
 type CategoryOption = { id: string; name: string };
@@ -52,6 +53,8 @@ export function EditTransactionForm({
     amountCents: number;
     occurredOn: string;
     description: string;
+    /** change: finance-transaction-subtypes. `null` when unset. */
+    subtype: string | null;
   };
   accounts: AccountOption[];
   categories: CategoryOption[];
@@ -148,6 +151,25 @@ export function EditTransactionForm({
             </Select>
           </div>
         )}
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="subtype" className="text-sm font-medium">
+            Sub-tipo
+          </label>
+          <Select name="subtype" defaultValue={transaction.subtype ?? "none"}>
+            <SelectTrigger id="subtype">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sin subtipo</SelectItem>
+              {subtypeOptionsForType(transaction.type).map((o) => (
+                <SelectItem key={o.key} value={o.key}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="amount" className="text-sm font-medium">
