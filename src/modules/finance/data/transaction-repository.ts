@@ -52,17 +52,27 @@ export async function getTransactionById(
  * (T-037/T-038's history list and correction affordance). Read only, joined
  * client-side against the small account/category name maps rather than a
  * PostgREST embedded join, to keep this repository trivial to reason about.
+ *
+ * `options.postedOnly` (change: finance-dashboard-feed F-005) is additive, trailing, and
+ * defaulted — every existing call site (e.g. `/movimientos`) is unchanged: omitting it
+ * returns posted AND void rows exactly as before, required for `/movimientos`'s correction
+ * display. Home's recent-movements preview passes `{ postedOnly: true }` to exclude void rows.
  */
 export async function listRecentTransactions(
   supabase: SupabaseClient,
   householdId: string,
   limit = 25,
+  options: { postedOnly?: boolean } = {},
 ): Promise<TransactionListItem[]> {
-  const { data: rows, error } = await supabase
+  const base = supabase
     .schema("finance")
     .from("transactions")
     .select("id, account_id, category_id, type, amount_cents, occurred_on, description, status, transfer_group_id")
-    .eq("household_id", householdId)
+    .eq("household_id", householdId);
+
+  const query = options.postedOnly ? base.eq("status", "posted") : base;
+
+  const { data: rows, error } = await query
     .order("occurred_on", { ascending: false })
     .order("id", { ascending: false })
     .limit(limit);

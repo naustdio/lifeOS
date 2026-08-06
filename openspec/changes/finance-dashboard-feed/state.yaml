@@ -1,0 +1,87 @@
+# DAG state for change `finance-dashboard-feed` (survives compaction).
+# Updated by sdd-apply.
+
+change: finance-dashboard-feed
+schema: spec-driven
+delivery_strategy: ask-on-risk
+chain_strategy: stacked-to-main
+resolved_pr_count: 1
+
+apply_progress:
+  pr_1_full:
+    name: "Full slice — migrations, pgTAP, repository/API reads, patterns, Home composition, tests"
+    status: complete
+    tasks_done: [F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-012, F-013]
+    tasks_total: 13
+    branch: feat/finance-dashboard-feed
+    base: main
+    files:
+      - supabase/migrations/20260804090015_finance_dashboard.sql
+      - supabase/migrations/20260804090016_finance_dashboard_security.sql
+      - supabase/tests/100_finance_dashboard.sql
+      - src/modules/finance/data/summary-repository.ts (modified — getMonthSummary, listCategorySpend)
+      - src/modules/finance/data/transaction-repository.ts (modified — additive options.postedOnly)
+      - src/modules/finance/api/index.ts (modified — additive read re-exports)
+      - src/design-system/patterns/MonthSummaryCard.tsx
+      - src/design-system/patterns/CategorySpendList.tsx
+      - src/app/(app)/page.tsx (modified — new card order + accounts-list reorder)
+      - tests/unit/category-spend-color.test.ts
+      - tests/unit/month-summary-card-render.test.tsx
+      - tests/unit/category-spend-list-render.test.tsx
+      - tests/unit/home-page-render.test.tsx (modified — extended with DOM-order, empty,
+        mixed, and transfer scenarios)
+    db_gate: >
+      EXECUTED for real against the local Supabase Postgres container. `supabase test db`
+      worked this session for the pre-existing 9 migrations, but the local DB's migration
+      table was behind (12-16 not yet applied — `supabase migration list --local` showed
+      `remote: ""` for 20260804090012..090016) and `supabase db reset` failed with the known
+      "Could not find the supabase-go binary" gap. Applied migrations 12-16 directly via
+      `docker exec supabase_db_LIFE_OS psql` (12/13 were already partially present — real
+      "already exists" errors on the table/policy from a prior session, non-fatal; 14/15/16
+      applied cleanly: CREATE FUNCTION x2 + GRANT, CREATE VIEW x2, GRANT x2). One authoring
+      bug found and fixed in the pgTAP fixture during the first run: the voided-expense
+      fixture row was missing `voided_at`, violating `tx_void_fields` — fixed by setting
+      `voided_at = now()`, matching the shipped 080_finance_budgets.sql fixture pattern.
+      After the fix, `supabase test db` ran the full suite (all 10 files including the new
+      100_finance_dashboard.sql) — 161/161 pgTAP assertions PASS (146 pre-existing + 15 new).
+      Independently re-ran 100_finance_dashboard.sql alone via `docker exec ... psql` —
+      all 15 `ok` lines confirmed individually (period boundary ×3, income inclusion,
+      transfer exclusion ×3, sign/shape ×4, cross-view consistency with budget_progress ×1,
+      and both named security_invoker regressions ×2, plus one sanity assertion).
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next
+      build) — PASS on the second run (first run had one lint warning: an unused
+      eslint-disable directive in home-page-render.test.tsx, removed). check-tokens: OK, no
+      raw hex outside src/design-system/tokens/. next build: compiled successfully, all 13
+      routes generated including `/`.
+    test_gate: >
+      `pnpm test` (full vitest suite) — 148/149 tests pass across 27 files (26 files fully
+      green). The 1 failure is `tests/unit/boundary-lint.test.ts`, the project's documented
+      pre-existing flaky 5s-timeout ESLint-subprocess test — re-ran in isolation with
+      `--testTimeout=20000` and it passed (2.24s), and `supabase test db`'s own suite is
+      unaffected; confirmed pre-existing flake, not a regression from this change.
+      New test files all green in isolation and in the full run: category-spend-color.test.ts
+      (10/10), month-summary-card-render.test.tsx (2/2), category-spend-list-render.test.tsx
+      (3/3), home-page-render.test.tsx (8/8, including the new DOM-order/empty/mixed/transfer
+      cases). One authoring bug found and fixed: the populated-Home test initially left
+      monthSummary at 0/0, which rendered a second "Nueva transacción" link (from
+      MonthSummaryCard's own EmptyState CTA) and broke `getByRole` uniqueness — fixed by
+      giving that fixture a non-zero month summary, matching its "populated" intent. A second
+      selector bug was found and fixed in category-spend-list-render.test.tsx: the
+      EmptyState's icon span also carries `aria-hidden`, so a naive `[aria-hidden]` selector
+      over-matched; narrowed to the track's own `.h-2.w-full.overflow-hidden` class.
+    dependency_diff_gate: >
+      `git diff --stat package.json pnpm-lock.yaml` — EMPTY. No new dependency, per the
+      proposal's explicit non-goal.
+    write_path_diff_note: >
+      `src/modules/finance/**` write functions (recordTransaction, recordTransfer,
+      updateTransaction, updateOriginTransaction, voidTransaction*, confirmRecurring,
+      discardRecurring, createAccount) are untouched by this change's diff — only new read
+      exports were added to `finance/api/index.ts` and `finance/data/summary-repository.ts`;
+      `listRecentTransactions`'s new `options` parameter is trailing/optional/defaulted and
+      every existing call site (`/movimientos`) compiles and runs unchanged (confirmed by the
+      full `pnpm test` run, not just the new fixtures).
+    pr: "pending — branch pushed, PR to be opened via gh pr create, NOT merged (left open for
+      user review/local testing per instruction)"
+
+next_recommended: sdd-verify
