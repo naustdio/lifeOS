@@ -143,4 +143,91 @@ describe("RecurringList — smoke render (R-022)", () => {
     expect(screen.getByText("Confirmar recurrente")).toBeInTheDocument();
     expect(screen.getByLabelText("Fecha")).toHaveValue("2026-08-06");
   });
+
+  /**
+   * Closes a real spec/test coverage gap flagged by sdd-verify (verify-report.md, WARNING 1):
+   * `ConfirmRecurringSheet` reuses `evaluateBudgetImpact`/`OverBudgetDialog` byte-identically to
+   * `TransactionForm`, but no RTL test exercised that branch through this entry point.
+   */
+  describe("ConfirmRecurringSheet — over-budget confirmation gate", () => {
+    const definitions = [
+      {
+        id: "rec-5",
+        accountId: "acc-1",
+        categoryId: "cat-1",
+        amountCents: 2000,
+        description: "Renta",
+        frequency: "monthly" as const,
+        nextDueDate: "2026-08-06",
+        active: true,
+      },
+    ];
+    const dueItems = [
+      {
+        recurringId: "rec-5",
+        amountCents: 2000,
+        description: "Renta",
+        frequency: "monthly" as const,
+        nextDueDate: "2026-08-06",
+        daysOverdue: 0,
+      },
+    ];
+    const BUDGETS = [{ budgetId: "b1", categoryId: "cat-1", limitCents: 5000, spentCents: 4000 }];
+
+    function openSheet() {
+      render(
+        <RecurringList
+          definitions={definitions}
+          dueItems={dueItems}
+          accounts={ACCOUNTS}
+          categories={CATEGORIES}
+          budgets={BUDGETS}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+    }
+
+    // The row's own "Confirmar" button (opens the sheet) stays in the DOM behind the sheet
+    // overlay, and the sheet's submit button is ALSO labeled "Confirmar" — both coexist once
+    // the sheet is open, so submitting must target the last match (the sheet's).
+    function submitSheet() {
+      const confirmButtons = screen.getAllByRole("button", { name: "Confirmar" });
+      fireEvent.click(confirmButtons[confirmButtons.length - 1]);
+    }
+
+    it("shows the confirmation dialog when the confirmed amount crosses the limit and does not submit immediately", () => {
+      openSheet();
+
+      fireEvent.change(screen.getByLabelText("Monto (MXN)"), { target: { value: "20" } });
+      submitSheet();
+
+      expect(screen.getByText("Vas a superar tu presupuesto")).toBeInTheDocument();
+      expect(confirmRecurringAction).not.toHaveBeenCalled();
+    });
+
+    it("dispatches immediately with no dialog when the confirmed amount stays under the limit", () => {
+      confirmRecurringAction.mockResolvedValue({ error: null });
+      openSheet();
+
+      fireEvent.change(screen.getByLabelText("Monto (MXN)"), { target: { value: "5" } });
+      submitSheet();
+
+      expect(screen.queryByText("Vas a superar tu presupuesto")).not.toBeInTheDocument();
+    });
+
+    it("cancelling the over-budget dialog dismisses it without submitting", () => {
+      openSheet();
+
+      fireEvent.change(screen.getByLabelText("Monto (MXN)"), { target: { value: "20" } });
+      submitSheet();
+
+      // Two "Cancelar" buttons exist once the dialog is open (the sheet's own, and the
+      // OverBudgetDialog's) — the dialog's renders last in the tree.
+      const cancelButtons = screen.getAllByRole("button", { name: "Cancelar" });
+      fireEvent.click(cancelButtons[cancelButtons.length - 1]);
+
+      expect(screen.queryByText("Vas a superar tu presupuesto")).not.toBeInTheDocument();
+      expect(confirmRecurringAction).not.toHaveBeenCalled();
+    });
+  });
 });
