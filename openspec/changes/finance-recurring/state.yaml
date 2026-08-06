@@ -1,0 +1,151 @@
+# DAG state for change `finance-recurring` (survives compaction).
+# Updated by sdd-apply as PR groups land.
+
+change: finance-recurring
+schema: spec-driven
+delivery_strategy: ask-on-risk
+chain_strategy: stacked-to-main
+resolved_pr_count: 4
+
+apply_progress:
+  pr_1_database:
+    name: "Database — recurring_transactions, seam functions, RLS, pgTAP"
+    status: complete
+    tasks_done: [R-001, R-002, R-003, R-004]
+    tasks_total: 4
+    branch: feat/finance-recurring-1-db
+    base: main
+    files:
+      - supabase/migrations/20260804090012_finance_recurring.sql
+      - supabase/migrations/20260804090013_finance_recurring_security.sql
+      - supabase/migrations/20260804090014_finance_recurring_api.sql
+      - supabase/tests/090_finance_recurring.sql
+    db_gate: >
+      EXECUTED for real against the local Supabase Postgres container (docker exec + psql,
+      supabase CLI's `db reset`/`test db` unavailable in this environment —
+      "Could not find the supabase-go binary" — migrations and pgTAP applied directly via
+      psql instead). Verified `select conname from pg_constraint where conrelid =
+      'finance.transactions'::regclass and contype = 'c'` BEFORE writing the DROP
+      CONSTRAINT — confirmed transactions_origin_module_check is the real name. All three
+      migrations applied cleanly. pgTAP suite (090_finance_recurring.sql): 43/43 assertions
+      PASS after two authoring bugs were found and fixed during the first run (a wrong
+      expected-value baseline in the row-lock/ordering test, and a missing role reset for
+      the direct-DML CHECK regression test) — both are real bugs in the TEST, not the
+      migrations, caught by actually running the suite rather than assuming it would pass.
+      Coverage: tenancy (member/non-member/anon), the named security_invoker regression
+      (non-member sees zero rows on recurring_due despite household B having a due item),
+      idempotency + row-lock ordering (replay does not double-post or double-advance),
+      confirm/discard atomicity and row shape, all documented error paths (P0002/22023/42501),
+      pause/resume/delete, origin_module widening regression, and a 9-case advance_due_date
+      fixture matrix (month-end clamp, leap year, post-clamp drift, year rollover, biweekly
+      exactly 15 days) cross-checked against the same matrix in tests/unit/finance-recurring-domain.test.ts.
+    verify_gate: "N/A for this PR (no TS/app changes) — covered by db_gate above."
+    pr: "https://github.com/naustdio/lifeOS/pull/18 — OPEN, not merged"
+
+  pr_2_domain_data_api:
+    name: "Domain + Data + API — date arithmetic, repository, seam wrappers"
+    status: complete
+    tasks_done: [R-005, R-006, R-007, R-008, R-009, R-010, R-011]
+    tasks_total: 7
+    branch: feat/finance-recurring-2-domain-data-api
+    base: feat/finance-recurring-1-db
+    files:
+      - src/modules/finance/domain/recurring.ts
+      - src/modules/finance/domain/index.ts
+      - src/modules/finance/data/recurring-repository.ts
+      - src/modules/finance/data/index.ts
+      - src/modules/finance/api/index.ts (modified)
+      - src/modules/finance/api/recurring-schedule.ts
+      - src/shared/result.ts (modified — additive RECURRING_INVALID_STATE code)
+      - tests/unit/finance-recurring-domain.test.ts
+      - tests/unit/recurring-schedule-boundary.test.ts
+    verify_gate: "pnpm tsc --noEmit — clean. pnpm eslint . --max-warnings=0 — clean (full repo)."
+    test_gate: >
+      pnpm vitest run tests/unit/finance-recurring-domain.test.ts — 19/19 pass on first
+      implementation (nextDueDate matched the SQL advance_due_date() fixture matrix exactly,
+      no iteration needed). pnpm vitest run tests/unit/recurring-schedule-boundary.test.ts —
+      1/1 pass (asserts no `import "server-only"` in recurring-schedule.ts).
+    pr: "https://github.com/naustdio/lifeOS/pull/19 — OPEN, not merged"
+
+  pr_3_ui:
+    name: "UI — recurrentes screen, home banner, Más overflow nav"
+    status: complete
+    tasks_done: [R-012, R-013, R-014, R-015, R-016, R-017, R-018, R-019, R-020, R-021]
+    tasks_total: 10
+    branch: feat/finance-recurring-3-ui
+    base: feat/finance-recurring-2-domain-data-api
+    files:
+      - src/design-system/patterns/RecurringRow.tsx
+      - src/design-system/patterns/DueRecurringBanner.tsx
+      - src/design-system/patterns/OverflowMenu.tsx
+      - src/app/(app)/recurrentes/page.tsx
+      - src/app/(app)/recurrentes/RecurringForm.tsx
+      - src/app/(app)/recurrentes/RecurringList.tsx
+      - src/app/(app)/recurrentes/ConfirmRecurringSheet.tsx
+      - src/app/(app)/recurrentes/actions.ts
+      - src/app/(app)/layout.tsx (modified — 4th slot swapped to OverflowMenu)
+      - src/app/(app)/page.tsx (modified — due banner)
+      - tests/unit/home-page-render.test.tsx (modified — minimal mock fix for countDueRecurring, full banner assertions land in PR4)
+    deviation: >
+      Lands as ~947 changed lines (935 additions + 12 deletions), above the session's
+      800-line guard (tasks.md forecast: 870-1020 for UI-implementation-only, confirmed).
+      List + create form + confirm sheet share one actions.ts and are a single coherent,
+      reviewable screen feature; a further split into "screen+list" vs "form+confirm+
+      banner+nav" (as tasks.md's own forecast allowed) would fragment that feature across
+      two half-working PRs and duplicate actions.ts wiring. Reported explicitly per the
+      apply-phase rule to flag rather than silently exceed the review-workload guard.
+    verify_gate: >
+      pnpm tsc --noEmit — clean. pnpm eslint . --max-warnings=0 — clean (full repo).
+      node scripts/check-tokens.mjs — OK, no raw hex. pnpm next build — succeeds,
+      /recurrentes compiles and appears in the route list.
+    test_gate: "pnpm vitest run tests/unit — 17/17 files, 92/92 tests pass."
+    pr: "https://github.com/naustdio/lifeOS/pull/20 — OPEN, not merged"
+
+  pr_4_tests:
+    name: "Tests — RTL render tests for the recurring screen and nav overflow"
+    status: complete
+    tasks_done: [R-022]
+    tasks_total: 1
+    branch: feat/finance-recurring-4-tests
+    base: feat/finance-recurring-3-ui
+    files:
+      - tests/unit/recurring-form-render.test.tsx
+      - tests/unit/recurring-list-render.test.tsx
+      - tests/unit/due-banner-render.test.tsx
+      - tests/unit/overflow-menu-render.test.tsx
+      - tests/unit/home-page-render.test.tsx (modified — banner count/pluralization/link assertions)
+    verify_gate: "pnpm eslint . --max-warnings=0 — clean (full repo). pnpm tsc --noEmit — clean."
+    test_gate: >
+      pnpm vitest run tests/unit — 21/21 files, 108/108 tests pass. One authoring bug found
+      and fixed in recurring-form-render.test.tsx (asserted zero `<select>` in the tree,
+      but Radix Select renders a visually-hidden native `<select>` by design for plain-form
+      compatibility — fixed to assert `aria-hidden="true"` on any present native select
+      instead). tests/unit/boundary-lint.test.ts (the documented pre-existing flaky
+      ESLint-subprocess test, 5s timeout) timed out once on a full-suite run and was
+      re-run in isolation per project convention — passes standalone, confirmed
+      pre-existing flake, not a regression.
+    pr: "https://github.com/naustdio/lifeOS/pull/21 — OPEN, not merged"
+
+next_recommended: sdd-verify
+# All 22 tasks (R-001..R-022) implemented across 4 stacked PRs (#18-#21), each with real
+# gate evidence executed against the local Supabase stack / local toolchain — none assumed.
+# Critical correctness points verified for real, not just implemented:
+#   - origin_module CHECK constraint name confirmed via pg_constraint before the DROP
+#     CONSTRAINT (transactions_origin_module_check, matching design.md's expectation).
+#   - Idempotency-key-before-cursor-advance ordering: v_due read BEFORE the UPDATE in
+#     confirm_recurring_transaction; pgTAP replay test proves a same-due-date reconfirm
+#     does not double-post or double-advance.
+#   - `select ... for update` row lock on the definition row before reading the cursor.
+#   - security_invoker = true on finance.recurring_due; named pgTAP regression proves a
+#     non-member sees zero rows even when the other space has real due items.
+#   - nextDueDate() (TS) vs finance.advance_due_date() (SQL): same 9-case fixture matrix
+#     (month-end clamp, leap year, post-clamp drift, year rollover, biweekly=15 days)
+#     asserted independently in both layers — 19/19 Vitest, 9/9 of the matching pgTAP subset.
+#   - "Más" overflow nav: exactly one slot swapped (Presupuestos's direct slot became the
+#     OverflowMenu trigger), pill's other 3 slots and their class strings unchanged, both
+#     Presupuestos and Recurrentes reachable through the new menu (verified by RTL render
+#     tests at a mocked 375px viewport in both light and dark theme classes).
+# All 4 PRs are OPEN — none merged, per explicit instruction (user reviews/tests locally
+# before merge). PR 3 deviates from the 800-line guard (see pr_3_ui.deviation above) —
+# flagged, not silently absorbed.
+archived: false
