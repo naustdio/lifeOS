@@ -2,6 +2,7 @@ import { ArrowDownLeft, Plus, Target, Wallet } from "lucide-react";
 import Link from "next/link";
 import { getCurrentHouseholdId, getCurrentProfile } from "@/modules/core/api";
 import { BalanceHero } from "@/design-system/patterns/BalanceHero";
+import { DueRecurringBanner } from "@/design-system/patterns/DueRecurringBanner";
 import { EmptyState } from "@/design-system/patterns/EmptyState";
 import { MoneyAmount } from "@/design-system/patterns/MoneyAmount";
 import { ProgressBar } from "@/design-system/patterns/ProgressBar";
@@ -9,7 +10,7 @@ import { QuickActionRow } from "@/design-system/patterns/QuickActionRow";
 import { TransactionRow } from "@/design-system/patterns/TransactionRow";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
-import { getHouseholdSummary, listActiveAccounts } from "@/modules/finance/api";
+import { countDueRecurring, getHouseholdSummary, listActiveAccounts } from "@/modules/finance/api";
 import { formatCentsAsMXN } from "@/shared/money";
 import { createClient } from "@/shared/supabase/server";
 
@@ -41,9 +42,13 @@ export default async function HomePage() {
   const supabase = await createClient();
   const [profile, spaceId] = await Promise.all([getCurrentProfile(supabase), getCurrentHouseholdId(supabase)]);
 
-  const [summary, accounts] = spaceId
-    ? await Promise.all([getHouseholdSummary(supabase, spaceId), listActiveAccounts(supabase, spaceId)])
-    : [{ availableCents: 0, debtCents: 0 }, []];
+  const [summary, accounts, dueRecurringCount] = spaceId
+    ? await Promise.all([
+        getHouseholdSummary(supabase, spaceId),
+        listActiveAccounts(supabase, spaceId),
+        countDueRecurring(supabase, spaceId),
+      ])
+    : [{ availableCents: 0, debtCents: 0 }, [], 0];
 
   const goalAccounts = accounts.filter((a) => a.goal);
 
@@ -51,6 +56,8 @@ export default async function HomePage() {
     <main className="flex flex-col gap-6">
       <BalanceHero formatted={formatCentsAsMXN(summary.availableCents)} />
       <QuickActionRow actions={QUICK_ACTIONS} />
+
+      {dueRecurringCount > 0 && <DueRecurringBanner count={dueRecurringCount} />}
 
       {summary.debtCents > 0 && (
         <Card>

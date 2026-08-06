@@ -1,8 +1,9 @@
-import { Home, Target, Wallet } from "lucide-react";
+import { Home, Repeat, Target, Wallet } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type * as React from "react";
 import { FabMenu } from "@/design-system/patterns/FabMenu";
+import { OverflowMenu } from "@/design-system/patterns/OverflowMenu";
 import { NavPill } from "@/design-system/ui/nav-pill";
 import { ThemeToggle } from "@/design-system/ui/theme-toggle";
 import { createClient } from "@/shared/supabase/server";
@@ -56,13 +57,12 @@ export default async function AppLayout({
         >
           <Wallet className="h-5 w-5" aria-hidden />
         </Link>
-        <Link
-          href="/presupuestos"
-          aria-label="Presupuestos"
-          className="flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
-        >
-          <Target className="h-5 w-5" aria-hidden />
-        </Link>
+        <OverflowMenu
+          items={[
+            { href: "/presupuestos", label: "Presupuestos", icon: Target },
+            { href: "/recurrentes", label: "Recurrentes", icon: Repeat },
+          ]}
+        />
       </NavPill>
     </div>
   );
