@@ -81,7 +81,17 @@ apply_progress:
       `listRecentTransactions`'s new `options` parameter is trailing/optional/defaulted and
       every existing call site (`/movimientos`) compiles and runs unchanged (confirmed by the
       full `pnpm test` run, not just the new fixtures).
-    pr: "pending — branch pushed, PR to be opened via gh pr create, NOT merged (left open for
-      user review/local testing per instruction)"
+    pr: "https://github.com/naustdio/lifeOS/pull/22 — MERGED to main"
 
-next_recommended: sdd-verify
+next_recommended: archived
+# verify-report.md: PASS WITH WARNINGS, 0 CRITICAL, 2 minor (2026-08-06). PR #22 merged to
+# main after user review. All fresh evidence re-confirmed independently by sdd-verify:
+# 161/161 pgTAP (both named security_invoker regressions + cross-view consistency vs
+# budget_progress), 148/149 vitest (1 confirmed pre-existing flake), pnpm verify PASS, zero
+# new dependency, zero write-path diff.
+#
+# CLOSURE NOTE (2026-08-06): archived MANUALLY, not via the native gentle-ai review/archive
+# gate — same tooling gap documented in the four prior archived cycles this project
+# (review-* subagents have no Bash access). Full rationale in archive-report.md.
+archived: true
+archived_date: "2026-08-06"
