@@ -9,7 +9,23 @@
 -- the widened origin_module domain.
 
 begin;
-select plan(33);
+select plan(43);
+
+-- ---------------------------------------------------------------------------
+-- finance.advance_due_date() fixture matrix — MUST be the same input/output pairs used by
+-- tests/unit/finance-recurring-domain.test.ts's `nextDueDate` coverage (design.md §11's own
+-- requirement), so the SQL seam and the TS pure function can never silently desync.
+-- ---------------------------------------------------------------------------
+select is(finance.advance_due_date('2026-03-15'::date, 'monthly'), '2026-04-15'::date, 'monthly: normal case, same day next month');
+select is(finance.advance_due_date('2026-01-31'::date, 'monthly'), '2026-02-28'::date, 'monthly: month-end clamp (Jan 31 -> Feb 28)');
+select is(finance.advance_due_date('2028-01-31'::date, 'monthly'), '2028-02-29'::date, 'monthly: month-end clamp in a leap year (Jan 31 -> Feb 29)');
+select is(finance.advance_due_date('2026-02-28'::date, 'monthly'), '2026-03-28'::date, 'monthly: post-clamp drift is accepted (Feb 28 -> Mar 28, not restored to 31)');
+select is(finance.advance_due_date('2026-12-31'::date, 'monthly'), '2027-01-31'::date, 'monthly: year rollover');
+select is(finance.advance_due_date('2026-01-28'::date, 'weekly'), '2026-02-04'::date, 'weekly: +7 days across a month boundary');
+select is(finance.advance_due_date('2026-12-28'::date, 'weekly'), '2027-01-04'::date, 'weekly: +7 days across a year boundary');
+select is(finance.advance_due_date('2026-01-20'::date, 'biweekly'), '2026-02-04'::date, 'biweekly: exactly 15 days, not "2 weeks" (14)');
+select is(finance.advance_due_date('2026-06-01'::date, 'yearly'), '2027-06-01'::date, 'yearly: same month/day next year');
+select is(finance.advance_due_date('2028-02-29'::date, 'yearly'), '2029-02-28'::date, 'yearly: leap-day clamp to Feb 28 in a non-leap year');
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
