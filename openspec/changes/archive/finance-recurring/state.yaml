@@ -40,7 +40,7 @@ apply_progress:
       fixture matrix (month-end clamp, leap year, post-clamp drift, year rollover, biweekly
       exactly 15 days) cross-checked against the same matrix in tests/unit/finance-recurring-domain.test.ts.
     verify_gate: "N/A for this PR (no TS/app changes) — covered by db_gate above."
-    pr: "https://github.com/naustdio/lifeOS/pull/18 — OPEN, not merged"
+    pr: "https://github.com/naustdio/lifeOS/pull/18 — MERGED to main"
 
   pr_2_domain_data_api:
     name: "Domain + Data + API — date arithmetic, repository, seam wrappers"
@@ -65,7 +65,7 @@ apply_progress:
       implementation (nextDueDate matched the SQL advance_due_date() fixture matrix exactly,
       no iteration needed). pnpm vitest run tests/unit/recurring-schedule-boundary.test.ts —
       1/1 pass (asserts no `import "server-only"` in recurring-schedule.ts).
-    pr: "https://github.com/naustdio/lifeOS/pull/19 — OPEN, not merged"
+    pr: "https://github.com/naustdio/lifeOS/pull/19 — MERGED to main"
 
   pr_3_ui:
     name: "UI — recurrentes screen, home banner, Más overflow nav"
@@ -99,7 +99,7 @@ apply_progress:
       node scripts/check-tokens.mjs — OK, no raw hex. pnpm next build — succeeds,
       /recurrentes compiles and appears in the route list.
     test_gate: "pnpm vitest run tests/unit — 17/17 files, 92/92 tests pass."
-    pr: "https://github.com/naustdio/lifeOS/pull/20 — OPEN, not merged"
+    pr: "https://github.com/naustdio/lifeOS/pull/20 — MERGED to main"
 
   pr_4_tests:
     name: "Tests — RTL render tests for the recurring screen and nav overflow"
@@ -124,9 +124,9 @@ apply_progress:
       ESLint-subprocess test, 5s timeout) timed out once on a full-suite run and was
       re-run in isolation per project convention — passes standalone, confirmed
       pre-existing flake, not a regression.
-    pr: "https://github.com/naustdio/lifeOS/pull/21 — OPEN, not merged"
+    pr: "https://github.com/naustdio/lifeOS/pull/21 — MERGED to main"
 
-next_recommended: sdd-verify
+next_recommended: archived
 # All 22 tasks (R-001..R-022) implemented across 4 stacked PRs (#18-#21), each with real
 # gate evidence executed against the local Supabase stack / local toolchain — none assumed.
 # Critical correctness points verified for real, not just implemented:
@@ -145,7 +145,21 @@ next_recommended: sdd-verify
 #     OverflowMenu trigger), pill's other 3 slots and their class strings unchanged, both
 #     Presupuestos and Recurrentes reachable through the new menu (verified by RTL render
 #     tests at a mocked 375px viewport in both light and dark theme classes).
-# All 4 PRs are OPEN — none merged, per explicit instruction (user reviews/tests locally
-# before merge). PR 3 deviates from the 800-line guard (see pr_3_ui.deviation above) —
-# flagged, not silently absorbed.
-archived: false
+# All 4 PRs merged to main in order (2026-08-06). PR 3 deviated from the original 800-line
+# guard (~947 lines) — user raised the session's review budget to 1000 lines to accept it
+# rather than force a fragmenting split, per pr_3_ui.deviation above.
+#
+# POST-VERIFY FIXES (2026-08-06): (1) commit 2527f30 — OverflowMenuItem.icon changed from a
+# LucideIcon component reference to React.ReactNode; the Server Component layout.tsx passing
+# a bare component reference to the Client Component OverflowMenu crashed RSC serialization
+# ("Only plain objects can be passed to Client Components..."). Found via the user's live
+# browser test. (2) commit bcfcc9d — added RTL coverage for ConfirmRecurringSheet's
+# over-budget gate (crosses limit / stays under / cancel), closing a real WARNING sdd-verify
+# flagged (R-022 claimed this coverage but no test exercised it). Both verified by a second
+# sdd-verify pass before merge. Full detail in archive-report.md.
+#
+# CLOSURE NOTE (2026-08-06): archived MANUALLY, not via the native gentle-ai review/archive
+# gate — same tooling gap documented in the three prior archived cycles this project
+# (review-* subagents have no Bash access). Full rationale in archive-report.md.
+archived: true
+archived_date: "2026-08-06"

@@ -59,6 +59,19 @@ Editing a source record in a calling module MUST call `updateOriginTransaction` 
 - WHEN the source record is deleted and `voidTransaction` is called
 - THEN the linked Finance transaction transitions to `status = void` and is never hard-deleted
 
+### Requirement: Origin Module Domain Includes Recurring
+The `origin_module` value accepted by the seam MUST be one of `manual`, `shopping_list`, `car_control`, or `recurring`. `recurring` MUST behave identically to any other calling-module origin for uniqueness, soft-reference, and immediate-posting purposes: it is not a special case in the seam's write path.
+
+#### Scenario: Recurring confirmation posts through the seam like any other module
+- GIVEN the recurring confirm flow invokes the write path with `origin_module = 'recurring'` and `origin_entity_id` set to the definition id
+- WHEN the call succeeds
+- THEN the resulting transaction has `origin_module = 'recurring'`, `status = posted`, and participates in the same `(origin_module, origin_entity_id, idempotency_key)` uniqueness as any other origin
+
+#### Scenario: An unrecognized origin_module value is still rejected
+- GIVEN a write attempts `origin_module` set to a value outside `manual`, `shopping_list`, `car_control`, `recurring`
+- WHEN the write executes
+- THEN it is rejected by the database CHECK constraint
+
 ### Requirement: findByOrigin Returns Null, Not an Error, When Absent
 `findByOrigin` MUST return `null` when no transaction matches the given origin reference, rather than throwing.
 
