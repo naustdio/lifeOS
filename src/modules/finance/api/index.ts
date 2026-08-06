@@ -55,7 +55,25 @@ export {
  */
 export { upsertBudgetLimit, removeBudget } from "../data";
 
-export type OriginModule = "manual" | "shopping_list" | "car_control";
+/**
+ * `finance-recurring` change: CRUD/pause/resume/delete on a recurring definition are the same
+ * deliberate plain-RLS exception as budgets above — re-exported here (not imported directly
+ * from `../data`) because Gate A's ESLint boundary only allows `app` to import a module's
+ * `api/` barrel. `confirmRecurring`/`discardRecurring` below are the real seam wrappers.
+ */
+export {
+  listRecurringDefinitions,
+  listDueRecurring,
+  countDueRecurring,
+  createRecurringDefinition,
+  updateRecurringDefinition,
+  setRecurringActive,
+  deleteRecurringDefinition,
+  type RecurringListItem,
+  type DueRecurringItem,
+} from "../data";
+
+export type OriginModule = "manual" | "shopping_list" | "car_control" | "recurring";
 
 /**
  * DEVIATION FROM design.md's literal `OriginRef` shape (documented, matching the SQL
@@ -68,7 +86,7 @@ export type OriginModule = "manual" | "shopping_list" | "car_control";
  */
 export const OriginRefSchema = z.object({
   householdId: z.string().uuid(),
-  module: z.enum(["manual", "shopping_list", "car_control"]),
+  module: z.enum(["manual", "shopping_list", "car_control", "recurring"]),
   entityId: z.string().min(1),
 });
 export type OriginRef = z.infer<typeof OriginRefSchema>;
@@ -170,7 +188,7 @@ export type TransactionPatch = z.infer<typeof TransactionPatchSchema>;
 // ---------------------------------------------------------------------------
 type PostgrestLikeError = { code?: string; message?: string };
 
-function mapPgError(e: PostgrestLikeError, context: "create_account" | "move" | "generic"): AppError {
+function mapPgError(e: PostgrestLikeError, context: "create_account" | "move" | "generic" | "recurring"): AppError {
   const code = e.code;
   if (code === "23505") {
     return { code: "CATEGORY_NAME_TAKEN", message: "A category with that name already exists.", cause: e };
@@ -187,6 +205,9 @@ function mapPgError(e: PostgrestLikeError, context: "create_account" | "move" | 
   if (code === "22023") {
     if (context === "create_account") {
       return { code: "ACCOUNT_DETAIL_REQUIRED", message: "That account type requires matching detail fields.", cause: e };
+    }
+    if (context === "recurring") {
+      return { code: "RECURRING_INVALID_STATE", message: "That recurring definition is paused or the amount is invalid.", cause: e };
     }
     // finance.update_transaction() raises 22023 for TWO distinct reasons under the same
     // sqlstate: moving a transfer leg, and editing an already-voided transaction (the
@@ -421,4 +442,65 @@ export async function findByOrigin(o: OriginRef): Promise<Result<TransactionRef 
   }
 
   return ok({ id: row.id, householdId: row.household_id, status: row.status });
+}
+
+// ---------------------------------------------------------------------------
+// Recurring seam wrappers (design.md §4, §7, change: finance-recurring R-009). Both call the
+// SECURITY DEFINER functions in supabase/migrations/*_finance_recurring_api.sql — the only
+// reachable write path for a recurring definition's cursor + a posted transaction together.
+// ---------------------------------------------------------------------------
+
+export const ConfirmRecurringInputSchema = z.object({
+  recurringId: z.string().uuid(),
+  amountCents: z.number().int().positive().optional(),
+  occurredOn: z.string().optional(),
+  description: z.string().optional(),
+});
+export type ConfirmRecurringInput = z.infer<typeof ConfirmRecurringInputSchema>;
+
+/** Atomically posts exactly one transaction (with `recurring_id` set) AND advances
+ *  `next_due_date` by one period — never two client calls that could partially apply. */
+export async function confirmRecurring(input: ConfirmRecurringInput): Promise<Result<TransactionRef>> {
+  const parsed = ConfirmRecurringInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return err({ code: "VALIDATION_ERROR", message: parsed.error.message, cause: parsed.error });
+  }
+  const i = parsed.data;
+  const supabase = await client();
+
+  const { data, error } = await supabase.schema("finance").rpc("confirm_recurring_transaction", {
+    p_recurring_id: i.recurringId,
+    p_amount_cents: i.amountCents ?? null,
+    p_occurred_on: i.occurredOn ?? null,
+    p_description: i.description ?? null,
+  });
+
+  if (error) {
+    return err(mapPgError(error, "recurring"));
+  }
+
+  return ok({ id: data as string, householdId: "", status: "posted" });
+}
+
+export const DiscardRecurringInputSchema = z.object({ recurringId: z.string().uuid() });
+export type DiscardRecurringInput = z.infer<typeof DiscardRecurringInputSchema>;
+
+/** Advances `next_due_date` by one period, posts nothing. */
+export async function discardRecurring(input: DiscardRecurringInput): Promise<Result<{ nextDueDate: string }>> {
+  const parsed = DiscardRecurringInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return err({ code: "VALIDATION_ERROR", message: parsed.error.message, cause: parsed.error });
+  }
+  const i = parsed.data;
+  const supabase = await client();
+
+  const { data, error } = await supabase.schema("finance").rpc("discard_recurring_occurrence", {
+    p_recurring_id: i.recurringId,
+  });
+
+  if (error) {
+    return err(mapPgError(error, "recurring"));
+  }
+
+  return ok({ nextDueDate: data as string });
 }
