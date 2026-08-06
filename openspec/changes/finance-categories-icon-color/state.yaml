@@ -80,8 +80,68 @@ apply_progress:
 
   pr_2_crud_screen:
     name: "CRUD Screen — repository write-side, /categorias screen"
-    status: pending
-    tasks_done: []
+    status: complete
+    tasks_done: [C-010, C-011, C-012, C-013, C-014, C-015, C-016, C-017, C-018, C-019]
     tasks_total: 10
     branch: feat/finance-categories-icon-color-2-crud-screen
     base: feat/finance-categories-icon-color-1-db-tokens
+    files:
+      - src/modules/finance/data/category-repository.ts
+      - src/modules/finance/data/index.ts (wildcard re-export, no literal diff needed)
+      - src/modules/finance/api/index.ts
+      - src/modules/finance/api/category-validation.ts
+      - src/app/(app)/categorias/IconPicker.tsx
+      - src/app/(app)/categorias/ColorPicker.tsx
+      - src/app/(app)/categorias/CategoryEditor.tsx
+      - src/app/(app)/categorias/CategoryList.tsx
+      - src/app/(app)/categorias/actions.ts
+      - src/app/(app)/categorias/page.tsx
+      - src/app/(app)/layout.tsx (nav entry, addition beyond literal tasks.md — see deviations)
+      - tests/unit/category-editor-render.test.tsx
+    tdd_evidence: >
+      C-013 [RED] confirmed first — `pnpm vitest run tests/unit/category-editor-render.test.tsx`
+      failed with "Failed to resolve import ... CategoryEditor" (component files did not exist).
+      C-014/C-015/C-016 [GREEN] confirmed after implementing IconPicker, ColorPicker, and
+      CategoryEditor (with the client-side `validateCategoryShape` preview) — 8/8 assertions
+      pass: registry-exact option counts for both pickers, no free-text/hex input, onChange
+      wiring, hidden-field null-submission, top-level-only parent filtering (defensive filter
+      of a depth-2 item), and kind-mismatch rejection with submit disabled. C-010/C-011/C-012
+      (repository/re-exports) and C-017/C-018/C-019 (list/actions/page) are non-TDD-gated per
+      tasks.md's explicit convention — the two named critical-logic surfaces for this PR were
+      C-013's picker-registry-only + shape-rejection gate, which was RED-first as required.
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next build)
+      — PASS on second run. First run surfaced a real ESLint boundary violation:
+      `CategoryEditor.tsx` (type `app`) importing `validateCategoryShape`/`CategoryKind` directly
+      from `@/modules/finance/domain/category` (type `module-domain`), which the boundary config
+      does not allow — `app` may only import a module's `api/` barrel. Fixed by adding
+      `src/modules/finance/api/category-validation.ts`, a `server-only`-free re-export file
+      under `api/` (same shape as the pre-existing `budget-evaluation.ts` pattern for
+      client-importable pure domain functions), and pointing `CategoryEditor` at it instead.
+      Second run: 0 warnings, 14 routes generated (added `/categorias`, 8.37 kB), check-tokens
+      OK, all other 13 routes unchanged.
+    test_gate: >
+      `pnpm vitest run --testTimeout=15000` (full suite, extended timeout to rule out the
+      documented pre-existing flake) — 167/167 tests pass across 30 files (159 pre-existing +
+      8 new in tests/unit/category-editor-render.test.tsx). On the default-timeout run,
+      `tests/unit/boundary-lint.test.ts`'s single ESLint-subprocess test hit the same
+      documented 5s-timeout flake noted in PR 1's state.yaml/apply-progress; re-run in isolation
+      it passed in ~2.1s, confirmed non-regression, and did not recur under the extended-timeout
+      full-suite run.
+    db_gate: >
+      Not applicable — design.md §6 Decision 5 explicitly introduces zero new RLS objects for
+      this PR (`createCategory`/`updateCategory`/`archiveCategory` reuse the existing
+      `categories_insert`/`categories_update` policies and the `insert, update` grant already
+      pgTAP-tested in PR 1's `supabase/tests/050_finance_categories.sql`). No new migration, no
+      new column, no new constraint — pgTAP suite intentionally not extended for PR 2.
+    deviations: >
+      1. Added a nav entry for `/categorias` in `src/app/(app)/layout.tsx`'s `OverflowMenu`
+      (Layers icon) — not an explicit tasks.md line item, but design.md states the screen "is a
+      required deliverable of this change, not a deferred follow-up," and every other finance
+      screen (`/presupuestos`, `/recurrentes`) has a matching nav entry; leaving `/categorias`
+      unreachable from the UI would leave the requirement's usability unmet. One-line addition
+      matching the established `OverflowMenu` convention exactly.
+      2. Discovered ESLint boundary conflict (see verify_gate) not explicitly anticipated by
+      design.md — resolved using the project's own established pattern
+      (`budget-evaluation.ts`-style client-safe re-export), not a new pattern.
+    pr: "not opened — implementation only, per instructions"
