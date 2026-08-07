@@ -70,4 +70,64 @@ apply_progress:
       4/4 against the real local stack, finance-facade.test.ts 11/11, etc).
     pr: "not opened — implementation only, per instructions"
 
-next_recommended: sdd-apply (Slice B — B-001..B-005, UI layer, stacked on this PR)
+  pr_2_slice_b_ui:
+    name: "Slice B — UI: AccountForm fieldsets, actions.ts branches, account-repository read path, /cuentas list rendering"
+    status: complete
+    tasks_done: [B-001, B-002, B-003, B-004, B-005]
+    tasks_total: 5
+    branch: feat/finance-account-types-expansion-2-ui
+    base: feat/finance-account-types-expansion-1-db-contracts
+    files:
+      - src/modules/finance/data/account-repository.ts (modified — B-001: 2 more parallel
+        .in("account_id", ids) selects against account_investment_details/
+        account_loaned_details, AccountListItem extended with investment/loaned optional blocks)
+      - tests/unit/account-form-render.test.tsx (modified — B-002 RED then GREEN: 2 new RTL
+        tests, investment fieldset reveal + helper text, loaned fieldset reveal + inverted
+        sign hint text + min=0 attribute)
+      - src/app/(app)/cuentas/AccountForm.tsx (modified — B-003: TYPE_LABELS +2
+        (investment: "Inversiones", loaned: "Prestado"), signHintFor(type) helper replacing
+        the inline two-way ternary with a three-way sign rule, 2 new fieldsets (Inversión,
+        Datos del préstamo))
+      - src/app/(app)/cuentas/actions.ts (modified — B-004: replaced Slice A's temporary
+        VALIDATION_ERROR guard branch with the real investment/loaned else-if branches
+        building CreateAccountInput's discriminated union, using the existing
+        toOptionalCents helper)
+      - src/app/(app)/cuentas/page.tsx (modified — B-005: TYPE_LABELS +2, investment card
+        renders rendimiento (current_value_cents - balance_cents, gain or loss, never
+        clamped) + valued_on, loaned card renders counterparty_name)
+      - tests/integration/account-creation-ui.test.ts (modified — 2 new real-stack tests:
+        create an investment account via createAccountAction then verify listActiveAccounts
+        returns its cost-basis/current-value detail; same for a loaned account's
+        counterparty detail, exercising B-001's read path end-to-end against live local
+        Supabase, not mocked)
+      - openspec/changes/finance-account-types-expansion/tasks.md (all B-001..B-005 marked [x])
+    tdd_evidence: >
+      B-002/B-003 RED-GREEN confirmed for real: RED run showed 2/5 failing (getByRole "option"
+      for "Inversiones"/"Prestado" not found — TYPE_LABELS still had 6 entries, no
+      investment/loaned fieldsets existed). GREEN run after AccountForm.tsx edits: 5/5 pass.
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next build)
+      — PASS, run twice (before and after the integration-test-only edit). check-tokens: OK.
+      next build: compiled successfully, all 13 routes generated (same route count as Slice A
+      — no new routes in this UI-only slice, /cuentas and /cuentas/nueva already existed).
+    test_gate: >
+      `pnpm test` (full vitest suite) — 167/168 pass across 30 files, 2 full runs. The 1
+      failure both times is tests/unit/boundary-lint.test.ts, the project's documented
+      pre-existing flaky 5s-timeout ESLint-subprocess test — re-ran in isolation and it
+      passed (2.25s), confirming non-regression (same flake as Slice A and prior finance
+      changes). All new/modified suites green: account-form-render.test.tsx (5/5, was 3/5
+      pre-change), account-creation-ui.test.ts (6/6, was 4/6 pre-change, 2 new real-stack
+      investment/loaned round-trip tests). Focused command:
+      `pnpm vitest run tests/unit/account-form-render.test.tsx
+      tests/integration/account-creation-ui.test.ts` — 11/11 pass.
+    db_gate: >
+      No new migrations in this slice (read-path-only against Slice A's already-migrated
+      detail tables). Extended real-stack coverage instead of new pgTAP: 2 new integration
+      tests in tests/integration/account-creation-ui.test.ts exercise the actual Server
+      Action -> RPC -> RLS-scoped read round trip against the live local Postgres container
+      (supabase_db_LIFE_OS, confirmed running via `docker ps`), proving B-001's
+      account-repository read path returns the correct investment/loaned detail rows under
+      real RLS, not a mock.
+    pr: "not opened — implementation only, per instructions"
+
+next_recommended: sdd-verify (all 15 tasks, A-001..A-010 + B-001..B-005, complete)
