@@ -2,10 +2,25 @@
 // (design.md §3.2/§3.4/§5.6) — this is a client-side PREVIEW only; the trigger remains the
 // single server-side authority so the headline number can never be forged.
 
-export type AccountType = "cash" | "checking" | "credit_card" | "savings" | "liability" | "savings_goal";
+export type AccountType =
+  | "cash"
+  | "checking"
+  | "credit_card"
+  | "savings"
+  | "liability"
+  | "savings_goal"
+  | "investment"
+  | "loaned";
 export type AccountClass = "asset" | "liability";
 
-const ASSET_TYPES: ReadonlySet<AccountType> = new Set(["cash", "checking", "savings", "savings_goal"]);
+const ASSET_TYPES: ReadonlySet<AccountType> = new Set([
+  "cash",
+  "checking",
+  "savings",
+  "savings_goal",
+  "investment",
+  "loaned",
+]);
 
 export function deriveAccountClass(type: AccountType): AccountClass {
   return ASSET_TYPES.has(type) ? "asset" : "liability";
@@ -22,4 +37,12 @@ export function requiresLiabilityDetail(type: AccountType): boolean {
 
 export function requiresGoalDetail(type: AccountType): boolean {
   return type === "savings_goal";
+}
+
+export function requiresInvestmentDetail(type: AccountType): boolean {
+  return type === "investment";
+}
+
+export function requiresLoanedDetail(type: AccountType): boolean {
+  return type === "loaned";
 }

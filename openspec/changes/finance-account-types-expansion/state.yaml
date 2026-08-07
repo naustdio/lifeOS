@@ -1,0 +1,133 @@
+# DAG state for change `finance-account-types-expansion` (survives compaction).
+# Updated by sdd-apply.
+
+change: finance-account-types-expansion
+schema: spec-driven
+delivery_strategy: ask-on-risk
+chain_strategy: stacked-to-main
+resolved_pr_count: 2
+
+apply_progress:
+  pr_1_slice_a_db_contracts:
+    name: "Slice A — DB + contracts: migrations, pgTAP, all 7 account-type-knowledge sites"
+    status: complete
+    tasks_done: [A-001, A-002, A-003, A-004, A-005, A-006, A-007, A-008, A-009, A-010]
+    tasks_total: 10
+    branch: feat/finance-account-types-expansion-1-db-contracts
+    base: main
+    files:
+      - supabase/migrations/20260804090019_finance_account_types.sql (created — renumbered from
+        the design's planned ...018, which collided with the independently-branched
+        feat/finance-transaction-subtypes change)
+      - supabase/migrations/20260804090020_finance_account_types_security.sql (created —
+        renumbered from ...019 for the same reason)
+      - supabase/tests/040_finance_money.sql (modified — plan(30) -> plan(50), 20 new assertions)
+      - src/modules/finance/domain/account.ts (modified — AccountType 6->8 literals, ASSET_TYPES,
+        requiresInvestmentDetail/requiresLoanedDetail)
+      - src/modules/finance/api/index.ts (modified — site d: AccountType re-export from domain;
+        site e: 2 new CreateAccountInputSchema discriminated-union branches; site f: inline
+        deriveAccountClass(i.type) + 7 new p_* rpc args; new updateInvestmentValue() export)
+      - src/modules/finance/data/account-repository.ts (UNCHANGED this batch — that is Slice B's
+        B-001, deliberately not touched)
+      - src/app/(app)/cuentas/actions.ts (modified — minimal guard branch for
+        investment/loaned so Slice A compiles standalone; NOT B-004's real UI branches)
+      - tests/unit/account-domain.test.ts (created — A-004/A-005 RED/GREEN, 5/5 pass)
+      - tests/unit/create-account-schema.test.ts (created — A-007/A-008 RED/GREEN, 6/6 pass)
+      - tests/unit/account-api-class.test.ts (created — A-010 regression pin, 4/4 pass)
+    db_gate: >
+      EXECUTED for real against the local Supabase Postgres container (supabase_db_LIFE_OS).
+      `supabase db reset --local` failed with the known pre-existing "Could not find the
+      supabase-go binary" LegacyDbBootstrapError gap (same as finance-transaction-subtypes and
+      finance-dashboard-feed). Confirmed the live accounts_type_check constraint name via
+      `pg_constraint` (matched `accounts_type_check` exactly, as design.md predicted) and the
+      live create_account() 13-arg signature via `\df` BEFORE writing the migration. Applied
+      both new migrations directly via `docker cp` + `docker exec ... psql -f`, registered them
+      in supabase_migrations.schema_migrations. Re-verified via `\df finance.create_account` and
+      `\df finance.update_investment_value` — exactly ONE signature each (20-arg and 4-arg).
+      Ran the full pgTAP suite (all 10 files) via `docker exec ... psql -f` per file — ZERO
+      failures across all suites, including 040_finance_money.sql's own 50/50 (20 new: eight-type
+      class derivation x2, detail-row atomicity x2, detail exclusivity x4, THE named inverted
+      loaned-sign-guard regression x2 (positive/zero accepted, negative rejected 22023 — proven
+      as a SEPARATE statement from the liability guard, never appended to its list), defaults x2,
+      update_investment_value x5 (updates value+valued_on, zero transactions written, rejects
+      non-investment/foreign-household/non-member), and the widened-CHECK-still-rejects-unknown
+      regression x1 (fires as 22023 via the trigger's catch-all, which runs before the CHECK —
+      documented as an expected-behavior correction from the task's literal "23514" wording, see
+      Deviations).
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next build) —
+      PASS. check-tokens: OK, no raw hex outside src/design-system/tokens/. next build: compiled
+      successfully, all 13 routes generated (identical route count to pre-change, no new routes
+      in this DB+contracts-only slice).
+    test_gate: >
+      `pnpm test` (full vitest suite) — 163/164 pass across 29/30 files. The 1 failure is
+      tests/unit/boundary-lint.test.ts, the project's documented pre-existing flaky 5s-timeout
+      ESLint-subprocess test — re-ran in isolation and it passed (2.32s), confirming non-regression
+      (same flake documented in finance-dashboard-feed and finance-transaction-subtypes
+      apply-progress). All new/modified suites green: account-domain.test.ts (5/5),
+      create-account-schema.test.ts (6/6), account-api-class.test.ts (4/4), plus every
+      pre-existing suite unaffected (finance-domain.test.ts 19/19, account-creation-ui.test.ts
+      4/4 against the real local stack, finance-facade.test.ts 11/11, etc).
+    pr: "not opened — implementation only, per instructions"
+
+  pr_2_slice_b_ui:
+    name: "Slice B — UI: AccountForm fieldsets, actions.ts branches, account-repository read path, /cuentas list rendering"
+    status: complete
+    tasks_done: [B-001, B-002, B-003, B-004, B-005]
+    tasks_total: 5
+    branch: feat/finance-account-types-expansion-2-ui
+    base: feat/finance-account-types-expansion-1-db-contracts
+    files:
+      - src/modules/finance/data/account-repository.ts (modified — B-001: 2 more parallel
+        .in("account_id", ids) selects against account_investment_details/
+        account_loaned_details, AccountListItem extended with investment/loaned optional blocks)
+      - tests/unit/account-form-render.test.tsx (modified — B-002 RED then GREEN: 2 new RTL
+        tests, investment fieldset reveal + helper text, loaned fieldset reveal + inverted
+        sign hint text + min=0 attribute)
+      - src/app/(app)/cuentas/AccountForm.tsx (modified — B-003: TYPE_LABELS +2
+        (investment: "Inversiones", loaned: "Prestado"), signHintFor(type) helper replacing
+        the inline two-way ternary with a three-way sign rule, 2 new fieldsets (Inversión,
+        Datos del préstamo))
+      - src/app/(app)/cuentas/actions.ts (modified — B-004: replaced Slice A's temporary
+        VALIDATION_ERROR guard branch with the real investment/loaned else-if branches
+        building CreateAccountInput's discriminated union, using the existing
+        toOptionalCents helper)
+      - src/app/(app)/cuentas/page.tsx (modified — B-005: TYPE_LABELS +2, investment card
+        renders rendimiento (current_value_cents - balance_cents, gain or loss, never
+        clamped) + valued_on, loaned card renders counterparty_name)
+      - tests/integration/account-creation-ui.test.ts (modified — 2 new real-stack tests:
+        create an investment account via createAccountAction then verify listActiveAccounts
+        returns its cost-basis/current-value detail; same for a loaned account's
+        counterparty detail, exercising B-001's read path end-to-end against live local
+        Supabase, not mocked)
+      - openspec/changes/finance-account-types-expansion/tasks.md (all B-001..B-005 marked [x])
+    tdd_evidence: >
+      B-002/B-003 RED-GREEN confirmed for real: RED run showed 2/5 failing (getByRole "option"
+      for "Inversiones"/"Prestado" not found — TYPE_LABELS still had 6 entries, no
+      investment/loaned fieldsets existed). GREEN run after AccountForm.tsx edits: 5/5 pass.
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next build)
+      — PASS, run twice (before and after the integration-test-only edit). check-tokens: OK.
+      next build: compiled successfully, all 13 routes generated (same route count as Slice A
+      — no new routes in this UI-only slice, /cuentas and /cuentas/nueva already existed).
+    test_gate: >
+      `pnpm test` (full vitest suite) — 167/168 pass across 30 files, 2 full runs. The 1
+      failure both times is tests/unit/boundary-lint.test.ts, the project's documented
+      pre-existing flaky 5s-timeout ESLint-subprocess test — re-ran in isolation and it
+      passed (2.25s), confirming non-regression (same flake as Slice A and prior finance
+      changes). All new/modified suites green: account-form-render.test.tsx (5/5, was 3/5
+      pre-change), account-creation-ui.test.ts (6/6, was 4/6 pre-change, 2 new real-stack
+      investment/loaned round-trip tests). Focused command:
+      `pnpm vitest run tests/unit/account-form-render.test.tsx
+      tests/integration/account-creation-ui.test.ts` — 11/11 pass.
+    db_gate: >
+      No new migrations in this slice (read-path-only against Slice A's already-migrated
+      detail tables). Extended real-stack coverage instead of new pgTAP: 2 new integration
+      tests in tests/integration/account-creation-ui.test.ts exercise the actual Server
+      Action -> RPC -> RLS-scoped read round trip against the live local Postgres container
+      (supabase_db_LIFE_OS, confirmed running via `docker ps`), proving B-001's
+      account-repository read path returns the correct investment/loaned detail rows under
+      real RLS, not a mock.
+    pr: "not opened — implementation only, per instructions"
+
+next_recommended: sdd-verify (all 15 tasks, A-001..A-010 + B-001..B-005, complete)

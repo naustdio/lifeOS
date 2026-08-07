@@ -64,4 +64,40 @@ describe("AccountForm — smoke render (T-036 / C-1)", () => {
     expect(screen.getByLabelText("Fecha objetivo (opcional)")).toBeInTheDocument();
     expect(screen.queryByText("Datos del préstamo")).not.toBeInTheDocument();
   });
+
+  it("shows the investment fieldset (and hides the others) when type=investment", () => {
+    render(<AccountForm />);
+
+    fireEvent.click(screen.getByLabelText("Tipo de cuenta"));
+    fireEvent.click(screen.getByRole("option", { name: "Inversiones" }));
+
+    expect(screen.getByText("Inversión", { selector: "legend" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Costo base (MXN)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Valor actual (MXN, opcional)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Fecha de valuación (opcional)")).toBeInTheDocument();
+    expect(
+      screen.getByText(/la app no consulta precios de mercado/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Datos del préstamo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Meta de ahorro", { selector: "legend" })).not.toBeInTheDocument();
+  });
+
+  it("shows the loaned fieldset with an inverted sign hint when type=loaned", () => {
+    render(<AccountForm />);
+
+    fireEvent.click(screen.getByLabelText("Tipo de cuenta"));
+    fireEvent.click(screen.getByRole("option", { name: "Prestado" }));
+
+    expect(screen.getByText("Datos del préstamo", { selector: "legend" })).toBeInTheDocument();
+    expect(screen.getByLabelText("¿Quién te debe?")).toBeInTheDocument();
+    expect(screen.getByLabelText("Monto original (MXN)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Plazo (meses, opcional)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Fecha de retorno esperada (opcional)")).toBeInTheDocument();
+    expect(
+      screen.getByText("Para dinero prestado, el saldo inicial debe ser cero o positivo."),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Saldo inicial (MXN)")).toHaveAttribute("min", "0");
+    expect(screen.queryByText("Inversión", { selector: "legend" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Meta de ahorro", { selector: "legend" })).not.toBeInTheDocument();
+  });
 });

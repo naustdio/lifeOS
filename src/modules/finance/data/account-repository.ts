@@ -24,6 +24,17 @@ export type AccountListItem = {
     targetAmountCents: number;
     targetDate: string | null;
   };
+  investment?: {
+    costBasisCents: number;
+    currentValueCents: number;
+    valuedOn: string;
+  };
+  loaned?: {
+    counterpartyName: string;
+    originalAmountCents: number;
+    termMonths: number | null;
+    expectedReturnDate: string | null;
+  };
 };
 
 /** Active (non-archived) accounts for the current space, with derived balances. */
@@ -45,27 +56,42 @@ export async function listActiveAccounts(
 
   const ids = accounts.map((a) => a.id as string);
 
-  const [{ data: balances }, { data: liabilities }, { data: goals }] = await Promise.all([
-    supabase.schema("finance").from("account_balances").select("account_id, balance_cents").in("account_id", ids),
-    supabase
-      .schema("finance")
-      .from("account_liability_details")
-      .select("account_id, interest_rate_bp, term_months, monthly_payment_cents, start_date")
-      .in("account_id", ids),
-    supabase
-      .schema("finance")
-      .from("account_goal_details")
-      .select("account_id, target_amount_cents, target_date")
-      .in("account_id", ids),
-  ]);
+  const [{ data: balances }, { data: liabilities }, { data: goals }, { data: investments }, { data: loans }] =
+    await Promise.all([
+      supabase.schema("finance").from("account_balances").select("account_id, balance_cents").in("account_id", ids),
+      supabase
+        .schema("finance")
+        .from("account_liability_details")
+        .select("account_id, interest_rate_bp, term_months, monthly_payment_cents, start_date")
+        .in("account_id", ids),
+      supabase
+        .schema("finance")
+        .from("account_goal_details")
+        .select("account_id, target_amount_cents, target_date")
+        .in("account_id", ids),
+      supabase
+        .schema("finance")
+        .from("account_investment_details")
+        .select("account_id, cost_basis_cents, current_value_cents, valued_on")
+        .in("account_id", ids),
+      supabase
+        .schema("finance")
+        .from("account_loaned_details")
+        .select("account_id, counterparty_name, original_amount_cents, term_months, expected_return_date")
+        .in("account_id", ids),
+    ]);
 
   const balanceByAccount = new Map((balances ?? []).map((b) => [b.account_id as string, Number(b.balance_cents)]));
   const liabilityByAccount = new Map((liabilities ?? []).map((l) => [l.account_id as string, l]));
   const goalByAccount = new Map((goals ?? []).map((g) => [g.account_id as string, g]));
+  const investmentByAccount = new Map((investments ?? []).map((v) => [v.account_id as string, v]));
+  const loanedByAccount = new Map((loans ?? []).map((l) => [l.account_id as string, l]));
 
   return accounts.map((a) => {
     const liab = liabilityByAccount.get(a.id as string);
     const goal = goalByAccount.get(a.id as string);
+    const investment = investmentByAccount.get(a.id as string);
+    const loaned = loanedByAccount.get(a.id as string);
     return {
       id: a.id as string,
       name: a.name as string,
@@ -85,6 +111,21 @@ export async function listActiveAccounts(
         ? {
             targetAmountCents: Number(goal.target_amount_cents),
             targetDate: (goal.target_date as string | null) ?? null,
+          }
+        : undefined,
+      investment: investment
+        ? {
+            costBasisCents: Number(investment.cost_basis_cents),
+            currentValueCents: Number(investment.current_value_cents),
+            valuedOn: investment.valued_on as string,
+          }
+        : undefined,
+      loaned: loaned
+        ? {
+            counterpartyName: loaned.counterparty_name as string,
+            originalAmountCents: Number(loaned.original_amount_cents),
+            termMonths: (loaned.term_months as number | null) ?? null,
+            expectedReturnDate: (loaned.expected_return_date as string | null) ?? null,
           }
         : undefined,
     };

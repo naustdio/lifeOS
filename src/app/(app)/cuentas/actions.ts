@@ -65,6 +65,30 @@ export async function createAccountAction(
         targetDate: targetDate || undefined,
       },
     };
+  } else if (type === "investment") {
+    const valuedOn = String(formData.get("valuedOn") ?? "");
+    input = {
+      ...base,
+      type,
+      investment: {
+        costBasisCents: toOptionalCents(formData.get("costBasis")) ?? 0,
+        currentValueCents: toOptionalCents(formData.get("currentValue")),
+        valuedOn: valuedOn || undefined,
+      },
+    };
+  } else if (type === "loaned") {
+    const expected = String(formData.get("expectedReturnDate") ?? "");
+    const term = Number(formData.get("termMonths") ?? 0);
+    input = {
+      ...base,
+      type,
+      loaned: {
+        counterpartyName: String(formData.get("counterpartyName") ?? "").trim(),
+        originalAmountCents: toOptionalCents(formData.get("originalAmount")) ?? 0,
+        termMonths: term > 0 ? term : undefined,
+        expectedReturnDate: expected || undefined,
+      },
+    };
   } else {
     input = { ...base, type };
   }

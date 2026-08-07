@@ -19,9 +19,28 @@ const TYPE_LABELS: Record<string, string> = {
   credit_card: "Tarjeta de crédito",
   liability: "Préstamo / deuda",
   savings_goal: "Meta de ahorro",
+  investment: "Inversiones",
+  loaned: "Prestado",
 };
 
 const INITIAL_STATE: AccountFormState = { error: null };
+
+/** Opening-balance sign constraint per type (design.md §6): debt types
+ * (`credit_card`/`liability`) cap at zero-or-negative; `loaned` is the
+ * inverse (zero-or-positive, a receivable); every other type is
+ * unconstrained. */
+function signHintFor(type: string): { max?: number; min?: number; hint: string | null } {
+  if (type === "credit_card" || type === "liability") {
+    return { max: 0, hint: "Para deuda, el saldo inicial debe ser cero o negativo." };
+  }
+  if (type === "loaned") {
+    return {
+      min: 0,
+      hint: "Para dinero prestado, el saldo inicial debe ser cero o positivo.",
+    };
+  }
+  return { hint: null };
+}
 
 /** Account-creation form (T-036). Conditional fields per `CreateAccountInput`'s
  * discriminated union: `liability` detail block only for `type=liability`,
@@ -29,6 +48,7 @@ const INITIAL_STATE: AccountFormState = { error: null };
 export function AccountForm() {
   const [state, formAction, pending] = useActionState(createAccountAction, INITIAL_STATE);
   const [type, setType] = useState("cash");
+  const signHint = signHintFor(type);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -67,13 +87,10 @@ export function AccountForm() {
           type="number"
           step="0.01"
           defaultValue="0"
-          max={type === "credit_card" || type === "liability" ? 0 : undefined}
+          max={signHint.max}
+          min={signHint.min}
         />
-        {(type === "credit_card" || type === "liability") && (
-          <p className="text-xs text-muted-foreground">
-            Para deuda, el saldo inicial debe ser cero o negativo.
-          </p>
-        )}
+        {signHint.hint && <p className="text-xs text-muted-foreground">{signHint.hint}</p>}
       </div>
 
       {type === "liability" && (
@@ -126,6 +143,69 @@ export function AccountForm() {
               Fecha objetivo (opcional)
             </label>
             <Input id="targetDate" name="targetDate" type="date" />
+          </div>
+        </fieldset>
+      )}
+
+      {type === "investment" && (
+        <fieldset className="flex flex-col gap-3 rounded-card border border-border p-4">
+          <legend className="px-1 text-xs font-medium text-muted-foreground">Inversión</legend>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="costBasis" className="text-sm">
+              Costo base (MXN)
+            </label>
+            <Input id="costBasis" name="costBasis" type="number" step="0.01" required />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="currentValue" className="text-sm">
+              Valor actual (MXN, opcional)
+            </label>
+            <Input id="currentValue" name="currentValue" type="number" step="0.01" />
+            <p className="text-xs text-muted-foreground">
+              Valor actual, capturado por ti — la app no consulta precios de mercado.
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="valuedOn" className="text-sm">
+              Fecha de valuación (opcional)
+            </label>
+            <Input id="valuedOn" name="valuedOn" type="date" />
+          </div>
+        </fieldset>
+      )}
+
+      {type === "loaned" && (
+        <fieldset className="flex flex-col gap-3 rounded-card border border-border p-4">
+          <legend className="px-1 text-xs font-medium text-muted-foreground">Datos del préstamo</legend>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="counterpartyName" className="text-sm">
+              ¿Quién te debe?
+            </label>
+            <Input
+              id="counterpartyName"
+              name="counterpartyName"
+              required
+              maxLength={60}
+              placeholder="¿Quién te debe?"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="originalAmount" className="text-sm">
+              Monto original (MXN)
+            </label>
+            <Input id="originalAmount" name="originalAmount" type="number" step="0.01" required />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="termMonths" className="text-sm">
+              Plazo (meses, opcional)
+            </label>
+            <Input id="termMonths" name="termMonths" type="number" min={1} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="expectedReturnDate" className="text-sm">
+              Fecha de retorno esperada (opcional)
+            </label>
+            <Input id="expectedReturnDate" name="expectedReturnDate" type="date" />
           </div>
         </fieldset>
       )}
