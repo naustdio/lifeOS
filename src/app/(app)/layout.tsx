@@ -1,4 +1,4 @@
-import { Home, Repeat, Target, Wallet } from "lucide-react";
+import { CalendarDays, Home, Repeat, Target, Wallet } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type * as React from "react";
@@ -68,6 +68,11 @@ export default async function AppLayout({
               href: "/recurrentes",
               label: "Recurrentes",
               icon: <Repeat className="h-5 w-5" aria-hidden />,
+            },
+            {
+              href: "/calendario",
+              label: "Calendario",
+              icon: <CalendarDays className="h-5 w-5" aria-hidden />,
             },
           ]}
         />
