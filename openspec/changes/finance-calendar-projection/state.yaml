@@ -1,0 +1,67 @@
+# DAG state for change `finance-calendar-projection` (survives compaction).
+# Updated by sdd-apply as PR groups land.
+
+change: finance-calendar-projection
+schema: spec-driven
+delivery_strategy: ask-on-risk
+chain_strategy: stacked-to-main
+resolved_pr_count: 2
+
+apply_progress:
+  pr_a_domain:
+    name: "Domain Projection + Unit Tests"
+    status: complete
+    tasks_done: [K-001, K-002, K-003, K-004, K-005, K-006, K-007, K-008]
+    tasks_total: 8
+    branch: feat/finance-calendar-projection-1-domain
+    base: main
+    files:
+      - src/modules/finance/domain/calendar.ts
+      - src/modules/finance/domain/index.ts (modified — one line, `export * from "./calendar";`)
+      - src/modules/finance/api/index.ts (modified — barrel re-export of calendar's public
+        surface; api/index.ts did not previously re-export any `domain/` barrel at all, so
+        K-001's verification found "no" and added the block, matching design.md Open Question #1)
+      - tests/unit/finance-calendar-projection.test.ts
+      - tests/unit/finance-calendar-balance.test.ts
+    tdd_evidence: >
+      RED-first followed exactly for the two critical-logic surfaces the tasks.md header calls
+      out (this project's non-blanket-TDD, critical-logic-focus convention). K-002/K-003: wrote
+      tests/unit/finance-calendar-projection.test.ts (14 tests) against a not-yet-existing
+      domain/calendar.ts — confirmed RED via `pnpm vitest run tests/unit/finance-calendar-projection.test.ts`
+      ("Failed to resolve import ... Does the file exist?"). K-004: implemented
+      projectOccurrences() to satisfy those tests. K-005/K-006: wrote
+      tests/unit/finance-calendar-balance.test.ts (13 tests) against not-yet-existing
+      projectBalance()/buildMonthCells() — confirmed RED the same way. K-007: implemented both
+      functions. Both suites passed GREEN on the first implementation attempt (27/27), no
+      iteration needed. The monotonic-guard-termination and 128-occurrence-cap tests use
+      `vi.doMock` on `./recurring`'s `nextDueDate` (real frequencies always strictly advance, so
+      those two guard branches are unreachable through genuine data — the mock proves the
+      defensive code path itself works, per design.md §6 Decision 2).
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next build) —
+      clean, zero errors/warnings, full production build succeeds including the unrelated
+      existing routes.
+    test_gate: >
+      `pnpm vitest run tests/unit` — 25/26 files pass on the first full-suite run;
+      tests/unit/boundary-lint.test.ts timed out (5s) on that run, then re-run in isolation
+      (`pnpm vitest run tests/unit/boundary-lint.test.ts`) and passed in 2.2s — confirmed the
+      SAME documented pre-existing ESLint-subprocess flake recorded in
+      archive/finance-recurring/state.yaml's pr_4_tests, not a regression introduced by this
+      change. Final tally: 26/26 files, 157/157 tests pass (27 of them new: 14 in
+      finance-calendar-projection.test.ts, 13 in finance-calendar-balance.test.ts).
+      `git diff --stat main -- supabase/migrations/ src/modules/finance/data/ package.json
+      src/modules/finance/domain/recurring.ts` — empty (zero diff), matching design.md §7's
+      success criteria; full branch diff vs main touches exactly 2 files
+      (api/index.ts, domain/index.ts) plus 3 new files.
+    pr: "not yet opened — awaiting instruction per apply-phase contract"
+
+  pr_b_ui:
+    name: "Calendar UI — /calendario route, CalendarGrid pattern, nav entry"
+    status: pending
+    tasks_done: []
+    tasks_total: 8
+    branch: feat/finance-calendar-projection-2-ui (planned)
+    base: feat/finance-calendar-projection-1-domain
+
+next_recommended: sdd-apply (PR B: K-009..K-016) once PR A is reviewed/merged, or sdd-verify now
+  to independently confirm PR A's requirement/scenario coverage before opening the PR.
