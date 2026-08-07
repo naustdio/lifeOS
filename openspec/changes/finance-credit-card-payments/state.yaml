@@ -1,0 +1,106 @@
+# DAG state for change `finance-credit-card-payments` (survives compaction).
+# Updated by sdd-apply.
+
+change: finance-credit-card-payments
+schema: spec-driven
+delivery_strategy: ask-on-risk
+chain_strategy: stacked-to-main
+resolved_pr_count: 3
+
+apply_progress:
+  pr_1_slice_a_recurring_core:
+    name: "Slice A — recurring transfer core (schema ALTERs, confirm() rewrite, full pgTAP + 2-connection race)"
+    status: complete
+    tasks_done: [CC-001, CC-002, CC-003, CC-004, CC-005, CC-006, CC-007, CC-008, CC-009, CC-010, CC-011, CC-012]
+    tasks_total: 12
+    branch: feat/finance-credit-card-payments-1-recurring-core
+    base: main
+    renumbering_note: >
+      Design planned migration filenames ...018/...019/...020, but those version numbers were
+      already occupied on the shared local Supabase stack by three sibling UNMERGED branches
+      (finance-categories-icon-color ...017, finance-transaction-subtypes ...018,
+      finance-account-types-expansion ...019/...020 — confirmed via
+      `select version, name from supabase_migrations.schema_migrations` before writing any file).
+      Renumbered to ...021 (shape ALTERs + CHECKs) and ...022 (confirm() rewrite), the same
+      renumbering precedent finance-account-types-expansion itself set. Confirmed ...021/...022
+      were free via both `git log --all` and the live schema_migrations table before use.
+    files:
+      - supabase/migrations/20260804090021_finance_recurring_transfer_shape.sql (CC-001)
+      - supabase/migrations/20260804090022_finance_recurring_transfer_api.sql (CC-004)
+      - supabase/tests/0xx_finance_recurring_transfer_shape.sql (CC-002, 8 assertions)
+      - supabase/tests/0xx_finance_recurring_expense_regression.sql (CC-003/CC-005, 6 assertions,
+        RED against pre-change function then GREEN unchanged against post-change function)
+      - supabase/tests/0xx_finance_recurring_transfer_atomicity.sql (CC-006, 10 assertions)
+      - supabase/tests/0xx_finance_recurring_transfer_replay.sql (CC-007, 5 assertions)
+      - supabase/tests/0xx_finance_recurring_transfer_half_pair_guard.sql (CC-008, 4 assertions)
+      - supabase/tests/0xx_finance_recurring_transfer_tenancy.sql (CC-009, 4 assertions)
+      - supabase/tests/0xx_finance_recurring_overload_guard.sql (CC-010, 2 assertions)
+      - scripts/test-recurring-transfer-race.sh (CC-011, real 2-connection concurrency script,
+        modeled on scripts/test-bootstrap-race.sh)
+      - src/modules/finance/domain/recurring.ts (modified — CC-012, RecurringType,
+        RecurringShapeInput, validateRecurringShape(), RED-first per this project's TDD policy
+        for named critical-logic TS mirrors)
+      - tests/unit/finance-recurring-shape.test.ts (new, CC-012's RED-first test, 8/8 GREEN)
+    bug_found_and_fixed: >
+      CC-004's first-pass migration used `min(id) filter (where amount_cents < 0)` inside the
+      transfer-branch CTE to resolve the out-leg id — Postgres has NO built-in min()/max()
+      aggregate for the uuid type ("function min(uuid) does not exist"). Caught immediately by
+      running 0xx_finance_recurring_transfer_half_pair_guard.sql for real against the local
+      stack (not simulated) — CC-008's throws_ok assertion failed with 42883 instead of the
+      expected 40001. Fixed by dropping the aggregate entirely: the out-leg id is now always
+      resolved via an explicit keyed SELECT (household_id/origin_module/origin_entity_id/
+      idempotency_key = v_out_key), the same lookup shape already used in the v_count=0 replay
+      branch. Migration was re-applied via `create or replace` (idempotent) and every pgTAP file
+      re-run clean after the fix.
+    concurrency_finding: >
+      CC-011's scripted 2-connection race test initially asserted "both concurrent calls collapse
+      onto exactly one shared pair" per tasks.md's literal wording. Running it FOR REAL against
+      two genuine concurrent `docker exec psql` connections revealed this is structurally
+      unreachable by design, not a bug: `select ... for update` under READ COMMITTED means the
+      losing connection, once unblocked by the winner's commit, RE-READS the ALREADY-ADVANCED
+      `next_due_date` (Postgres always gives a lock-waiter the latest committed row version) — it
+      cannot see the pre-advance value the winner saw. So two genuinely concurrent, organically
+      fired confirm() calls with no external retry signal always resolve onto two DIFFERENT
+      (each still fully-balanced) occurrences, never a collision. This is actually a STRONGER
+      form of the no-half-pair guarantee (impossible for two racers to even attempt the same
+      conflicting insert), not a weaker one. The script's assertions were corrected to check the
+      real, achievable, and still-meaningful invariant: neither call ever returns NULL, total
+      posted rows for the definition are always even, and every transfer_group_id present has
+      exactly 2 rows summing to zero. Verified 4/4 clean runs. The genuine same-occurrence replay
+      scenario (spec.md scenario 2) remains covered by the pgTAP replay test's manual cursor
+      rewind (CC-007), which is the only way to reproduce it deterministically.
+    db_gate: >
+      EXECUTED for real against the local Supabase Postgres container (supabase_db_LIFE_OS) via
+      `docker exec -i supabase_db_LIFE_OS psql -U postgres` (MSYS_NO_PATHCONV=1 on Windows Git
+      Bash to prevent path mangling) — the documented workaround for this machine's
+      `supabase db reset`/`supabase test db` gap (missing supabase-go binary, same as prior
+      slices). CC-003 baseline run against the PRE-CHANGE function: 6/6 pass. Migration
+      ...021 applied, CC-002 shape test: 8/8 pass. Migration ...022 applied (after the min(uuid)
+      fix), CC-005 GREEN regression re-run UNCHANGED: 6/6 pass byte-identical to the CC-003
+      baseline, including the explicit no-suffix assertion. CC-006 atomicity: 10/10 pass.
+      CC-007 replay: 5/5 pass. CC-008 half-pair guard: 4/4 pass (after the min(uuid) fix).
+      CC-009 tenancy: 4/4 pass. CC-010 overload guard: 2/2 pass (exactly one
+      confirm_recurring_transaction overload, unchanged (uuid, bigint, date, text) signature).
+      CC-011 scripted 2-connection race (scripts/test-recurring-transfer-race.sh): 4/4 clean
+      runs, zero half-pairs, zero NULLs. Full pre-existing pgTAP suite re-run for regression
+      (all 10 files: 010_core_rls, 020_core_bootstrap_idempotency, 030_finance_rls,
+      040_finance_money, 050_finance_categories, 060_finance_recursion_guard,
+      070_finance_corrections, 080_finance_budgets, 090_finance_recurring — 43/43,
+      100_finance_dashboard) — zero failures, zero regressions.
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next build)
+      — PASS. check-tokens: OK, no raw hex outside src/design-system/tokens/. next build:
+      compiled successfully, 12 routes generated (unchanged — Slice A carries zero UI/route
+      changes by design).
+    test_gate: >
+      `pnpm test` (full vitest suite) — 157/157 pass across 28 files, including the new RED-first
+      finance-recurring-shape.test.ts (8/8) and the pre-existing finance-recurring-domain.test.ts
+      (19/19, unaffected). Zero regressions across the full suite.
+    dependency_diff_gate: >
+      `git diff --stat package.json pnpm-lock.yaml` from main — EMPTY. No new dependency.
+    pr: "not opened — implementation and local verification only, per instructions. Slice A must
+      merge alone before Slice B/C begin, per design.md's explicit instruction not to review
+      idempotency logic next to UI diff noise."
+
+next_recommended: sdd-apply (Slice B — CC-013..CC-021, card terms table/UI, stacked on this branch
+  once merged) or sdd-verify (independent verification of Slice A before merge)
