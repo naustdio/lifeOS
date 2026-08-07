@@ -153,6 +153,7 @@ const BaseRecurringFields = {
  */
 export const CreateRecurringInputSchema = z.discriminatedUnion("type", [
   z.object({ ...BaseRecurringFields, type: z.literal("expense"), categoryId: z.string().uuid() }),
+  z.object({ ...BaseRecurringFields, type: z.literal("income"), categoryId: z.string().uuid() }),
   z.object({ ...BaseRecurringFields, type: z.literal("transfer"), toAccountId: z.string().uuid() }),
 ]);
 export type CreateRecurringInput = z.input<typeof CreateRecurringInputSchema>;

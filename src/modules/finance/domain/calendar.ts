@@ -22,6 +22,13 @@ function isKnownFrequency(value: string): value is Frequency {
   return KNOWN_FREQUENCIES.includes(value);
 }
 
+/** Direction a projected occurrence moves the balance: `outflow` (expense, subtracts) or
+ *  `inflow` (income, adds). The caller derives this from the recurring definition's `type`
+ *  (`expense` -> `outflow`, `income` -> `inflow`) — `transfer`-type definitions are excluded
+ *  before reaching this domain entirely (they move money between the household's own accounts,
+ *  never changing net worth), same as before this field existed. */
+export type ProjectionKind = "outflow" | "inflow";
+
 /** Structural subset of `RecurringListItem` — the domain never imports a data type
  *  (design.md §2). */
 export type ProjectableDefinition = {
@@ -30,6 +37,7 @@ export type ProjectableDefinition = {
   categoryId: string;
   accountId: string;
   amountCents: number;
+  kind: ProjectionKind;
   frequency: Frequency;
   nextDueDate: string;
   active: boolean;
@@ -40,9 +48,11 @@ export type ProjectedOccurrence = {
   description: string;
   categoryId: string;
   accountId: string;
-  /** POSITIVE magnitude of the outflow — `Math.abs` applied on ingest (design.md §6 Decision 9),
-   *  so a sign flip in stored data cannot invert the curve into fake income. */
+  /** POSITIVE magnitude — `Math.abs` applied on ingest (design.md §6 Decision 9), so a sign flip
+   *  in stored data cannot silently invert direction. Use `kind` to know whether this adds to or
+   *  subtracts from the running balance. */
   amountCents: number;
+  kind: ProjectionKind;
   /** The day cell this occurrence lands in. */
   date: string;
   /** The definition's own cursor; differs from `date` only when folded (overdue: true). */
@@ -53,10 +63,10 @@ export type ProjectedOccurrence = {
 export type ProjectedDay = {
   date: string;
   occurrences: ProjectedOccurrence[];
-  /** Sum of `occurrences[].amountCents` for this day only. */
-  outflowCents: number;
-  /** Sum of `outflowCents` from `fromDate` through `date`, inclusive. */
-  cumulativeOutflowCents: number;
+  /** Signed net movement for this day only: positive = net inflow, negative = net outflow. */
+  netCents: number;
+  /** Signed cumulative net movement from `fromDate` through `date`, inclusive. */
+  cumulativeNetCents: number;
   closingBalanceCents: number;
   isNegative: boolean;
 };
@@ -67,7 +77,8 @@ export type BalanceProjection = {
   anchorCents: number;
   /** EXACTLY `horizonDays + 1` entries, contiguous, `days[0].date === fromDate`. */
   days: ProjectedDay[];
-  totalOutflowCents: number;
+  /** Signed net movement across the whole window: positive = net inflow, negative = net outflow. */
+  totalNetCents: number;
   firstNegativeDate: string | null;
   overdueCount: number;
 };
@@ -128,6 +139,7 @@ export function projectOccurrences(
         categoryId: def.categoryId,
         accountId: def.accountId,
         amountCents: amount,
+        kind: def.kind,
         date: fromDate,
         scheduledDate: cursor,
         overdue: true,
@@ -143,6 +155,7 @@ export function projectOccurrences(
         categoryId: def.categoryId,
         accountId: def.accountId,
         amountCents: amount,
+        kind: def.kind,
         date: cursor,
         scheduledDate: cursor,
         overdue: false,
@@ -198,9 +211,12 @@ export function projectBalance(
   for (let i = 0; i <= horizon; i += 1) {
     const date = addDaysISO(fromDate, i);
     const dayOccurrences = byDate.get(date) ?? [];
-    const outflowCents = dayOccurrences.reduce((sum, o) => sum + o.amountCents, 0);
-    running += outflowCents;
-    const closingBalanceCents = anchorCents - running;
+    const netCents = dayOccurrences.reduce(
+      (sum, o) => sum + (o.kind === "inflow" ? o.amountCents : -o.amountCents),
+      0,
+    );
+    running += netCents;
+    const closingBalanceCents = anchorCents + running;
     const isNegative = closingBalanceCents < 0;
     if (isNegative && firstNegativeDate === null) firstNegativeDate = date;
     overdueCount += dayOccurrences.filter((o) => o.overdue).length;
@@ -208,8 +224,8 @@ export function projectBalance(
     days.push({
       date,
       occurrences: dayOccurrences,
-      outflowCents,
-      cumulativeOutflowCents: running,
+      netCents,
+      cumulativeNetCents: running,
       closingBalanceCents,
       isNegative,
     });
@@ -220,7 +236,7 @@ export function projectBalance(
     toDate,
     anchorCents,
     days,
-    totalOutflowCents: running,
+    totalNetCents: running,
     firstNegativeDate,
     overdueCount,
   };

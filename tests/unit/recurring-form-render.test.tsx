@@ -24,6 +24,7 @@ const ACCOUNTS = [
   { id: "acc-3", name: "Tarjeta Platino", class: "liability" as const },
 ];
 const CATEGORIES = [{ id: "cat-1", name: "Renta" }];
+const INCOME_CATEGORIES = [{ id: "cat-inc-1", name: "Salario" }];
 
 describe("RecurringForm — smoke render (R-022)", () => {
   afterEach(() => {
@@ -32,7 +33,7 @@ describe("RecurringForm — smoke render (R-022)", () => {
   });
 
   it("renders account, category, frequency, amount, date, and description fields", () => {
-    render(<RecurringForm accounts={ACCOUNTS} categories={CATEGORIES} />);
+    render(<RecurringForm accounts={ACCOUNTS} categories={CATEGORIES} incomeCategories={INCOME_CATEGORIES} />);
 
     expect(screen.getByLabelText("Cuenta")).toBeInTheDocument();
     expect(screen.getByLabelText("Categoría")).toBeInTheDocument();
@@ -43,7 +44,7 @@ describe("RecurringForm — smoke render (R-022)", () => {
   });
 
   it("the frequency picker is the design-system Select — no VISIBLE raw <select> in the tree", () => {
-    const { container } = render(<RecurringForm accounts={ACCOUNTS} categories={CATEGORIES} />);
+    const { container } = render(<RecurringForm accounts={ACCOUNTS} categories={CATEGORIES} incomeCategories={INCOME_CATEGORIES} />);
 
     // Radix Select renders a visually-hidden native <select> internally (for plain-form-action
     // compatibility, see design-system/ui/select.tsx's header comment) — it must be
@@ -65,7 +66,7 @@ describe("RecurringForm — smoke render (R-022)", () => {
   // account). Fixed-amount-per-occurrence copy appears; the amount is never derived from a live
   // card balance.
   it("switching Tipo to Pago de tarjeta hides Categoría and shows Tarjeta destino", () => {
-    render(<RecurringForm accounts={ACCOUNTS} categories={CATEGORIES} />);
+    render(<RecurringForm accounts={ACCOUNTS} categories={CATEGORIES} incomeCategories={INCOME_CATEGORIES} />);
 
     expect(screen.getByLabelText("Categoría")).toBeInTheDocument();
     expect(screen.queryByLabelText("Tarjeta destino")).not.toBeInTheDocument();
@@ -84,5 +85,17 @@ describe("RecurringForm — smoke render (R-022)", () => {
     // The source account (Efectivo, class=asset) never appears as a destination option, and
     // neither does the currently-selected source account itself (self-transfer guard).
     expect(screen.queryByRole("option", { name: "Efectivo" })).not.toBeInTheDocument();
+  });
+
+  it("switching Tipo to Ingreso shows the income category list", () => {
+    render(<RecurringForm accounts={ACCOUNTS} categories={CATEGORIES} incomeCategories={INCOME_CATEGORIES} />);
+
+    fireEvent.click(screen.getByLabelText("Tipo"));
+    fireEvent.click(screen.getByRole("option", { name: "Ingreso" }));
+
+    expect(screen.getByLabelText("Categoría")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Categoría"));
+    expect(screen.getByRole("option", { name: "Salario" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Renta" })).not.toBeInTheDocument();
   });
 });

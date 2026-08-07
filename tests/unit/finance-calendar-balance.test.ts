@@ -15,6 +15,7 @@ function def(overrides: Partial<ProjectableDefinition> & Pick<ProjectableDefinit
     categoryId: overrides.categoryId ?? "cat-1",
     accountId: overrides.accountId ?? "acct-1",
     amountCents: overrides.amountCents ?? 1000,
+    kind: overrides.kind ?? "outflow",
     frequency: overrides.frequency ?? "monthly",
     nextDueDate: overrides.nextDueDate ?? FROM_DATE,
     active: overrides.active ?? true,
@@ -35,7 +36,7 @@ describe("projectBalance — density and carry", () => {
     }
   });
 
-  it("closingBalanceCents === anchorCents - cumulativeOutflowCents on every day", async () => {
+  it("closingBalanceCents === anchorCents + cumulativeNetCents on every day", async () => {
     const { projectBalance } = await import("@/modules/finance/domain/calendar");
     const projection = projectBalance(
       [def({ id: "w1", frequency: "weekly", nextDueDate: FROM_DATE, amountCents: 5000 })],
@@ -43,11 +44,11 @@ describe("projectBalance — density and carry", () => {
       FROM_DATE,
     );
     for (const day of projection.days) {
-      expect(day.closingBalanceCents).toBe(100_000 - day.cumulativeOutflowCents);
+      expect(day.closingBalanceCents).toBe(100_000 + day.cumulativeNetCents);
     }
   });
 
-  it("cumulativeOutflowCents is monotonically non-decreasing", async () => {
+  it("cumulativeNetCents is monotonically non-increasing for outflow-only definitions", async () => {
     const { projectBalance } = await import("@/modules/finance/domain/calendar");
     const projection = projectBalance(
       [def({ id: "w1", frequency: "weekly", nextDueDate: FROM_DATE, amountCents: 5000 })],
@@ -55,15 +56,41 @@ describe("projectBalance — density and carry", () => {
       FROM_DATE,
     );
     for (let i = 1; i < projection.days.length; i += 1) {
-      expect(projection.days[i].cumulativeOutflowCents).toBeGreaterThanOrEqual(projection.days[i - 1].cumulativeOutflowCents);
+      expect(projection.days[i].cumulativeNetCents).toBeLessThanOrEqual(projection.days[i - 1].cumulativeNetCents);
     }
+  });
+
+  it("an inflow (income) definition increases the running balance instead of decreasing it", async () => {
+    const { projectBalance } = await import("@/modules/finance/domain/calendar");
+    const projection = projectBalance(
+      [def({ id: "salary", frequency: "monthly", nextDueDate: FROM_DATE, amountCents: 500_00, kind: "inflow" })],
+      10_00,
+      FROM_DATE,
+    );
+    expect(projection.days[0].netCents).toBe(500_00);
+    expect(projection.days[0].closingBalanceCents).toBe(510_00);
+    expect(projection.totalNetCents).toBeGreaterThan(0);
+  });
+
+  it("mixing an inflow and an outflow on the same day nets them against each other", async () => {
+    const { projectBalance } = await import("@/modules/finance/domain/calendar");
+    const projection = projectBalance(
+      [
+        def({ id: "salary", frequency: "monthly", nextDueDate: FROM_DATE, amountCents: 500_00, kind: "inflow" }),
+        def({ id: "rent", frequency: "monthly", nextDueDate: FROM_DATE, amountCents: 200_00, kind: "outflow" }),
+      ],
+      0,
+      FROM_DATE,
+    );
+    expect(projection.days[0].netCents).toBe(300_00);
+    expect(projection.days[0].closingBalanceCents).toBe(300_00);
   });
 
   it("zero active definitions produces a flat line at the anchor, with firstNegativeDate null", async () => {
     const { projectBalance } = await import("@/modules/finance/domain/calendar");
     const projection = projectBalance([], 42_00, FROM_DATE);
     expect(projection.days.every((d) => d.closingBalanceCents === 42_00)).toBe(true);
-    expect(projection.days.every((d) => d.outflowCents === 0)).toBe(true);
+    expect(projection.days.every((d) => d.netCents === 0)).toBe(true);
     expect(projection.firstNegativeDate).toBeNull();
   });
 
@@ -88,7 +115,7 @@ describe("projectBalance — density and carry", () => {
       10_000,
       FROM_DATE,
     );
-    expect(projection.days[0].outflowCents).toBe(5000);
+    expect(projection.days[0].netCents).toBe(-5000);
     expect(projection.days[0].closingBalanceCents).toBe(5000);
   });
 

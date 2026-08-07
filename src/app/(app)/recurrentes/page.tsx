@@ -19,18 +19,20 @@ export default async function RecurrentesPage() {
   const supabase = await createClient();
   const spaceId = await getCurrentHouseholdId(supabase);
 
-  const [definitions, dueItems, accounts, categories, budgets] = spaceId
+  const [definitions, dueItems, accounts, expenseCategories, incomeCategories, budgets] = spaceId
     ? await Promise.all([
         listRecurringDefinitions(supabase, spaceId),
         listDueRecurring(supabase, spaceId),
         listActiveAccounts(supabase, spaceId),
         listActiveCategories(supabase, spaceId, "expense"),
+        listActiveCategories(supabase, spaceId, "income"),
         listBudgetsWithProgress(supabase, spaceId),
       ])
-    : [[], [], [], [], []];
+    : [[], [], [], [], [], []];
 
   const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name, class: a.class }));
-  const categoryOptions = categories.map((c) => ({ id: c.id, name: c.name }));
+  const categoryOptions = expenseCategories.map((c) => ({ id: c.id, name: c.name }));
+  const incomeCategoryOptions = incomeCategories.map((c) => ({ id: c.id, name: c.name }));
 
   return (
     <main className="flex flex-col gap-6">
@@ -44,7 +46,11 @@ export default async function RecurrentesPage() {
         budgets={budgets}
       />
 
-      <RecurringForm accounts={accountOptions} categories={categoryOptions} />
+      <RecurringForm
+        accounts={accountOptions}
+        categories={categoryOptions}
+        incomeCategories={incomeCategoryOptions}
+      />
     </main>
   );
 }

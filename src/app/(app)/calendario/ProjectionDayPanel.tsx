@@ -9,6 +9,7 @@ export type ProjectionOccurrence = {
   description: string;
   /** POSITIVE magnitude (design.md §2 Decision 9). */
   amountCents: number;
+  kind: "outflow" | "inflow";
   overdue: boolean;
 };
 
@@ -26,8 +27,8 @@ export interface ProjectionDayPanelProps {
 /**
  * Selected-day detail (design.md §4, change: finance-calendar-projection K-012). Client,
  * presentational — receives an already-computed `ProjectionDay`, computes nothing. Each
- * occurrence renders as an outflow (`MoneyAmount kind="expense"`) with an explicit overdue
- * marker for folded rows (design.md §6 Decision 3).
+ * occurrence renders as an inflow or outflow per `kind`, with an explicit overdue marker for
+ * folded rows (design.md §6 Decision 3).
  */
 export function ProjectionDayPanel({ day }: ProjectionDayPanelProps) {
   if (!day) {
@@ -66,8 +67,10 @@ export function ProjectionDayPanel({ day }: ProjectionDayPanelProps) {
                 </span>
                 <MoneyAmount
                   className="shrink-0"
-                  kind="expense"
-                  formatted={formatCentsAsMXN(-occurrence.amountCents)}
+                  kind={occurrence.kind === "inflow" ? "income" : "expense"}
+                  formatted={formatCentsAsMXN(
+                    occurrence.kind === "inflow" ? occurrence.amountCents : -occurrence.amountCents,
+                  )}
                 />
               </li>
             ))}

@@ -5,10 +5,9 @@
 
 export type Frequency = "monthly" | "weekly" | "biweekly" | "yearly";
 
-/** Mirrors `finance.recurring_transactions.type` (design.md §1b, change:
- *  finance-credit-card-payments CC-001). `expense` posts one row against a category; `transfer`
- *  posts a balanced pair against a destination account. */
-export type RecurringType = "expense" | "transfer";
+/** Mirrors `finance.recurring_transactions.type`. `expense`/`income` each post one row against a
+ *  category (opposite sign); `transfer` posts a balanced pair against a destination account. */
+export type RecurringType = "expense" | "income" | "transfer";
 
 export type RecurringShapeInput = {
   type: RecurringType;
@@ -25,12 +24,12 @@ export type RecurringShapeInput = {
  * `20260804090021_finance_recurring_transfer_shape.sql` — `recurring_expense_shape` and
  * `recurring_transfer_shape`. A defensive UX guard, NOT a second source of truth: the DB remains
  * authoritative and re-validates independently of whatever this function returns.
- *   expense:  categoryId required, toAccountId must be null.
- *   transfer: categoryId must be null, toAccountId required and distinct from accountId (when
- *             accountId is supplied).
+ *   expense/income: categoryId required, toAccountId must be null.
+ *   transfer:       categoryId must be null, toAccountId required and distinct from accountId
+ *                   (when accountId is supplied).
  */
 export function validateRecurringShape(input: RecurringShapeInput): boolean {
-  if (input.type === "expense") {
+  if (input.type === "expense" || input.type === "income") {
     return input.categoryId !== null && input.toAccountId === null;
   }
   // type === "transfer"

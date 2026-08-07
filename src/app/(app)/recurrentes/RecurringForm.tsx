@@ -22,6 +22,7 @@ const FREQUENCIES = [
 
 const TYPES = [
   { value: "expense", label: "Gasto" },
+  { value: "income", label: "Ingreso" },
   { value: "transfer", label: "Pago de tarjeta" },
 ] as const;
 
@@ -37,15 +38,18 @@ const TYPES = [
 export function RecurringForm({
   accounts,
   categories,
+  incomeCategories,
 }: {
   accounts: AccountOption[];
   categories: CategoryOption[];
+  incomeCategories: CategoryOption[];
 }) {
   const [state, action, pending] = useActionState(saveRecurringAction, INITIAL_STATE);
-  const [type, setType] = useState<"expense" | "transfer">("expense");
+  const [type, setType] = useState<"expense" | "income" | "transfer">("expense");
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
 
   const destinationOptions = accounts.filter((a) => a.class === "liability" && a.id !== accountId);
+  const categoryOptionsForType = type === "income" ? incomeCategories : categories;
 
   return (
     <Card id="recurring-form">
@@ -58,7 +62,11 @@ export function RecurringForm({
             <label htmlFor="recurringType" className="text-sm font-medium">
               Tipo
             </label>
-            <Select name="type" value={type} onValueChange={(v) => setType(v as "expense" | "transfer")}>
+            <Select
+              name="type"
+              value={type}
+              onValueChange={(v) => setType(v as "expense" | "income" | "transfer")}
+            >
               <SelectTrigger id="recurringType">
                 <SelectValue />
               </SelectTrigger>
@@ -111,12 +119,12 @@ export function RecurringForm({
               <label htmlFor="recurringCategoryId" className="text-sm font-medium">
                 Categoría
               </label>
-              <Select name="categoryId" defaultValue={categories[0]?.id}>
+              <Select key={type} name="categoryId" defaultValue={categoryOptionsForType[0]?.id}>
                 <SelectTrigger id="recurringCategoryId">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((c) => (
+                  {categoryOptionsForType.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>

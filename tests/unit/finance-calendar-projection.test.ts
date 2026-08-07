@@ -22,6 +22,7 @@ function def(overrides: Partial<ProjectableDefinition> & Pick<ProjectableDefinit
     categoryId: overrides.categoryId ?? "cat-1",
     accountId: overrides.accountId ?? "acct-1",
     amountCents: overrides.amountCents ?? 1000,
+    kind: overrides.kind ?? "outflow",
     frequency: overrides.frequency ?? "monthly",
     nextDueDate: overrides.nextDueDate ?? FROM_DATE,
     active: overrides.active ?? true,

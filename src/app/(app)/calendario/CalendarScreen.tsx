@@ -65,8 +65,8 @@ export function CalendarScreen({
           </div>
           <span className="text-xs text-muted-foreground">Próximos 90 días</span>
           <p className="text-xs text-muted-foreground">
-            Muestra únicamente salidas proyectadas de tus recurrentes activos — no incluye
-            ingresos futuros ni es un pronóstico completo de saldo.
+            Proyecta tu saldo día a día sumando ingresos y restando gastos recurrentes activos.
+            No incluye pagos de tarjeta ni movimientos manuales aún.
           </p>
         </CardContent>
       </Card>

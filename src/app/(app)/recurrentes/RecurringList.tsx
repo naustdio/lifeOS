@@ -26,7 +26,7 @@ type RecurringDefinition = {
   // `type`/`toAccountId` since finance-credit-card-payments CC-020/CC-027: a `type: "transfer"`
   // definition carries `categoryId: null` and a non-null `toAccountId` — its row renders
   // "Origen -> Destino" instead of a category chip.
-  type: "expense" | "transfer";
+  type: "expense" | "income" | "transfer";
   toAccountId: string | null;
   categoryId: string | null;
   amountCents: number;
@@ -38,7 +38,7 @@ type RecurringDefinition = {
 
 type DueItem = {
   recurringId: string;
-  type: "expense" | "transfer";
+  type: "expense" | "income" | "transfer";
   toAccountId: string | null;
   amountCents: number;
   description: string;

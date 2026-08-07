@@ -42,7 +42,8 @@ export async function saveRecurringAction(
 
   const id = String(formData.get("id") ?? "");
   const accountId = String(formData.get("accountId") ?? "");
-  const type = (String(formData.get("type") ?? "expense") as "expense" | "transfer") || "expense";
+  const type =
+    (String(formData.get("type") ?? "expense") as "expense" | "income" | "transfer") || "expense";
   const categoryId = String(formData.get("categoryId") ?? "");
   const toAccountId = String(formData.get("toAccountId") ?? "");
   const amountCents = pesosToCents(Number(formData.get("amount") ?? 0));
@@ -60,14 +61,16 @@ export async function saveRecurringAction(
 
   const shapeValid = validateRecurringShape({
     type,
-    categoryId: type === "expense" ? categoryId || null : null,
+    categoryId: type === "expense" || type === "income" ? categoryId || null : null,
     toAccountId: type === "transfer" ? toAccountId || null : null,
     accountId,
   });
   if (!shapeValid) {
     return {
       error:
-        type === "expense" ? "Completa cuenta, categoría, monto y fecha." : "Selecciona una tarjeta destino distinta a la cuenta origen.",
+        type === "transfer"
+          ? "Selecciona una tarjeta destino distinta a la cuenta origen."
+          : "Completa cuenta, categoría, monto y fecha.",
     };
   }
 
@@ -75,7 +78,7 @@ export async function saveRecurringAction(
     const { error } = await updateRecurringDefinition(supabase, spaceId, id, {
       accountId,
       type,
-      categoryId: type === "expense" ? categoryId : null,
+      categoryId: type === "expense" || type === "income" ? categoryId : null,
       toAccountId: type === "transfer" ? toAccountId : null,
       amountCents,
       description,
@@ -88,6 +91,18 @@ export async function saveRecurringAction(
       accountId,
       type: "transfer",
       toAccountId,
+      amountCents,
+      description,
+      frequency,
+      nextDueDate,
+    });
+    if (error) return { error: "No se pudo crear la recurrente." };
+  } else if (type === "income") {
+    const { error } = await createRecurringDefinition(supabase, {
+      householdId: spaceId,
+      accountId,
+      type: "income",
+      categoryId,
       amountCents,
       description,
       frequency,

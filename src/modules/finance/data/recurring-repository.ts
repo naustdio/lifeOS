@@ -138,6 +138,16 @@ export async function createRecurringDefinition(
     | {
         householdId: string;
         accountId: string;
+        type: "income";
+        categoryId: string;
+        amountCents: number;
+        description: string;
+        frequency: Frequency;
+        nextDueDate: string;
+      }
+    | {
+        householdId: string;
+        accountId: string;
         type: "transfer";
         toAccountId: string;
         amountCents: number;
@@ -153,7 +163,7 @@ export async function createRecurringDefinition(
       household_id: input.householdId,
       account_id: input.accountId,
       type: input.type,
-      category_id: input.type === "expense" ? input.categoryId : null,
+      category_id: input.type === "expense" || input.type === "income" ? input.categoryId : null,
       to_account_id: input.type === "transfer" ? input.toAccountId : null,
       amount_cents: input.amountCents,
       description: input.description,

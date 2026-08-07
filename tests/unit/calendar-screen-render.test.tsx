@@ -44,8 +44,7 @@ describe("CalendarScreen — smoke render (K-011)", () => {
       />,
     );
 
-    expect(screen.getByText(/salidas proyectadas/)).toBeInTheDocument();
-    expect(screen.getByText(/no incluye ingresos futuros/i)).toBeInTheDocument();
+    expect(screen.getByText(/proyecta tu saldo/i)).toBeInTheDocument();
   });
 
   it("renders a grid, not an error, for an all-zero projection", () => {
@@ -75,7 +74,7 @@ describe("CalendarScreen — smoke render (K-011)", () => {
             date: "2026-08-10",
             closingBalanceCents: 100000,
             isNegative: false,
-            occurrences: [{ definitionId: "rec-1", description: "Renta", amountCents: 12000, overdue: false }],
+            occurrences: [{ definitionId: "rec-1", description: "Renta", amountCents: 12000, kind: "outflow" as const, overdue: false }],
           },
         }}
         fromDate="2026-08-06"
@@ -99,7 +98,7 @@ describe("CalendarScreen — smoke render (K-011)", () => {
             date: "2026-08-06",
             closingBalanceCents: 50000,
             isNegative: false,
-            occurrences: [{ definitionId: "rec-2", description: "Gimnasio", amountCents: 8000, overdue: true }],
+            occurrences: [{ definitionId: "rec-2", description: "Gimnasio", amountCents: 8000, kind: "outflow" as const, overdue: true }],
           },
         }}
         fromDate="2026-08-06"

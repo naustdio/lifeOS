@@ -39,15 +39,19 @@ export default async function CalendarioPage() {
     : [{ availableCents: 0, debtCents: 0 }, []];
 
   const fromDate = new Date().toISOString().slice(0, 10);
-  // v1 scope is recurring EXPENSE outflows only (design.md §1, confirmed product decision) —
-  // transfer-type definitions (e.g. credit-card auto-pay, added later by
-  // finance-credit-card-payments) have no categoryId and are excluded here, not projected as
-  // spending. `categoryId` is narrowed explicitly since the DB's `recurring_expense_shape`
-  // constraint (not TypeScript) is what guarantees expense-type rows always carry one.
-  const expenseDefinitions = definitions
-    .filter((d) => d.type === "expense")
-    .map((d) => ({ ...d, categoryId: d.categoryId as string }));
-  const projection = projectBalance(expenseDefinitions, summary.availableCents, fromDate);
+  // Real balance projection: recurring EXPENSE and INCOME definitions both count (outflow/inflow
+  // respectively). `transfer`-type definitions (e.g. credit-card auto-pay) are excluded — they
+  // move money between the household's own accounts and never change net worth. `categoryId` is
+  // narrowed explicitly since the DB's shape constraints (not TypeScript) are what guarantee
+  // expense/income rows always carry one.
+  const projectableDefinitions = definitions
+    .filter((d) => d.type === "expense" || d.type === "income")
+    .map((d) => ({
+      ...d,
+      categoryId: d.categoryId as string,
+      kind: (d.type === "income" ? "inflow" : "outflow") as "inflow" | "outflow",
+    }));
+  const projection = projectBalance(projectableDefinitions, summary.availableCents, fromDate);
 
   const monthsCells = Object.fromEntries(
     monthsBetween(projection.fromDate, projection.toDate).map((month) => [month, buildMonthCells(projection, month)]),
@@ -64,6 +68,7 @@ export default async function CalendarioPage() {
           definitionId: o.definitionId,
           description: o.description,
           amountCents: o.amountCents,
+          kind: o.kind,
           overdue: o.overdue,
         })),
       },

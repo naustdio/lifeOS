@@ -15,6 +15,18 @@ describe("validateRecurringShape", () => {
     ).toBe(true);
   });
 
+  it("accepts a correctly-shaped income definition (category set, no destination)", () => {
+    expect(
+      validateRecurringShape({ type: "income", categoryId: "cat-1", toAccountId: null }),
+    ).toBe(true);
+  });
+
+  it("rejects type=income with categoryId null (mirrors recurring_expense_or_income_shape)", () => {
+    expect(
+      validateRecurringShape({ type: "income", categoryId: null, toAccountId: null }),
+    ).toBe(false);
+  });
+
   it("accepts a correctly-shaped transfer definition (no category, destination set)", () => {
     expect(
       validateRecurringShape({ type: "transfer", categoryId: null, toAccountId: "acct-2" }),

@@ -13,7 +13,7 @@ import { confirmRecurringAction, type RecurringFormState } from "./actions";
 
 type DueItem = {
   recurringId: string;
-  type: "expense" | "transfer";
+  type: "expense" | "income" | "transfer";
   toAccountId: string | null;
   amountCents: number;
   description: string;
