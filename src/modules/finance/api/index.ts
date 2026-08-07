@@ -77,6 +77,28 @@ export {
   type DueRecurringItem,
 } from "../data";
 
+/**
+ * `finance-calendar-projection` change: the day-by-day balance projection is pure domain logic
+ * with no data-layer counterpart (design.md §1 — deliberately NOT added to `../data`), so its
+ * public surface is re-exported directly from `../domain/calendar` here. This barrel previously
+ * re-exported nothing from `domain/`; this is the one-line-plus-types addition design.md's Open
+ * Question #1 anticipated, needed so `app` never imports `domain` directly (Gate A's ESLint
+ * boundary only allows `app` to import a module's `api/` barrel).
+ */
+export {
+  projectOccurrences,
+  projectBalance,
+  buildMonthCells,
+  PROJECTION_HORIZON_DAYS,
+  MAX_OCCURRENCES_PER_DEFINITION,
+  MAX_HORIZON_DAYS,
+  type ProjectableDefinition,
+  type ProjectedOccurrence,
+  type ProjectedDay,
+  type BalanceProjection,
+  type CalendarCell,
+} from "../domain/calendar";
+
 export type OriginModule = "manual" | "shopping_list" | "car_control" | "recurring";
 
 /**
