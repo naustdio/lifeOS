@@ -178,6 +178,72 @@ The app shell MUST provide a 5th nav-pill slot labeled "Más" that opens an over
 - WHEN the 4 primary slots are inspected
 - THEN they retain their existing direct destinations, and only `Presupuestos` moves into the overflow menu
 
+### Requirement: Category Icon and Color Token Registries
+
+The design system MUST define, under `src/design-system/tokens/`, a static `iconName -> LucideIcon` registry and a `colorToken -> semantic class` registry for category styling. Both registries MUST be curated, bounded sets — no dynamic icon import and no raw hex/RGB literal in either registry.
+
+#### Scenario: Icon registry resolves a known key to a component
+- GIVEN a category has `icon = 'utensils'`
+- WHEN the icon registry is queried for `'utensils'`
+- THEN it returns the corresponding statically-imported Lucide icon component
+
+#### Scenario: Color registry resolves a known key to a semantic class
+- GIVEN a category has `color = 'warning'`
+- WHEN the color registry is queried for `'warning'`
+- THEN it returns a semantic Tailwind class token, not a raw hex value
+
+### Requirement: CategoryChip Resolves Stored Style With Fallback
+
+`CategoryChip` MUST accept a stored `icon` key and `color` token string (rather than only a `LucideIcon` prop) and resolve them through the design-system registries. When `icon` or `color` is missing, `null`, or not present in the registry, `CategoryChip` MUST render a defined neutral fallback icon and fallback color token instead of a blank, broken, or crashing chip.
+
+#### Scenario: Known icon and color render as styled
+- GIVEN a category has `icon = 'utensils'` and `color = 'warning'`
+- WHEN `CategoryChip` renders that category
+- THEN it displays the resolved icon and the resolved color's semantic class
+
+#### Scenario: Missing style renders the neutral fallback
+- GIVEN a category has `icon = null` and `color = null`
+- WHEN `CategoryChip` renders that category
+- THEN it displays the fallback icon and fallback color token, with no blank space or render error
+
+#### Scenario: Unknown stored key renders the neutral fallback
+- GIVEN a category's stored `icon` or `color` value is not present in the current registry (e.g. a retired key)
+- WHEN `CategoryChip` renders that category
+- THEN it displays the fallback icon and/or fallback color token instead of throwing or rendering nothing
+
+### Requirement: Transaction Sub-type Icon Registry
+
+The design system MUST define, under `src/design-system/tokens/transaction-subtype-style.ts`, a static, icon-only `subtype -> LucideIcon` registry separate from `category-style.ts`, with no color mapping — sub-type icons layer onto an already-colored category chip or transaction row. The registry MUST cover every value in the `finance.transactions.subtype` CHECK whitelist, including the reserved `compra_meses` token, and MUST expose a total resolver function that never throws.
+
+#### Scenario: Icon registry resolves a known sub-type to a component
+- GIVEN a transaction has `subtype = 'pago'`
+- WHEN the sub-type icon registry is queried for `'pago'`
+- THEN it returns the corresponding statically-imported Lucide icon component
+
+#### Scenario: Registry has no color mapping
+- GIVEN the sub-type registry module is inspected
+- WHEN searched for a color token or semantic class map
+- THEN none exists; the registry exports icon keys only
+
+#### Scenario: compra_meses has a defined icon token despite being unselectable
+- GIVEN `compra_meses` is a reserved CHECK value
+- WHEN the sub-type icon registry is queried for `'compra_meses'`
+- THEN it returns a defined icon component, even though no UI path can select it this cycle
+
+### Requirement: Sub-type Resolver Never Throws for Unknown or Null Keys
+
+The sub-type icon resolver MUST be total — it MUST NOT throw for a `null` subtype or a string not present in the registry (e.g. a retired or unrecognized key). Unlike `resolveCategoryIcon`, it deliberately returns `undefined` rather than a visible fallback icon: every pre-existing transaction row has `subtype = null`, and forcing a visible fallback glyph onto all of them would change their historical rendered appearance. `undefined` re-enters `TransactionRow`'s existing icon-optional rendering path, which is exactly today's behavior. Resolution happens at the call site; the existing `TransactionRow`/`CategoryChip` `icon` prop contract MUST NOT change.
+
+#### Scenario: Null subtype resolves to no icon overlay
+- GIVEN a transaction has `subtype = null`
+- WHEN the call site resolves its sub-type icon
+- THEN the resolver returns `undefined`, and no icon overlay is forced onto the row — identical to pre-change rendering
+
+#### Scenario: Unknown stored value resolves to no icon overlay without throwing
+- GIVEN a transaction's stored `subtype` is a string not present in the current registry
+- WHEN the call site resolves its sub-type icon
+- THEN the resolver returns `undefined` instead of throwing or rendering a broken icon slot
+
 ## Resolved Ambiguities
 
 **Theme selection mechanism** — resolved by the user after this spec was first drafted: the theme follows the operating system preference by default **and** offers a persisted manual override. Captured above as the "Theme Selection" requirement; no longer open for `sdd-design` to decide.

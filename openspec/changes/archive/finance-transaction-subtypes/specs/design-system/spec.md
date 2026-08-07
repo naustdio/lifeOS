@@ -21,19 +21,19 @@ The design system MUST define, under `src/design-system/tokens/transaction-subty
 - WHEN the sub-type icon registry is queried for `'compra_meses'`
 - THEN it returns a defined icon component, even though no UI path can select it this cycle
 
-### Requirement: Sub-type Resolver Fallback for Unknown or Null Keys
+### Requirement: Sub-type Resolver Never Throws for Unknown or Null Keys
 
-The sub-type icon resolver MUST return a defined neutral fallback icon, never `undefined`, `null`, or a thrown error, when given a `null` subtype or a string not present in the registry (e.g. a retired or unrecognized key). Resolution happens at the call site; the existing `TransactionRow`/`CategoryChip` `icon` prop contract MUST NOT change.
+The sub-type icon resolver MUST be total — it MUST NOT throw for a `null` subtype or a string not present in the registry (e.g. a retired or unrecognized key). Unlike `resolveCategoryIcon`, it deliberately returns `undefined` rather than a visible fallback icon: every pre-existing transaction row has `subtype = null`, and forcing a visible fallback glyph onto all of them would change their historical rendered appearance. `undefined` re-enters `TransactionRow`'s existing icon-optional rendering path, which is exactly today's behavior. Resolution happens at the call site; the existing `TransactionRow`/`CategoryChip` `icon` prop contract MUST NOT change.
 
-#### Scenario: Null subtype resolves to the fallback
+#### Scenario: Null subtype resolves to no icon overlay
 - GIVEN a transaction has `subtype = null`
 - WHEN the call site resolves its sub-type icon
-- THEN the resolver returns the neutral fallback icon, and no icon overlay is forced onto the row
+- THEN the resolver returns `undefined`, and no icon overlay is forced onto the row — identical to pre-change rendering
 
-#### Scenario: Unknown stored value resolves to the fallback
+#### Scenario: Unknown stored value resolves to no icon overlay without throwing
 - GIVEN a transaction's stored `subtype` is a string not present in the current registry
 - WHEN the call site resolves its sub-type icon
-- THEN the resolver returns the neutral fallback icon instead of throwing or rendering a blank icon slot
+- THEN the resolver returns `undefined` instead of throwing or rendering a broken icon slot
 
 #### Scenario: Resolved icon is passed through the existing prop contract
 - GIVEN a transaction has a resolvable sub-type icon

@@ -59,9 +59,9 @@ Each selectable sub-type MUST be paired with exactly one `type`: `pago` → `exp
 - WHEN the write is submitted
 - THEN the database CHECK constraint accepts the value (it is a reserved, valid whitelist member), even though no UI path can produce it
 
-### Requirement: Sub-type Editable via update_transaction, Set-Only for v1
+### Requirement: Sub-type Editable via update_transaction, Including Clearing
 
-`update_transaction` MUST accept an optional `p_subtype` parameter to correct or add a sub-type after creation, applying the same type/subtype compatibility guard used on creation. Because `update_transaction` treats a `null` parameter as "leave unchanged", this RPC MUST NOT support clearing an already-set `subtype` in this change; setting a sub-type once applied MUST remain a one-way operation for v1, and this limitation MUST be documented.
+`update_transaction` MUST accept an optional `p_subtype` parameter to correct or add a sub-type after creation, applying the same type/subtype compatibility guard used on creation. Because `update_transaction` treats a `null` parameter as "leave unchanged" for every existing sibling parameter, `subtype` cannot reuse that same sentinel to mean "clear" — the RPC MUST instead accept a separate `p_clear_subtype boolean` (default `false`) that, when `true`, clears the transaction's `subtype` to `null` regardless of `p_subtype`.
 
 #### Scenario: Editing a transaction's sub-type
 - GIVEN a posted expense transaction currently has `subtype = null`
@@ -75,13 +75,13 @@ Each selectable sub-type MUST be paired with exactly one `type`: `pago` → `exp
 
 #### Scenario: Omitting p_subtype leaves the existing value unchanged
 - GIVEN a posted transaction has `subtype = 'reembolso'`
-- WHEN `update_transaction` is called without passing `p_subtype` (or passing `null`)
+- WHEN `update_transaction` is called without passing `p_subtype` (or passing `null`) and `p_clear_subtype = false`
 - THEN the row's `subtype` remains `'reembolso'`, per the existing null-sentinel convention
 
-#### Scenario: Clearing a sub-type is not supported in v1
+#### Scenario: Clearing a sub-type via the explicit clear flag
 - GIVEN a posted transaction has `subtype = 'pago'`
-- WHEN a caller wants to remove the sub-type entirely
-- THEN no mechanism in this change achieves that; this is a documented v1 limitation, not a bug
+- WHEN `update_transaction` is called with `p_clear_subtype = true`
+- THEN the row's `subtype` becomes `null`, independent of whatever value `p_subtype` carries
 
 ### Requirement: Transfer Pair Sub-type Symmetry
 
