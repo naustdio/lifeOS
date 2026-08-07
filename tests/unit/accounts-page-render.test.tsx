@@ -22,9 +22,11 @@ vi.mock("@/modules/core/api", () => ({
 
 const listActiveAccounts = vi.fn();
 const listCreditCardStatus = vi.fn();
+const getHouseholdSummary = vi.fn();
 vi.mock("@/modules/finance/api", () => ({
   listActiveAccounts: (...args: unknown[]) => listActiveAccounts(...args),
   listCreditCardStatus: (...args: unknown[]) => listCreditCardStatus(...args),
+  getHouseholdSummary: (...args: unknown[]) => getHouseholdSummary(...args),
 }));
 
 const { default: AccountsPage } = await import("@/app/(app)/cuentas/page");
@@ -32,6 +34,7 @@ const { default: AccountsPage } = await import("@/app/(app)/cuentas/page");
 describe("AccountsPage — smoke render (finance-ui-polish P-020)", () => {
   beforeEach(() => {
     listCreditCardStatus.mockResolvedValue([]);
+    getHouseholdSummary.mockResolvedValue({ availableCents: 0, debtCents: 0 });
   });
 
   afterEach(() => {
@@ -39,6 +42,7 @@ describe("AccountsPage — smoke render (finance-ui-polish P-020)", () => {
     getCurrentHouseholdId.mockReset();
     listActiveAccounts.mockReset();
     listCreditCardStatus.mockReset();
+    getHouseholdSummary.mockReset();
   });
 
   it("renders accounts via TransactionRow and a goal's ProgressBar when populated", async () => {
