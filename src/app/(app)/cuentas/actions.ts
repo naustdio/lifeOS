@@ -65,13 +65,30 @@ export async function createAccountAction(
         targetDate: targetDate || undefined,
       },
     };
-  } else if (type === "investment" || type === "loaned") {
-    // `investment`/`loaned` fieldsets land in Slice B (finance-account-types-expansion B-003/
-    // B-004). Slice A only widens the shared `AccountType`/`CreateAccountInput` contracts — the
-    // form's `TYPE_LABELS` still lists 6 entries, so this branch is unreachable from the current
-    // UI. It exists purely so Slice A's own type-widening compiles standalone (both branches
-    // require a detail object the pre-Slice-B form never submits).
-    return { error: ERROR_COPY.VALIDATION_ERROR };
+  } else if (type === "investment") {
+    const valuedOn = String(formData.get("valuedOn") ?? "");
+    input = {
+      ...base,
+      type,
+      investment: {
+        costBasisCents: toOptionalCents(formData.get("costBasis")) ?? 0,
+        currentValueCents: toOptionalCents(formData.get("currentValue")),
+        valuedOn: valuedOn || undefined,
+      },
+    };
+  } else if (type === "loaned") {
+    const expected = String(formData.get("expectedReturnDate") ?? "");
+    const term = Number(formData.get("termMonths") ?? 0);
+    input = {
+      ...base,
+      type,
+      loaned: {
+        counterpartyName: String(formData.get("counterpartyName") ?? "").trim(),
+        originalAmountCents: toOptionalCents(formData.get("originalAmount")) ?? 0,
+        termMonths: term > 0 ? term : undefined,
+        expectedReturnDate: expected || undefined,
+      },
+    };
   } else {
     input = { ...base, type };
   }

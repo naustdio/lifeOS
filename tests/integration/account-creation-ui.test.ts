@@ -15,6 +15,7 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, signUpAndSignIn, type TestSession } from "./helpers/local-supabase";
+import { listActiveAccounts } from "@/modules/finance/data/account-repository";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -125,6 +126,51 @@ describe("account-creation UI calling code path — live local Supabase (T-036)"
     const result = await createAccountAction({ error: null }, formData);
     expect(result.error).not.toBeNull();
     expect(result.error).toContain("saldo inicial");
+  });
+
+  it("creates an investment account and the read path (B-001) returns its cost basis/current value detail", async () => {
+    activeClient = session.client;
+    const formData = formDataFrom({
+      name: "ETF Global UI",
+      type: "investment",
+      openingBalance: "1000",
+      costBasis: "1000",
+      currentValue: "1200",
+      valuedOn: "2026-08-01",
+    });
+
+    await expect(createAccountAction({ error: null }, formData)).rejects.toThrow("NEXT_REDIRECT");
+
+    const accounts = await listActiveAccounts(session.client, householdId);
+    const acc = accounts.find((a) => a.name === "ETF Global UI");
+    expect(acc?.type).toBe("investment");
+    expect(acc?.class).toBe("asset");
+    expect(acc?.investment).toBeDefined();
+    expect(acc?.investment?.costBasisCents).toBe(100000);
+    expect(acc?.investment?.currentValueCents).toBe(120000);
+    // Rendimiento (gain) is derived client-side as currentValueCents - balanceCents.
+    expect((acc?.investment?.currentValueCents ?? 0) - (acc?.balanceCents ?? 0)).toBeGreaterThan(0);
+  });
+
+  it("creates a loaned account and the read path (B-001) returns its counterparty detail", async () => {
+    activeClient = session.client;
+    const formData = formDataFrom({
+      name: "Prestado a Ana UI",
+      type: "loaned",
+      openingBalance: "800",
+      counterpartyName: "Ana",
+      originalAmount: "800",
+    });
+
+    await expect(createAccountAction({ error: null }, formData)).rejects.toThrow("NEXT_REDIRECT");
+
+    const accounts = await listActiveAccounts(session.client, householdId);
+    const acc = accounts.find((a) => a.name === "Prestado a Ana UI");
+    expect(acc?.type).toBe("loaned");
+    expect(acc?.class).toBe("asset");
+    expect(acc?.loaned).toBeDefined();
+    expect(acc?.loaned?.counterpartyName).toBe("Ana");
+    expect(acc?.loaned?.originalAmountCents).toBe(80000);
   });
 
   it("rejects a request from a user with no bootstrapped space with the NOT_A_MEMBER copy", async () => {

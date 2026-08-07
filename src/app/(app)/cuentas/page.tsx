@@ -17,6 +17,8 @@ const TYPE_LABELS: Record<string, string> = {
   credit_card: "Tarjeta de crédito",
   liability: "Préstamo / deuda",
   savings_goal: "Meta de ahorro",
+  investment: "Inversiones",
+  loaned: "Prestado",
 };
 
 /** Minimal account list (T-036). Excludes archived accounts (`finance-
@@ -71,6 +73,27 @@ export default async function AccountsPage() {
                 {account.goal && (
                   <div className="px-2">
                     <ProgressBar valueCents={account.balanceCents} limitCents={account.goal.targetAmountCents} />
+                  </div>
+                )}
+                {account.investment && (
+                  <div className="flex flex-col gap-1 px-2 text-xs text-muted-foreground">
+                    {(() => {
+                      const rendimientoCents =
+                        account.investment.currentValueCents - account.balanceCents;
+                      const sign = rendimientoCents > 0 ? "+" : rendimientoCents < 0 ? "" : "";
+                      return (
+                        <p>
+                          Rendimiento: {sign}
+                          {formatCentsAsMXN(rendimientoCents)}
+                        </p>
+                      );
+                    })()}
+                    <p>Valuado: {account.investment.valuedOn}</p>
+                  </div>
+                )}
+                {account.loaned && (
+                  <div className="flex flex-col gap-1 px-2 text-xs text-muted-foreground">
+                    <p>Deudor: {account.loaned.counterpartyName}</p>
                   </div>
                 )}
               </div>

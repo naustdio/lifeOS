@@ -157,7 +157,7 @@ B-004's real `investment`/`loaned` action branches — those still land in Slice
 
 ### (c) Account Read Path
 
-- [ ] B-001 — `src/modules/finance/data/account-repository.ts` (modify): two more parallel
+- [x] B-001 — `src/modules/finance/data/account-repository.ts` (modify): two more parallel
   `.in("account_id", ids)` selects against `account_investment_details`/`account_loaned_details`,
   extend `AccountListItem` with both optional detail blocks (design.md §1, "read path" of the 7-site
   checklist — omitting this renders the new types with no detail block).
@@ -167,7 +167,7 @@ B-004's real `investment`/`loaned` action branches — those still land in Slice
 
 ### (d) AccountForm
 
-- [ ] B-002 [RED] — `tests/unit/account-form-render.test.tsx` (create or extend): failing RTL test —
+- [x] B-002 [RED] — `tests/unit/account-form-render.test.tsx` (create or extend): failing RTL test —
   selecting "Inversiones"/"Prestado" reveals the matching fieldset and hides the others; the `loaned`
   sign hint reads "Para dinero prestado, el saldo inicial debe ser cero o positivo." and the input
   carries `min={0}`; the investment helper text names manual capture ("la app no consulta precios de
@@ -176,14 +176,14 @@ B-004's real `investment`/`loaned` action branches — those still land in Slice
     Balance-Sign Guard` (client-hint scenario, mirrors the DB guard).
   - Depends on: A-010. Parallel: sequential.
 
-- [ ] B-003 [GREEN] — `src/app/(app)/cuentas/AccountForm.tsx` (modify): `TYPE_LABELS` adds
+- [x] B-003 [GREEN] — `src/app/(app)/cuentas/AccountForm.tsx` (modify): `TYPE_LABELS` adds
   `investment: "Inversiones"`, `loaned: "Prestado"`; extract `signHintFor(type)` helper making the
   opening-balance hint three-way (debt types `max={0}`, `loaned` `min={0}` + inverted copy,
   unconstrained otherwise); two new fieldsets after the goal block per design.md §6 field lists —
   implemented to satisfy B-002.
   - Depends on: B-002. Parallel: sequential.
 
-- [ ] B-004 — `src/app/(app)/cuentas/actions.ts` (modify, `:29-80`): two new `else if` branches
+- [x] B-004 — `src/app/(app)/cuentas/actions.ts` (modify, `:29-80`): two new `else if` branches
   (`investment`, `loaned`) before the final `else`, using the existing `toOptionalCents` helper, per
   design.md §6. No new `ERROR_COPY` key needed (`22023` already maps to `ACCOUNT_DETAIL_REQUIRED`).
   - Satisfies: `Investment Account Detail`, `Loaned Account Detail` (creation-flow scenarios).
@@ -191,7 +191,7 @@ B-004's real `investment`/`loaned` action branches — those still land in Slice
 
 ### (e) Cuentas List
 
-- [ ] B-005 — `src/app/(app)/cuentas/page.tsx` (or list card component, per design.md §6 "/cuentas
+- [x] B-005 — `src/app/(app)/cuentas/page.tsx` (or list card component, per design.md §6 "/cuentas
   list"): render rendimiento (`current_value_cents − balance_cents`, shown as gain **or loss**,
   never clamped) plus `valued_on` for `investment`, and `counterparty_name` for `loaned`.
   - Satisfies: `Account-Type Knowledge Consistency` (read-path rendering scenario).
