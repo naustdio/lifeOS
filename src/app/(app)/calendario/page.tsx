@@ -39,7 +39,15 @@ export default async function CalendarioPage() {
     : [{ availableCents: 0, debtCents: 0 }, []];
 
   const fromDate = new Date().toISOString().slice(0, 10);
-  const projection = projectBalance(definitions, summary.availableCents, fromDate);
+  // v1 scope is recurring EXPENSE outflows only (design.md §1, confirmed product decision) —
+  // transfer-type definitions (e.g. credit-card auto-pay, added later by
+  // finance-credit-card-payments) have no categoryId and are excluded here, not projected as
+  // spending. `categoryId` is narrowed explicitly since the DB's `recurring_expense_shape`
+  // constraint (not TypeScript) is what guarantees expense-type rows always carry one.
+  const expenseDefinitions = definitions
+    .filter((d) => d.type === "expense")
+    .map((d) => ({ ...d, categoryId: d.categoryId as string }));
+  const projection = projectBalance(expenseDefinitions, summary.availableCents, fromDate);
 
   const monthsCells = Object.fromEntries(
     monthsBetween(projection.fromDate, projection.toDate).map((month) => [month, buildMonthCells(projection, month)]),
