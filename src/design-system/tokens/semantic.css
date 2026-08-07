@@ -40,6 +40,27 @@
   --income: var(--green-600);
   --expense: var(--red-600);
 
+  /*
+   * ---- category palette (light) — 8 hues; `neutral` deliberately reuses
+   * --muted/--muted-foreground (see tokens/category-style.ts), no dedicated token here.
+   * ---- */
+  --category-red: var(--cat-red-500);
+  --category-red-surface: var(--cat-red-100);
+  --category-orange: var(--cat-orange-500);
+  --category-orange-surface: var(--cat-orange-100);
+  --category-amber: var(--cat-amber-500);
+  --category-amber-surface: var(--cat-amber-100);
+  --category-green: var(--cat-green-500);
+  --category-green-surface: var(--cat-green-100);
+  --category-teal: var(--cat-teal-500);
+  --category-teal-surface: var(--cat-teal-100);
+  --category-blue: var(--cat-blue-500);
+  --category-blue-surface: var(--cat-blue-100);
+  --category-violet: var(--cat-violet-500);
+  --category-violet-surface: var(--cat-violet-100);
+  --category-pink: var(--cat-pink-500);
+  --category-pink-surface: var(--cat-pink-100);
+
   /* ---- typography scale ---- */
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -102,6 +123,24 @@
   /* ---- semantic amount colors — identical hue, still never the brand accent ---- */
   --income: var(--green-500);
   --expense: var(--red-500);
+
+  /* ---- category palette (dark) — SAME names, dark-theme primitives (lighter fg, low-chroma surface) ---- */
+  --category-red: var(--cat-red-400);
+  --category-red-surface: var(--cat-red-900);
+  --category-orange: var(--cat-orange-400);
+  --category-orange-surface: var(--cat-orange-900);
+  --category-amber: var(--cat-amber-400);
+  --category-amber-surface: var(--cat-amber-900);
+  --category-green: var(--cat-green-400);
+  --category-green-surface: var(--cat-green-900);
+  --category-teal: var(--cat-teal-400);
+  --category-teal-surface: var(--cat-teal-900);
+  --category-blue: var(--cat-blue-400);
+  --category-blue-surface: var(--cat-blue-900);
+  --category-violet: var(--cat-violet-400);
+  --category-violet-surface: var(--cat-violet-900);
+  --category-pink: var(--cat-pink-400);
+  --category-pink-surface: var(--cat-pink-900);
 
   --shadow-soft: 0 8px 30px -8px hsl(0 0% 0% / 0.4);
   --shadow-soft-lg: 0 16px 48px -12px hsl(0 0% 0% / 0.5);

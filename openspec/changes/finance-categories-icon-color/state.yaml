@@ -1,0 +1,147 @@
+# DAG state for change `finance-categories-icon-color` (survives compaction).
+# Updated by sdd-apply as PR groups land.
+
+change: finance-categories-icon-color
+schema: spec-driven
+delivery_strategy: ask-on-risk
+chain_strategy: stacked-to-main
+resolved_pr_count: 2
+
+apply_progress:
+  pr_1_data_tokens:
+    name: "Data + Tokens — migration/pgTAP, design-system CSS + registry, CategoryChip"
+    status: complete
+    tasks_done: [C-001, C-002, C-003, C-004, C-005, C-006, C-007, C-008, C-009]
+    tasks_total: 9
+    branch: feat/finance-categories-icon-color-1-db-tokens
+    base: main
+    files:
+      - supabase/migrations/20260804090017_finance_category_style.sql
+      - supabase/tests/050_finance_categories.sql
+      - src/design-system/tokens/primitives.css
+      - src/design-system/tokens/semantic.css
+      - src/design-system/tokens/category-style.ts
+      - src/app/globals.css
+      - src/design-system/patterns/CategoryChip.tsx
+      - tests/unit/category-style-registry.test.ts
+      - tests/unit/category-chip-render.test.tsx
+    tdd_evidence: >
+      C-006/C-007 (category-style.ts): RED confirmed first — vitest run against the test file
+      failed with "Failed to resolve import ... category-style" (file did not exist). GREEN
+      confirmed after implementing the registry — 7/7 tests pass. C-008/C-009 (CategoryChip):
+      RED confirmed first — 3/3 assertions failed against the pre-existing `icon?: LucideIcon`
+      signature (bubble span never rendered under the new prop names). GREEN confirmed after
+      the rewrite — 3/3 pass. C-001/C-002 (migration/pgTAP) are non-TDD-gated per tasks.md's
+      explicit convention (matches finance-budgets B-001/B-004/B-009); C-003/C-004/C-005 (CSS
+      tokens) are non-TDD, verified indirectly by the registry parity test + a real `next
+      build` CSS-utility grep.
+    db_gate: >
+      EXECUTED for real against the local Supabase Postgres container. `supabase db push
+      --local` hit the same pre-existing migration-history/`supabase-go` binary gap documented
+      in finance-dashboard-feed's state.yaml (migrations 12-16 already applied to the DB from a
+      prior session but unregistered in `supabase_migrations.schema_migrations`, and `supabase
+      db reset --local` fails with "Could not find the supabase-go binary"). Resolved the same
+      way: applied 12-16 directly via `docker exec supabase_db_LIFE_OS psql` (all "already
+      exists" errors, non-fatal, confirming they were already live), registered 12-16 in
+      `schema_migrations`, then applied the new 20260804090017 migration via the same psql
+      path — 6 ALTER TABLE, 23 curated UPDATEs (1 row each), 1 template-inherit UPDATE (3519
+      rows), 1 fallback UPDATE (0 rows — no unstyled template_key-null rows existed in this
+      dev DB), CREATE OR REPLACE FUNCTION, REVOKE — all clean. Registered 20260804090017 in
+      schema_migrations. Ran `supabase test db --local`: full suite 178/178 pgTAP assertions
+      PASS (151 pre-existing + 27 new in 050_finance_categories.sql — whitelist rejection x4,
+      valid/null-accepted x2, backfill-coverage x2, template-derived-pair x2, onboarding-parity
+      x2, pass-3 idempotency x1, member-update x1, non-member-zero-rows x1, anon-permission-
+      denied x1, kind-mismatch-shape-trigger x1, plus the 9 tests in the file before this
+      change). Two real bugs found and fixed during this run: (1) the anon-write test's
+      SELECT for computing the affected-row count also lacked SELECT grant, breaking the DO
+      block — replaced with a direct `throws_ok('42501', ...)` on the UPDATE itself; (2) the
+      backfill zero-NULL assertion initially caught the pre-existing 'Otra Categoria' fixture
+      row from the file's own sibling-collision test (inserted with no icon/color argument at
+      all) — added it to the same fixture-name exclusion list as this file's own 'No Style
+      Category' probe.
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next
+      build) — PASS. First run surfaced a Lightning CSS minifier warning ("Unexpected token
+      Delim('*')") from a `--foo-*` glob-style comment fragment inside the new primitives.css
+      block comment; reworded the comment (no asterisk-dash sequences) and the warning is
+      gone on the second run — PASS, zero warnings, 13 routes generated, all existing routes
+      unchanged. check-tokens: OK, no raw hex outside src/design-system/tokens/. Independently
+      confirmed via `grep` on the built .next CSS output that `bg-category-orange-surface`,
+      `bg-category-pink-surface`, and `text-category-blue` are real emitted Tailwind utilities
+      (design.md's Open Question #2, verified for real, not by inspection).
+    test_gate: >
+      `pnpm test` (full vitest suite) — 159/159 tests pass across 29 files on the final run
+      (the project's documented pre-existing boundary-lint.test.ts 5s-timeout flake appeared
+      once mid-session on a full-suite run and was confirmed non-regression by re-running it
+      in isolation, where it passed in ~2s; it did not recur on the final full-suite run).
+      New: tests/unit/category-style-registry.test.ts (7/7), tests/unit/category-chip-
+      render.test.tsx (3/3).
+    pr: "not opened — implementation only, per instructions"
+
+  pr_2_crud_screen:
+    name: "CRUD Screen — repository write-side, /categorias screen"
+    status: complete
+    tasks_done: [C-010, C-011, C-012, C-013, C-014, C-015, C-016, C-017, C-018, C-019]
+    tasks_total: 10
+    branch: feat/finance-categories-icon-color-2-crud-screen
+    base: feat/finance-categories-icon-color-1-db-tokens
+    files:
+      - src/modules/finance/data/category-repository.ts
+      - src/modules/finance/data/index.ts (wildcard re-export, no literal diff needed)
+      - src/modules/finance/api/index.ts
+      - src/modules/finance/api/category-validation.ts
+      - src/app/(app)/categorias/IconPicker.tsx
+      - src/app/(app)/categorias/ColorPicker.tsx
+      - src/app/(app)/categorias/CategoryEditor.tsx
+      - src/app/(app)/categorias/CategoryList.tsx
+      - src/app/(app)/categorias/actions.ts
+      - src/app/(app)/categorias/page.tsx
+      - src/app/(app)/layout.tsx (nav entry, addition beyond literal tasks.md — see deviations)
+      - tests/unit/category-editor-render.test.tsx
+    tdd_evidence: >
+      C-013 [RED] confirmed first — `pnpm vitest run tests/unit/category-editor-render.test.tsx`
+      failed with "Failed to resolve import ... CategoryEditor" (component files did not exist).
+      C-014/C-015/C-016 [GREEN] confirmed after implementing IconPicker, ColorPicker, and
+      CategoryEditor (with the client-side `validateCategoryShape` preview) — 8/8 assertions
+      pass: registry-exact option counts for both pickers, no free-text/hex input, onChange
+      wiring, hidden-field null-submission, top-level-only parent filtering (defensive filter
+      of a depth-2 item), and kind-mismatch rejection with submit disabled. C-010/C-011/C-012
+      (repository/re-exports) and C-017/C-018/C-019 (list/actions/page) are non-TDD-gated per
+      tasks.md's explicit convention — the two named critical-logic surfaces for this PR were
+      C-013's picker-registry-only + shape-rejection gate, which was RED-first as required.
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next build)
+      — PASS on second run. First run surfaced a real ESLint boundary violation:
+      `CategoryEditor.tsx` (type `app`) importing `validateCategoryShape`/`CategoryKind` directly
+      from `@/modules/finance/domain/category` (type `module-domain`), which the boundary config
+      does not allow — `app` may only import a module's `api/` barrel. Fixed by adding
+      `src/modules/finance/api/category-validation.ts`, a `server-only`-free re-export file
+      under `api/` (same shape as the pre-existing `budget-evaluation.ts` pattern for
+      client-importable pure domain functions), and pointing `CategoryEditor` at it instead.
+      Second run: 0 warnings, 14 routes generated (added `/categorias`, 8.37 kB), check-tokens
+      OK, all other 13 routes unchanged.
+    test_gate: >
+      `pnpm vitest run --testTimeout=15000` (full suite, extended timeout to rule out the
+      documented pre-existing flake) — 167/167 tests pass across 30 files (159 pre-existing +
+      8 new in tests/unit/category-editor-render.test.tsx). On the default-timeout run,
+      `tests/unit/boundary-lint.test.ts`'s single ESLint-subprocess test hit the same
+      documented 5s-timeout flake noted in PR 1's state.yaml/apply-progress; re-run in isolation
+      it passed in ~2.1s, confirmed non-regression, and did not recur under the extended-timeout
+      full-suite run.
+    db_gate: >
+      Not applicable — design.md §6 Decision 5 explicitly introduces zero new RLS objects for
+      this PR (`createCategory`/`updateCategory`/`archiveCategory` reuse the existing
+      `categories_insert`/`categories_update` policies and the `insert, update` grant already
+      pgTAP-tested in PR 1's `supabase/tests/050_finance_categories.sql`). No new migration, no
+      new column, no new constraint — pgTAP suite intentionally not extended for PR 2.
+    deviations: >
+      1. Added a nav entry for `/categorias` in `src/app/(app)/layout.tsx`'s `OverflowMenu`
+      (Layers icon) — not an explicit tasks.md line item, but design.md states the screen "is a
+      required deliverable of this change, not a deferred follow-up," and every other finance
+      screen (`/presupuestos`, `/recurrentes`) has a matching nav entry; leaving `/categorias`
+      unreachable from the UI would leave the requirement's usability unmet. One-line addition
+      matching the established `OverflowMenu` convention exactly.
+      2. Discovered ESLint boundary conflict (see verify_gate) not explicitly anticipated by
+      design.md — resolved using the project's own established pattern
+      (`budget-evaluation.ts`-style client-safe re-export), not a new pattern.
+    pr: "not opened — implementation only, per instructions"
