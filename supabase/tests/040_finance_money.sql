@@ -1,8 +1,11 @@
 -- pgTAP — money invariants: balances, transfers, idempotency, account creation
 -- (design.md §9 "Database — money" / "Database — account creation", tasks.md T-025)
+-- Extended by finance-account-types-expansion: eight account types (adds `investment`/`loaned`),
+-- the inverted `loaned` sign guard, investment/loaned detail exclusivity + defaults, and the
+-- `update_investment_value()` seam.
 
 begin;
-select plan(30);
+select plan(50);
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
@@ -25,7 +28,7 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000005a","role":"authenticated"}';
 
 -- ---------------------------------------------------------------------------
--- create_account: six types, class mapping, atomic detail rows. Each id is
+-- create_account: eight types, class mapping, atomic detail rows. Each id is
 -- captured via set_config immediately after ONE call — calling a volatile
 -- function inside a WHERE clause would invoke it once per scanned row.
 -- ---------------------------------------------------------------------------
@@ -46,6 +49,12 @@ begin
   select finance.create_account('00000000-0000-0000-0000-0000000005aa','Meta','savings_goal',0,'household',0,
     null,null,null,null,null, 100000, '2027-01-01') into v_id;
   perform set_config('lifeos.test.goal', v_id::text, false);
+  select finance.create_account('00000000-0000-0000-0000-0000000005aa','Acciones','investment',0,'household',0,
+    null,null,null,null,null, null,null, 300000, 350000, '2026-06-01') into v_id;
+  perform set_config('lifeos.test.investment', v_id::text, false);
+  select finance.create_account('00000000-0000-0000-0000-0000000005aa','Prestado a Juan','loaned',5000,'household',0,
+    null,null,null,null,null, null,null, null,null,null, 'Juan', 5000, 6, '2026-12-01') into v_id;
+  perform set_config('lifeos.test.loaned', v_id::text, false);
 end $$;
 
 select is((select class from finance.accounts where id = current_setting('lifeos.test.cash')::uuid),
@@ -60,6 +69,20 @@ select is((select class from finance.accounts where id = current_setting('lifeos
   'liability', 'liability account gets class=liability');
 select is((select class from finance.accounts where id = current_setting('lifeos.test.goal')::uuid),
   'asset', 'savings_goal account gets class=asset');
+select is((select class from finance.accounts where id = current_setting('lifeos.test.investment')::uuid),
+  'asset', 'investment account gets class=asset');
+select is((select class from finance.accounts where id = current_setting('lifeos.test.loaned')::uuid),
+  'asset', 'loaned account gets class=asset');
+
+-- investment/loaned detail rows exist atomically
+select is(
+  (select count(*) from finance.account_investment_details where account_id = current_setting('lifeos.test.investment')::uuid),
+  1::bigint, 'investment account has exactly one detail row'
+);
+select is(
+  (select count(*) from finance.account_loaned_details where account_id = current_setting('lifeos.test.loaned')::uuid),
+  1::bigint, 'loaned account has exactly one detail row'
+);
 
 -- liability/goal detail rows exist atomically
 select is(
@@ -92,6 +115,61 @@ select throws_ok(
   $$ select finance.create_account('00000000-0000-0000-0000-0000000005aa','BadLoan','liability',100,'household',0,
        500000,1200,24,22000,'2026-01-01') $$,
   '22023', null, 'liability with positive opening_balance_cents is rejected with 22023'
+);
+
+-- investment/loaned detail exclusivity
+select throws_ok(
+  $$ select finance.create_account('00000000-0000-0000-0000-0000000005aa','BadInv','investment') $$,
+  '22023', null, 'investment without a cost basis is rejected with 22023'
+);
+select throws_ok(
+  $$ select finance.create_account('00000000-0000-0000-0000-0000000005aa','BadLoaned','loaned',0,'household',0,
+       null,null,null,null,null, null,null, null,null,null, null, 5000, null, null) $$,
+  '22023', null, 'loaned without a counterparty name is rejected with 22023'
+);
+select throws_ok(
+  $$ select finance.create_account('00000000-0000-0000-0000-0000000005aa','BadLoaned2','loaned',0,'household',0,
+       null,null,null,null,null, null,null, null,null,null, '   ', 5000, null, null) $$,
+  '22023', null, 'loaned with a blank (whitespace-only) counterparty name is rejected with 22023'
+);
+select throws_ok(
+  $$ select finance.create_account('00000000-0000-0000-0000-0000000005aa','BadInvLoan','investment',0,'household',0,
+       null,null,null,null,null, null,null, 300000,null,null, 'Juan',5000,null,null) $$,
+  '22023', null, 'investment carrying a loaned detail block is rejected with 22023'
+);
+
+-- THE named regression (design.md Decision 1): loaned's sign guard is a SEPARATE, INVERTED
+-- statement — it must never be folded into the liability guard's `in (...)` list, or household
+-- net worth silently inverts.
+select lives_ok(
+  $$ select finance.create_account('00000000-0000-0000-0000-0000000005aa','GoodLoanedZero','loaned',0,'household',0,
+       null,null,null,null,null, null,null, null,null,null, 'Ana',1000,null,null) $$,
+  'loaned with a zero opening balance is accepted'
+);
+select throws_ok(
+  $$ select finance.create_account('00000000-0000-0000-0000-0000000005aa','BadLoanedSign','loaned',-100,'household',0,
+       null,null,null,null,null, null,null, null,null,null, 'Ana',1000,null,null) $$,
+  '22023', null, 'loaned with a NEGATIVE opening balance is rejected with 22023 (inverse of the liability guard)'
+);
+
+-- investment defaults: current_value_cents defaults to cost_basis_cents, valued_on defaults to
+-- current_date, when the caller omits them — rendimiento reads 0, never NULL.
+do $$
+declare v_id uuid;
+begin
+  select finance.create_account('00000000-0000-0000-0000-0000000005aa','SinValorar','investment',0,'household',0,
+    null,null,null,null,null, null,null, 400000,null,null) into v_id;
+  perform set_config('lifeos.test.investment_defaulted', v_id::text, false);
+end $$;
+select is(
+  (select current_value_cents from finance.account_investment_details
+    where account_id = current_setting('lifeos.test.investment_defaulted')::uuid),
+  400000::bigint, 'investment created without current_value defaults current_value_cents to cost_basis_cents'
+);
+select is(
+  (select valued_on from finance.account_investment_details
+    where account_id = current_setting('lifeos.test.investment_defaulted')::uuid),
+  current_date, 'investment created without valued_on defaults to current_date'
 );
 
 -- a failing detail CHECK rolls the account row back too (no orphan account)
@@ -239,6 +317,80 @@ select is(
 select is(
   (select balance_cents::bigint from finance.account_balances where account_id = current_setting('lifeos.test.credit_card')::uuid) < 0,
   true, 'the credit_card account balance itself is negative (debt)'
+);
+
+-- ---------------------------------------------------------------------------
+-- update_investment_value() — the new seam (design.md §1.5). Display-only: it must write ZERO
+-- transactions, must reject a non-investment account, a foreign-household account, and a
+-- non-member caller.
+-- ---------------------------------------------------------------------------
+select lives_ok(
+  $$ select finance.update_investment_value('00000000-0000-0000-0000-0000000005aa',
+       current_setting('lifeos.test.investment')::uuid, 360000, '2026-07-01') $$,
+  'update_investment_value succeeds for the owning household on an investment account'
+);
+select is(
+  (select current_value_cents from finance.account_investment_details
+    where account_id = current_setting('lifeos.test.investment')::uuid),
+  360000::bigint, 'update_investment_value updates current_value_cents'
+);
+select is(
+  (select valued_on from finance.account_investment_details
+    where account_id = current_setting('lifeos.test.investment')::uuid),
+  '2026-07-01'::date, 'update_investment_value updates valued_on'
+);
+select is(
+  (select count(*) from finance.transactions where account_id = current_setting('lifeos.test.investment')::uuid),
+  0::bigint, 'update_investment_value writes zero transactions (an unrealized valuation is not income)'
+);
+select throws_ok(
+  $$ select finance.update_investment_value('00000000-0000-0000-0000-0000000005aa',
+       current_setting('lifeos.test.liability')::uuid, 100) $$,
+  '22023', null, 'update_investment_value rejects a non-investment account'
+);
+
+-- member A also belongs to a second household ("05bb"), but the investment account itself
+-- lives under "05aa" — this proves the seam checks the account's OWN household_id, not merely
+-- that the caller is a member of *some* household.
+reset role; reset request.jwt.claims;
+do $$
+declare v_other_household uuid := '00000000-0000-0000-0000-0000000005bb';
+begin
+  insert into core.households (id, name, personal_owner_user_id, created_by)
+  values (v_other_household, 'other household', null, '00000000-0000-0000-0000-00000000005a')
+  on conflict (id) do nothing;
+  insert into core.household_members (household_id, user_id, role)
+  values (v_other_household, '00000000-0000-0000-0000-00000000005a', 'owner')
+  on conflict do nothing;
+end $$;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000005a","role":"authenticated"}';
+select throws_ok(
+  $$ select finance.update_investment_value('00000000-0000-0000-0000-0000000005bb',
+       current_setting('lifeos.test.investment')::uuid, 100) $$,
+  '22023', null, 'update_investment_value rejects an investment account outside the given household'
+);
+
+reset role; reset request.jwt.claims;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000005b","role":"authenticated"}';
+select throws_ok(
+  $$ select finance.update_investment_value('00000000-0000-0000-0000-0000000005aa',
+       current_setting('lifeos.test.investment')::uuid, 100) $$,
+  '42501', null, 'update_investment_value rejects a non-member caller'
+);
+reset role; reset request.jwt.claims;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000005a","role":"authenticated"}';
+
+-- CHECK domain: widening the type list to eight literals does not open the domain — an
+-- unrecognized type is still rejected. In practice `derive_account_class()`'s BEFORE INSERT
+-- trigger runs before the CHECK constraint is evaluated, so its catch-all `raise` (22023) is
+-- what actually fires — proving the two-layer defense (trigger catch-all + CHECK) both still
+-- treat an unknown type as rejected, never silently accepted.
+select throws_ok(
+  $$ select finance.create_account('00000000-0000-0000-0000-0000000005aa','BadCrypto','crypto') $$,
+  '22023', null, 'type = crypto is still rejected (trigger catch-all fires before the widened CHECK)'
 );
 
 -- ---------------------------------------------------------------------------

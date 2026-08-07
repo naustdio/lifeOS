@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createClient } from "@/shared/supabase/server";
 import { type AppError, type Result, err, ok } from "@/shared/result";
+import { type AccountType, deriveAccountClass } from "../domain/account";
 
 /**
  * Read-only re-exports (T-036/T-037/T-039, sub-slice 2C): the boundary rule
@@ -99,7 +100,7 @@ export type TransactionRef = { id: string; householdId: string; status: "posted"
 export type AccountRef = { id: string; householdId: string; type: AccountType; class: "asset" | "liability" };
 export type TransferRef = { transferGroupId: string; householdId: string };
 
-export type AccountType = "cash" | "checking" | "credit_card" | "savings" | "liability" | "savings_goal";
+export type { AccountType } from "../domain/account";
 
 const BaseAccountFields = {
   householdId: z.string().uuid(),
@@ -137,6 +138,25 @@ export const CreateAccountInputSchema = z.discriminatedUnion("type", [
     goal: z.object({
       targetAmountCents: z.number().int().positive(),
       targetDate: z.string().optional(),
+    }),
+  }),
+  z.object({
+    ...BaseAccountFields,
+    type: z.literal("investment"),
+    investment: z.object({
+      costBasisCents: z.number().int().nonnegative(),
+      currentValueCents: z.number().int().nonnegative().optional(),
+      valuedOn: z.string().optional(),
+    }),
+  }),
+  z.object({
+    ...BaseAccountFields,
+    type: z.literal("loaned"),
+    loaned: z.object({
+      counterpartyName: z.string().trim().min(1).max(60),
+      originalAmountCents: z.number().int().positive(),
+      termMonths: z.number().int().positive().optional(),
+      expectedReturnDate: z.string().optional(),
     }),
   }),
 ]);
@@ -242,6 +262,8 @@ export async function createAccount(input: CreateAccountInput): Promise<Result<A
 
   const liability = i.type === "liability" ? i.liability : undefined;
   const goal = i.type === "savings_goal" ? i.goal : undefined;
+  const investment = i.type === "investment" ? i.investment : undefined;
+  const loaned = i.type === "loaned" ? i.loaned : undefined;
 
   const { data, error } = await supabase.schema("finance").rpc("create_account", {
     p_household_id: i.householdId,
@@ -257,13 +279,52 @@ export async function createAccount(input: CreateAccountInput): Promise<Result<A
     p_start_date: liability?.startDate ?? null,
     p_target_amount_cents: goal?.targetAmountCents ?? null,
     p_target_date: goal?.targetDate ?? null,
+    p_cost_basis_cents: investment?.costBasisCents ?? null,
+    p_current_value_cents: investment?.currentValueCents ?? null,
+    p_valued_on: investment?.valuedOn ?? null,
+    p_counterparty_name: loaned?.counterpartyName ?? null,
+    p_loaned_amount_cents: loaned?.originalAmountCents ?? null,
+    p_loaned_term_months: loaned?.termMonths ?? null,
+    p_expected_return_date: loaned?.expectedReturnDate ?? null,
   });
 
   if (error) {
     return err(mapPgError(error, "create_account"));
   }
 
-  return ok({ id: data as string, householdId: i.householdId, type: i.type, class: i.type === "credit_card" || i.type === "liability" ? "liability" : "asset" });
+  return ok({ id: data as string, householdId: i.householdId, type: i.type, class: deriveAccountClass(i.type) });
+}
+
+export const UpdateInvestmentValueInputSchema = z.object({
+  householdId: z.string().uuid(),
+  accountId: z.string().uuid(),
+  currentValueCents: z.number().int().nonnegative(),
+  valuedOn: z.string().optional(),
+});
+export type UpdateInvestmentValueInput = z.infer<typeof UpdateInvestmentValueInputSchema>;
+
+/** Updates an investment account's manually-captured current value. Display-only — writes no
+ *  transaction (an unrealized valuation is not income). */
+export async function updateInvestmentValue(input: UpdateInvestmentValueInput): Promise<Result<void>> {
+  const parsed = UpdateInvestmentValueInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return err({ code: "VALIDATION_ERROR", message: parsed.error.message, cause: parsed.error });
+  }
+  const i = parsed.data;
+  const supabase = await client();
+
+  const { error } = await supabase.schema("finance").rpc("update_investment_value", {
+    p_household_id: i.householdId,
+    p_account_id: i.accountId,
+    p_current_value_cents: i.currentValueCents,
+    p_valued_on: i.valuedOn ?? null,
+  });
+
+  if (error) {
+    return err(mapPgError(error, "create_account"));
+  }
+
+  return ok(undefined as unknown as void);
 }
 
 export async function recordTransaction(input: RecordTransactionInput): Promise<Result<TransactionRef>> {
