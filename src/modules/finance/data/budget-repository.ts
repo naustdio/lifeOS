@@ -101,3 +101,92 @@ export async function removeBudget(
 
   return { error: error?.message ?? null };
 }
+
+export type BudgetSettings = {
+  resetDay: number;
+  monthlyTotalCents: number | null;
+  includeScheduledAsSpent: boolean;
+};
+
+const DEFAULT_BUDGET_SETTINGS: BudgetSettings = {
+  resetDay: 1,
+  monthlyTotalCents: null,
+  includeScheduledAsSpent: false,
+};
+
+/** Household budget settings — degrades to the same defaults `finance.budget_period_bounds()`
+ *  assumes server-side (reset_day=1, no total, scheduled excluded) when no row exists yet. */
+export async function getBudgetSettings(
+  supabase: SupabaseClient,
+  householdId: string,
+): Promise<BudgetSettings> {
+  const { data, error } = await supabase
+    .schema("finance")
+    .from("budget_settings")
+    .select("reset_day, monthly_total_cents, include_scheduled_as_spent")
+    .eq("household_id", householdId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return DEFAULT_BUDGET_SETTINGS;
+  }
+
+  return {
+    resetDay: Number(data.reset_day),
+    monthlyTotalCents: data.monthly_total_cents === null ? null : Number(data.monthly_total_cents),
+    includeScheduledAsSpent: Boolean(data.include_scheduled_as_spent),
+  };
+}
+
+/** RLS-guarded upsert on the `household_id` primary key — one settings row per household. */
+export async function upsertBudgetSettings(
+  supabase: SupabaseClient,
+  householdId: string,
+  settings: BudgetSettings,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .schema("finance")
+    .from("budget_settings")
+    .upsert(
+      {
+        household_id: householdId,
+        reset_day: settings.resetDay,
+        monthly_total_cents: settings.monthlyTotalCents,
+        include_scheduled_as_spent: settings.includeScheduledAsSpent,
+      },
+      { onConflict: "household_id" },
+    );
+
+  return { error: error?.message ?? null };
+}
+
+export type BudgetTotalProgress = {
+  monthlyTotalCents: number;
+  spentCents: number;
+  periodStart: string;
+  periodEnd: string;
+};
+
+/** Overall monthly-total progress, or `null` when no total budget is configured. */
+export async function getBudgetTotalProgress(
+  supabase: SupabaseClient,
+  householdId: string,
+): Promise<BudgetTotalProgress | null> {
+  const { data, error } = await supabase
+    .schema("finance")
+    .from("budget_total_progress")
+    .select("monthly_total_cents, spent_cents, period_start, period_end")
+    .eq("household_id", householdId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return {
+    monthlyTotalCents: Number(data.monthly_total_cents),
+    spentCents: Number(data.spent_cents),
+    periodStart: data.period_start as string,
+    periodEnd: data.period_end as string,
+  };
+}

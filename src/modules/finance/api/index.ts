@@ -39,6 +39,10 @@ export {
   listBudgetsWithProgress,
   getProgressForCategory,
   type BudgetProgressItem,
+  getBudgetSettings,
+  type BudgetSettings,
+  getBudgetTotalProgress,
+  type BudgetTotalProgress,
   getMonthSummary,
   type MonthSummary,
   listCategorySpend,
@@ -63,7 +67,7 @@ export {
  * ESLint boundary pattern `src/modules/*\/api/**`), reserved for framework-free re-exports a
  * client component may import.
  */
-export { upsertBudgetLimit, removeBudget } from "../data";
+export { upsertBudgetLimit, removeBudget, upsertBudgetSettings } from "../data";
 
 /**
  * `finance-recurring` change: CRUD/pause/resume/delete on a recurring definition are the same
