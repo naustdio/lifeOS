@@ -253,6 +253,10 @@ export type CalendarCell = {
   hasCharges: boolean;
   isNegative: boolean;
   isToday: boolean;
+  /** Cumulative running balance through this day; `0` when out of horizon. */
+  closingBalanceCents: number;
+  /** This day's own net movement (inflow minus outflow); `0` when out of horizon. */
+  netCents: number;
 };
 
 /**
@@ -281,6 +285,8 @@ export function buildMonthCells(projection: BalanceProjection, month: string): C
       hasCharges: (projectedDay?.occurrences.length ?? 0) > 0,
       isNegative: projectedDay?.isNegative ?? false,
       isToday: date === projection.fromDate,
+      closingBalanceCents: projectedDay?.closingBalanceCents ?? 0,
+      netCents: projectedDay?.netCents ?? 0,
     });
   }
 

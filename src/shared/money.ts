@@ -18,6 +18,14 @@ export function centsToPesos(cents: number): number {
   return cents / 100;
 }
 
+const COMPACT_NUMBER_FORMATTER = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 0 });
+
+/** Centavos (signed) -> a compact, currency-symbol-free integer-pesos string for dense displays
+ *  like a calendar day cell, e.g. -150000 -> "-1,500", 505000 -> "5,050". */
+export function formatCentsCompact(cents: number): string {
+  return COMPACT_NUMBER_FORMATTER.format(Math.round(cents / 100));
+}
+
 /** Pesos -> integer centavos, rounded to the nearest centavo to avoid float drift. */
 export function pesosToCents(pesos: number): number {
   return Math.round(pesos * 100);

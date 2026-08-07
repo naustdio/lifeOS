@@ -14,6 +14,10 @@ export type CalendarCell = {
   hasCharges: boolean;
   isNegative: boolean;
   isToday: boolean;
+  /** Pre-formatted, currency-symbol-free number to render under the day — meaning depends on
+   *  `mode` (cumulative running balance, or that day's own net movement). Empty string when out
+   *  of horizon. */
+  balanceLabel: string;
 };
 
 export interface CalendarGridProps {
@@ -59,21 +63,24 @@ function CalendarDayCell({
       aria-label={cellAriaLabel(cell)}
       onClick={() => onSelectDate(cell.date)}
       className={cn(
-        "flex h-11 w-full flex-col items-center justify-center rounded-card text-xs transition-colors duration-200 ease-out",
+        "flex h-14 w-full flex-col items-center justify-center gap-0.5 rounded-card text-xs transition-colors duration-200 ease-out",
         cell.inHorizon ? "hover:bg-accent" : "cursor-not-allowed text-muted-foreground/40",
         selected && "bg-secondary text-secondary-foreground",
         cell.isToday && "font-semibold",
       )}
     >
       <span>{cell.day}</span>
-      <span className="flex h-1.5 items-center gap-0.5">
-        {cell.hasCharges && (
-          <span
-            aria-hidden
-            className={cn("h-1.5 w-1.5 rounded-pill", cell.isNegative ? "bg-expense" : "bg-secondary-foreground")}
-          />
-        )}
-      </span>
+      {cell.inHorizon && (
+        <span
+          className={cn(
+            "tabular-nums",
+            cell.isNegative ? "text-expense" : "text-muted-foreground",
+            selected && "text-secondary-foreground",
+          )}
+        >
+          {cell.balanceLabel}
+        </span>
+      )}
     </button>
   );
 }

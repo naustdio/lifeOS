@@ -27,6 +27,7 @@ function buildCells(overrides: Partial<CalendarCell>[] = []): CalendarCell[] {
       hasCharges: false,
       isNegative: false,
       isToday: false,
+      balanceLabel: "0",
     };
     const override = overrides.find((o) => o.date === date);
     return override ? { ...base, ...override } : base;
@@ -45,12 +46,13 @@ describe("CalendarGrid — smoke render (K-009)", () => {
     expect(screen.getAllByRole("button")).toHaveLength(AUGUST_2026_DAY_COUNT);
   });
 
-  it("marks a hasCharges day and applies the expense token on a negative day", () => {
-    const cells = buildCells([{ date: "2026-08-10", hasCharges: true, isNegative: true }]);
+  it("marks a hasCharges day and applies the expense token on a negative day's balance label", () => {
+    const cells = buildCells([{ date: "2026-08-10", hasCharges: true, isNegative: true, balanceLabel: "-500" }]);
     render(<CalendarGrid month="2026-08" cells={cells} selectedDate={null} onSelectDate={vi.fn()} />);
 
     const negativeCell = screen.getByRole("button", { name: /2026-08-10.*saldo negativo/ });
-    expect(negativeCell.querySelector(".bg-expense")).toBeInTheDocument();
+    expect(negativeCell.querySelector(".text-expense")).toBeInTheDocument();
+    expect(negativeCell).toHaveTextContent("-500");
   });
 
   it("calls onSelectDate when a cell is clicked", () => {

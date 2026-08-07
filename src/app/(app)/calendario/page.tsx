@@ -1,5 +1,11 @@
 import { getCurrentHouseholdId } from "@/modules/core/api";
-import { buildMonthCells, getHouseholdSummary, listRecurringDefinitions, projectBalance } from "@/modules/finance/api";
+import {
+  buildMonthCells,
+  getHouseholdSummary,
+  listCreditCardStatus,
+  listRecurringDefinitions,
+  projectBalance,
+} from "@/modules/finance/api";
 import { createClient } from "@/shared/supabase/server";
 import { formatCentsAsMXN } from "@/shared/money";
 import { CalendarScreen } from "./CalendarScreen";
@@ -34,9 +40,15 @@ export default async function CalendarioPage() {
   const supabase = await createClient();
   const spaceId = await getCurrentHouseholdId(supabase);
 
-  const [summary, definitions] = spaceId
-    ? await Promise.all([getHouseholdSummary(supabase, spaceId), listRecurringDefinitions(supabase, spaceId)])
-    : [{ availableCents: 0, debtCents: 0 }, []];
+  const [summary, definitions, cardStatuses] = spaceId
+    ? await Promise.all([
+        getHouseholdSummary(supabase, spaceId),
+        listRecurringDefinitions(supabase, spaceId),
+        listCreditCardStatus(supabase, spaceId),
+      ])
+    : [{ availableCents: 0, debtCents: 0 }, [], []];
+
+  const cardsOwedCents = cardStatuses.reduce((sum, c) => sum + c.owedCents, 0);
 
   const fromDate = new Date().toISOString().slice(0, 10);
   // Real balance projection: recurring EXPENSE and INCOME definitions both count (outflow/inflow
@@ -86,6 +98,7 @@ export default async function CalendarioPage() {
         daysByDate={daysByDate}
         fromDate={projection.fromDate}
         formattedAnchor={formatCentsAsMXN(projection.anchorCents)}
+        formattedCardsOwed={formatCentsAsMXN(cardsOwedCents)}
       />
     </main>
   );

@@ -11,7 +11,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const { CalendarScreen } = await import("@/app/(app)/calendario/CalendarScreen");
 
-function buildMonthCells(month: string, overrides: Record<string, Partial<{ hasCharges: boolean; isNegative: boolean }>> = {}) {
+function buildMonthCells(
+  month: string,
+  overrides: Record<string, Partial<{ hasCharges: boolean; isNegative: boolean; closingBalanceCents: number; netCents: number }>> = {},
+) {
   const [year, monthNum] = month.split("-").map(Number);
   const daysInMonth = new Date(Date.UTC(year, monthNum, 0)).getUTCDate();
   return Array.from({ length: daysInMonth }, (_, index) => {
@@ -25,6 +28,8 @@ function buildMonthCells(month: string, overrides: Record<string, Partial<{ hasC
       hasCharges: override.hasCharges ?? false,
       isNegative: override.isNegative ?? false,
       isToday: date === `${month}-06`,
+      closingBalanceCents: override.closingBalanceCents ?? 0,
+      netCents: override.netCents ?? 0,
     };
   });
 }
@@ -41,6 +46,7 @@ describe("CalendarScreen — smoke render (K-011)", () => {
         daysByDate={{}}
         fromDate="2026-08-06"
         formattedAnchor="$1,500.00"
+        formattedCardsOwed="$0.00"
       />,
     );
 
@@ -56,6 +62,7 @@ describe("CalendarScreen — smoke render (K-011)", () => {
         daysByDate={{}}
         fromDate="2026-08-06"
         formattedAnchor="$1,500.00"
+        formattedCardsOwed="$0.00"
       />,
     );
 
@@ -79,6 +86,7 @@ describe("CalendarScreen — smoke render (K-011)", () => {
         }}
         fromDate="2026-08-06"
         formattedAnchor="$1,500.00"
+        formattedCardsOwed="$0.00"
       />,
     );
 
@@ -103,10 +111,55 @@ describe("CalendarScreen — smoke render (K-011)", () => {
         }}
         fromDate="2026-08-06"
         formattedAnchor="$1,500.00"
+        formattedCardsOwed="$0.00"
       />,
     );
 
     expect(screen.getByText("Gimnasio")).toBeInTheDocument();
     expect(screen.getByText("Vencida")).toBeInTheDocument();
+  });
+
+  it("shows the day's closing balance under the cell in Balance mode, and switches to that day's net movement in Flujo mode", () => {
+    render(
+      <CalendarScreen
+        initialMonth="2026-08"
+        selectableMonths={["2026-08"]}
+        monthsCells={{
+          "2026-08": buildMonthCells("2026-08", {
+            "2026-08-10": { closingBalanceCents: 505000, netCents: -12000 },
+          }),
+        }}
+        daysByDate={{}}
+        fromDate="2026-08-06"
+        formattedAnchor="$1,500.00"
+        formattedCardsOwed="$0.00"
+      />,
+    );
+
+    expect(screen.getByText("5,050")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Flujo" }));
+    expect(screen.getByText("-120")).toBeInTheDocument();
+  });
+
+  it("shows the credit-card total and the month-end balance in the bottom summary", () => {
+    render(
+      <CalendarScreen
+        initialMonth="2026-08"
+        selectableMonths={["2026-08"]}
+        monthsCells={{
+          "2026-08": buildMonthCells("2026-08", {
+            "2026-08-31": { closingBalanceCents: 505000 },
+          }),
+        }}
+        daysByDate={{}}
+        fromDate="2026-08-06"
+        formattedAnchor="$1,500.00"
+        formattedCardsOwed="$3,200.00"
+      />,
+    );
+
+    expect(screen.getByText("$3,200.00")).toBeInTheDocument();
+    expect(screen.getByText("$5,050.00")).toBeInTheDocument();
   });
 });
