@@ -66,7 +66,10 @@ export default async function BudgetsPage() {
 
       <Card>
         <CardContent className="pt-6">
-          <BudgetForm categories={categories.map((c) => ({ id: c.id, name: c.name }))} budgets={budgets} />
+          <BudgetForm
+            categories={categories.map((c) => ({ id: c.id, name: c.name, parentId: c.parentId }))}
+            budgets={budgets}
+          />
         </CardContent>
       </Card>
     </main>

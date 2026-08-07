@@ -7,18 +7,20 @@ import { EmptyState } from "@/design-system/patterns/EmptyState";
 import { ProgressBar } from "@/design-system/patterns/ProgressBar";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
+import { formatCentsAsMXN } from "@/shared/money";
 import type { BudgetProgressItem } from "@/modules/finance/api/budget-evaluation";
 import { removeBudgetAction, setBudgetLimitAction, type BudgetFormState } from "./actions";
 
-type CategoryOption = { id: string; name: string };
+type CategoryOption = { id: string; name: string; parentId: string | null };
 
 const INITIAL_STATE: BudgetFormState = { error: null };
 
 /**
- * One row per active expense category (B-005): opt-in limit input for an
- * unbudgeted category, or a progress bar + "quitar presupuesto" for a
- * budgeted one. Single-column layout, usable at 375px, light and dark, no
- * raw hex (existing semantic tokens only).
+ * One row per active expense category (B-005), grouped by parent category (Phase: budget
+ * grouping) — a top-level category with children renders as a group header (name + the group's
+ * total budgeted spend) followed by its children's rows; a top-level category with no children
+ * renders directly as its own row, same as before this change. Opt-in limit input for an
+ * unbudgeted category, or a progress bar + "quitar presupuesto" for a budgeted one.
  */
 export function BudgetForm({
   categories,
@@ -28,9 +30,11 @@ export function BudgetForm({
   budgets: BudgetProgressItem[];
 }) {
   const budgetByCategory = new Map(budgets.map((b) => [b.categoryId, b]));
+  const topLevel = categories.filter((c) => c.parentId === null);
+  const childrenOf = (parentId: string) => categories.filter((c) => c.parentId === parentId);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       {categories.length === 0 && (
         <EmptyState
           icon={Target}
@@ -43,13 +47,34 @@ export function BudgetForm({
           }
         />
       )}
-      {categories.map((category) => (
-        <BudgetRow
-          key={category.id}
-          category={category}
-          budget={budgetByCategory.get(category.id) ?? null}
-        />
-      ))}
+      {topLevel.map((category) => {
+        const children = childrenOf(category.id);
+        if (children.length === 0) {
+          return (
+            <BudgetRow key={category.id} category={category} budget={budgetByCategory.get(category.id) ?? null} />
+          );
+        }
+
+        const groupSpentCents = children.reduce((sum, c) => sum + (budgetByCategory.get(c.id)?.spentCents ?? 0), 0);
+
+        return (
+          <div key={category.id} className="flex flex-col gap-3">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {category.name}
+              </span>
+              <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                {formatCentsAsMXN(groupSpentCents)}
+              </span>
+            </div>
+            <div className="flex flex-col gap-4 rounded-card border border-border p-3">
+              {children.map((child) => (
+                <BudgetRow key={child.id} category={child} budget={budgetByCategory.get(child.id) ?? null} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

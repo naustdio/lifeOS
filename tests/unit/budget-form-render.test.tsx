@@ -22,8 +22,8 @@ vi.mock("@/app/(app)/presupuestos/actions", () => ({
 const { BudgetForm } = await import("@/app/(app)/presupuestos/BudgetForm");
 
 const CATEGORIES = [
-  { id: "cat-1", name: "Comida" },
-  { id: "cat-2", name: "Transporte" },
+  { id: "cat-1", name: "Comida", parentId: null },
+  { id: "cat-2", name: "Transporte", parentId: null },
 ];
 
 describe("BudgetForm — smoke render (B-011)", () => {
@@ -86,5 +86,24 @@ describe("BudgetForm — smoke render (B-011)", () => {
     const hiddenInput = removeButton.closest("form")?.querySelector('input[name="categoryId"]');
     expect(hiddenInput).toHaveValue("cat-1");
     fireEvent.click(removeButton);
+  });
+
+  it("groups a parent category with children under a section header, and leaves a childless category as its own row", () => {
+    const grouped = [
+      { id: "cat-1", name: "Comida", parentId: null },
+      { id: "cat-3", name: "Supermercado", parentId: "cat-1" },
+      { id: "cat-4", name: "Restaurantes", parentId: "cat-1" },
+      { id: "cat-2", name: "Transporte", parentId: null },
+    ];
+    render(<BudgetForm categories={grouped} budgets={[]} />);
+
+    expect(screen.getByText("Comida")).toBeInTheDocument();
+    expect(screen.getByText("Supermercado")).toBeInTheDocument();
+    expect(screen.getByText("Restaurantes")).toBeInTheDocument();
+    // The parent itself gets no opt-in limit input — its children do.
+    expect(screen.queryByLabelText("Límite para Comida")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Límite para Supermercado")).toBeInTheDocument();
+    // Transporte has no children, so it still renders as its own budgetable row.
+    expect(screen.getByLabelText("Límite para Transporte")).toBeInTheDocument();
   });
 });
