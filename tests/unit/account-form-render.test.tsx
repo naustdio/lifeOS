@@ -100,4 +100,29 @@ describe("AccountForm — smoke render (T-036 / C-1)", () => {
     expect(screen.queryByText("Inversión", { selector: "legend" })).not.toBeInTheDocument();
     expect(screen.queryByText("Meta de ahorro", { selector: "legend" })).not.toBeInTheDocument();
   });
+
+  // finance-credit-card-payments CC-025/CC-022: the card-terms fieldset only appears for
+  // type=credit_card, every field is optional (no `required`), and the two day pickers are the
+  // design-system Select — never a raw native <select>.
+  it("shows the card-terms fieldset (all fields optional) only when type=credit_card", () => {
+    render(<AccountForm />);
+
+    fireEvent.click(screen.getByLabelText("Tipo de cuenta"));
+    fireEvent.click(screen.getByRole("option", { name: "Tarjeta de crédito" }));
+
+    expect(screen.getByText("Términos de la tarjeta (opcional)")).toBeInTheDocument();
+    const limitInput = screen.getByLabelText("Límite de crédito (MXN)");
+    const minPaymentInput = screen.getByLabelText("Pago mínimo (MXN)");
+    expect(limitInput).not.toBeRequired();
+    expect(minPaymentInput).not.toBeRequired();
+    expect(screen.getByLabelText("Día de corte")).toBeInTheDocument();
+    expect(screen.getByLabelText("Día de pago")).toBeInTheDocument();
+    expect(screen.queryByText("Datos del préstamo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Meta de ahorro", { selector: "legend" })).not.toBeInTheDocument();
+  });
+
+  it("hides the card-terms fieldset for the default (cash) type", () => {
+    render(<AccountForm />);
+    expect(screen.queryByText("Términos de la tarjeta (opcional)")).not.toBeInTheDocument();
+  });
 });

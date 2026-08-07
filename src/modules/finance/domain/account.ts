@@ -46,3 +46,11 @@ export function requiresInvestmentDetail(type: AccountType): boolean {
 export function requiresLoanedDetail(type: AccountType): boolean {
   return type === "loaned";
 }
+
+/** Mirrors the type-gate trigger on `finance.account_credit_card_details` (design.md §1a,
+ *  change: finance-credit-card-payments CC-018). Unlike liability/goal detail, card terms are
+ *  OPTIONAL even for a `credit_card` account — this only gates whether the fieldset can be
+ *  shown, not whether it must be filled. */
+export function supportsCardDetail(type: AccountType): boolean {
+  return type === "credit_card";
+}

@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * RTL smoke-render for the Cuentas screen (finance-ui-polish P-020), mirroring
@@ -21,17 +21,24 @@ vi.mock("@/modules/core/api", () => ({
 }));
 
 const listActiveAccounts = vi.fn();
+const listCreditCardStatus = vi.fn();
 vi.mock("@/modules/finance/api", () => ({
   listActiveAccounts: (...args: unknown[]) => listActiveAccounts(...args),
+  listCreditCardStatus: (...args: unknown[]) => listCreditCardStatus(...args),
 }));
 
 const { default: AccountsPage } = await import("@/app/(app)/cuentas/page");
 
 describe("AccountsPage — smoke render (finance-ui-polish P-020)", () => {
+  beforeEach(() => {
+    listCreditCardStatus.mockResolvedValue([]);
+  });
+
   afterEach(() => {
     cleanup();
     getCurrentHouseholdId.mockReset();
     listActiveAccounts.mockReset();
+    listCreditCardStatus.mockReset();
   });
 
   it("renders accounts via TransactionRow and a goal's ProgressBar when populated", async () => {
@@ -67,5 +74,70 @@ describe("AccountsPage — smoke render (finance-ui-polish P-020)", () => {
 
     expect(screen.getByText("Todavía no tienes cuentas")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Nueva cuenta" }).length).toBeGreaterThan(0);
+  });
+
+  // finance-credit-card-payments CC-023: due-date copy + used/limit bar + over-limit warning
+  // chip for a card WITH terms; the empty-state link for a card with none, never NaN.
+  it("shows due-date copy, a used/limit bar, and an over-limit chip for a card with terms", async () => {
+    getCurrentHouseholdId.mockResolvedValue("space-1");
+    listActiveAccounts.mockResolvedValue([
+      { id: "acc-3", name: "Tarjeta Oro", type: "credit_card", class: "liability", balanceCents: -120000 },
+    ]);
+    listCreditCardStatus.mockResolvedValue([
+      {
+        accountId: "acc-3",
+        householdId: "space-1",
+        name: "Tarjeta Oro",
+        balanceCents: -120000,
+        owedCents: 120000,
+        creditLimitCents: 100000,
+        statementDay: 20,
+        dueDay: 5,
+        minPaymentCents: 5000,
+        nextDueDate: "2026-08-12",
+        daysUntilDue: 5,
+        utilizationBp: 12000,
+        overLimit: true,
+        hasTerms: true,
+      },
+    ]);
+
+    const element = await AccountsPage();
+    render(element);
+
+    expect(screen.getByText("Vence en 5 días")).toBeInTheDocument();
+    expect(screen.getByText("Límite excedido")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+  });
+
+  it("shows the empty-state link (never NaN) for a card with no terms", async () => {
+    getCurrentHouseholdId.mockResolvedValue("space-1");
+    listActiveAccounts.mockResolvedValue([
+      { id: "acc-4", name: "Tarjeta Plata", type: "credit_card", class: "liability", balanceCents: 0 },
+    ]);
+    listCreditCardStatus.mockResolvedValue([
+      {
+        accountId: "acc-4",
+        householdId: "space-1",
+        name: "Tarjeta Plata",
+        balanceCents: 0,
+        owedCents: 0,
+        creditLimitCents: null,
+        statementDay: null,
+        dueDay: null,
+        minPaymentCents: null,
+        nextDueDate: null,
+        daysUntilDue: null,
+        utilizationBp: null,
+        overLimit: false,
+        hasTerms: false,
+      },
+    ]);
+
+    const element = await AccountsPage();
+    render(element);
+
+    expect(screen.getByText("Sin términos configurados · Agregar")).toBeInTheDocument();
+    expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
   });
 });

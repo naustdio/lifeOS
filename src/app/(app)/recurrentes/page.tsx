@@ -29,7 +29,7 @@ export default async function RecurrentesPage() {
       ])
     : [[], [], [], [], []];
 
-  const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name }));
+  const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name, class: a.class }));
   const categoryOptions = categories.map((c) => ({ id: c.id, name: c.name }));
 
   return (

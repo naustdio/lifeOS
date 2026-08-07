@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentHouseholdId } from "@/modules/core/api";
-import { createAccount, type AccountType, type CreateAccountInput } from "@/modules/finance/api";
+import {
+  createAccount,
+  supportsCardDetail,
+  upsertCardDetails,
+  type AccountType,
+  type CreateAccountInput,
+} from "@/modules/finance/api";
 import { pesosToCents } from "@/shared/money";
 import { createClient } from "@/shared/supabase/server";
 
@@ -96,6 +102,33 @@ export async function createAccountAction(
   const result = await createAccount(input);
   if (!result.ok) {
     return { error: ERROR_COPY[result.error.code] ?? result.error.message };
+  }
+
+  // Step 2 of 2 (design.md §4, CC-022): card terms live in a separate optional table under
+  // plain RLS, never in `create_account`'s own atomic RPC (design.md Decision 2). All four
+  // fields are optional; submitting the fieldset empty writes no detail row. A failure here
+  // leaves a valid card with no terms — the defined empty state, not a broken account.
+  if (supportsCardDetail(type)) {
+    const creditLimitCents = toOptionalCents(formData.get("creditLimitCents"));
+    const statementDayRaw = formData.get("statementDay");
+    const dueDayRaw = formData.get("dueDay");
+    const minPaymentCents = toOptionalCents(formData.get("minPaymentCents"));
+    const statementDay = statementDayRaw && String(statementDayRaw).trim() !== "" ? Number(statementDayRaw) : undefined;
+    const dueDay = dueDayRaw && String(dueDayRaw).trim() !== "" ? Number(dueDayRaw) : undefined;
+
+    if (
+      creditLimitCents !== undefined ||
+      statementDay !== undefined ||
+      dueDay !== undefined ||
+      minPaymentCents !== undefined
+    ) {
+      await upsertCardDetails(supabase, result.value.id, {
+        creditLimitCents,
+        statementDay,
+        dueDay,
+        minPaymentCents,
+      });
+    }
   }
 
   revalidatePath("/cuentas");

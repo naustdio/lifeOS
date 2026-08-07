@@ -3,12 +3,50 @@ import Link from "next/link";
 import { getCurrentHouseholdId } from "@/modules/core/api";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent } from "@/design-system/ui/card";
+import { Chip } from "@/design-system/ui/chip";
 import { EmptyState } from "@/design-system/patterns/EmptyState";
 import { ProgressBar } from "@/design-system/patterns/ProgressBar";
 import { TransactionRow } from "@/design-system/patterns/TransactionRow";
-import { listActiveAccounts } from "@/modules/finance/api";
+import { listActiveAccounts, listCreditCardStatus, type CreditCardStatusItem } from "@/modules/finance/api";
 import { formatCentsAsMXN } from "@/shared/money";
 import { createClient } from "@/shared/supabase/server";
+
+/** "Vence en N días" / "Vencido hace N días" (design.md §4, CC-023). `null` propagates to no
+ *  label at all — never a `NaN`/negative-looking string when the card has no due day. */
+function dueDateLabel(daysUntilDue: number | null): string | null {
+  if (daysUntilDue === null) return null;
+  if (daysUntilDue < 0) return `Vencido hace ${Math.abs(daysUntilDue)} día${Math.abs(daysUntilDue) === 1 ? "" : "s"}`;
+  if (daysUntilDue === 0) return "Vence hoy";
+  return `Vence en ${daysUntilDue} día${daysUntilDue === 1 ? "" : "s"}`;
+}
+
+/** Visual-warning-only chip (spec: "Exceeding the Credit Limit Is a Visual Warning, Never a
+ *  Block") — rendered beside the card row, never gates any write. */
+function CardStatusBlock({ status }: { status: CreditCardStatusItem }) {
+  if (!status.hasTerms) {
+    return (
+      <div className="px-2">
+        <Link href="/cuentas/nueva" className="text-xs text-muted-foreground underline underline-offset-2">
+          Sin términos configurados · Agregar
+        </Link>
+      </div>
+    );
+  }
+
+  const due = dueDateLabel(status.daysUntilDue);
+
+  return (
+    <div className="flex flex-col gap-2 px-2">
+      {due && <p className="text-xs text-muted-foreground">{due}</p>}
+      {status.creditLimitCents !== null && (
+        <ProgressBar valueCents={status.owedCents} limitCents={status.creditLimitCents} />
+      )}
+      {status.overLimit && (
+        <Chip className="w-fit bg-expense/10 text-expense">Límite excedido</Chip>
+      )}
+    </div>
+  );
+}
 
 const TYPE_LABELS: Record<string, string> = {
   cash: "Efectivo",
@@ -30,7 +68,10 @@ const TYPE_LABELS: Record<string, string> = {
 export default async function AccountsPage() {
   const supabase = await createClient();
   const spaceId = await getCurrentHouseholdId(supabase);
-  const accounts = spaceId ? await listActiveAccounts(supabase, spaceId) : [];
+  const [accounts, cardStatuses] = spaceId
+    ? await Promise.all([listActiveAccounts(supabase, spaceId), listCreditCardStatus(supabase, spaceId)])
+    : [[], []];
+  const cardStatusByAccount = new Map(cardStatuses.map((s) => [s.accountId, s]));
 
   return (
     <main className="flex flex-col gap-6">
@@ -70,6 +111,16 @@ export default async function AccountsPage() {
                     <p>Pago mensual: {formatCentsAsMXN(account.liability.monthlyPaymentCents)}</p>
                   </div>
                 )}
+                {account.type === "credit_card" &&
+                  (cardStatusByAccount.get(account.id) ? (
+                    <CardStatusBlock status={cardStatusByAccount.get(account.id)!} />
+                  ) : (
+                    <div className="px-2">
+                      <Link href="/cuentas/nueva" className="text-xs text-muted-foreground underline underline-offset-2">
+                        Sin términos configurados · Agregar
+                      </Link>
+                    </div>
+                  ))}
                 {account.goal && (
                   <div className="px-2">
                     <ProgressBar valueCents={account.balanceCents} limitCents={account.goal.targetAmountCents} />

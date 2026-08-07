@@ -1,0 +1,248 @@
+# DAG state for change `finance-credit-card-payments` (survives compaction).
+# Updated by sdd-apply.
+
+change: finance-credit-card-payments
+schema: spec-driven
+delivery_strategy: ask-on-risk
+chain_strategy: stacked-to-main
+resolved_pr_count: 3
+
+apply_progress:
+  pr_1_slice_a_recurring_core:
+    name: "Slice A — recurring transfer core (schema ALTERs, confirm() rewrite, full pgTAP + 2-connection race)"
+    status: complete
+    tasks_done: [CC-001, CC-002, CC-003, CC-004, CC-005, CC-006, CC-007, CC-008, CC-009, CC-010, CC-011, CC-012]
+    tasks_total: 12
+    branch: feat/finance-credit-card-payments-1-recurring-core
+    base: main
+    renumbering_note: >
+      Design planned migration filenames ...018/...019/...020, but those version numbers were
+      already occupied on the shared local Supabase stack by three sibling UNMERGED branches
+      (finance-categories-icon-color ...017, finance-transaction-subtypes ...018,
+      finance-account-types-expansion ...019/...020 — confirmed via
+      `select version, name from supabase_migrations.schema_migrations` before writing any file).
+      Renumbered to ...021 (shape ALTERs + CHECKs) and ...022 (confirm() rewrite), the same
+      renumbering precedent finance-account-types-expansion itself set. Confirmed ...021/...022
+      were free via both `git log --all` and the live schema_migrations table before use.
+    files:
+      - supabase/migrations/20260804090021_finance_recurring_transfer_shape.sql (CC-001)
+      - supabase/migrations/20260804090022_finance_recurring_transfer_api.sql (CC-004)
+      - supabase/tests/0xx_finance_recurring_transfer_shape.sql (CC-002, 8 assertions)
+      - supabase/tests/0xx_finance_recurring_expense_regression.sql (CC-003/CC-005, 6 assertions,
+        RED against pre-change function then GREEN unchanged against post-change function)
+      - supabase/tests/0xx_finance_recurring_transfer_atomicity.sql (CC-006, 10 assertions)
+      - supabase/tests/0xx_finance_recurring_transfer_replay.sql (CC-007, 5 assertions)
+      - supabase/tests/0xx_finance_recurring_transfer_half_pair_guard.sql (CC-008, 4 assertions)
+      - supabase/tests/0xx_finance_recurring_transfer_tenancy.sql (CC-009, 4 assertions)
+      - supabase/tests/0xx_finance_recurring_overload_guard.sql (CC-010, 2 assertions)
+      - scripts/test-recurring-transfer-race.sh (CC-011, real 2-connection concurrency script,
+        modeled on scripts/test-bootstrap-race.sh)
+      - src/modules/finance/domain/recurring.ts (modified — CC-012, RecurringType,
+        RecurringShapeInput, validateRecurringShape(), RED-first per this project's TDD policy
+        for named critical-logic TS mirrors)
+      - tests/unit/finance-recurring-shape.test.ts (new, CC-012's RED-first test, 8/8 GREEN)
+    bug_found_and_fixed: >
+      CC-004's first-pass migration used `min(id) filter (where amount_cents < 0)` inside the
+      transfer-branch CTE to resolve the out-leg id — Postgres has NO built-in min()/max()
+      aggregate for the uuid type ("function min(uuid) does not exist"). Caught immediately by
+      running 0xx_finance_recurring_transfer_half_pair_guard.sql for real against the local
+      stack (not simulated) — CC-008's throws_ok assertion failed with 42883 instead of the
+      expected 40001. Fixed by dropping the aggregate entirely: the out-leg id is now always
+      resolved via an explicit keyed SELECT (household_id/origin_module/origin_entity_id/
+      idempotency_key = v_out_key), the same lookup shape already used in the v_count=0 replay
+      branch. Migration was re-applied via `create or replace` (idempotent) and every pgTAP file
+      re-run clean after the fix.
+    concurrency_finding: >
+      CC-011's scripted 2-connection race test initially asserted "both concurrent calls collapse
+      onto exactly one shared pair" per tasks.md's literal wording. Running it FOR REAL against
+      two genuine concurrent `docker exec psql` connections revealed this is structurally
+      unreachable by design, not a bug: `select ... for update` under READ COMMITTED means the
+      losing connection, once unblocked by the winner's commit, RE-READS the ALREADY-ADVANCED
+      `next_due_date` (Postgres always gives a lock-waiter the latest committed row version) — it
+      cannot see the pre-advance value the winner saw. So two genuinely concurrent, organically
+      fired confirm() calls with no external retry signal always resolve onto two DIFFERENT
+      (each still fully-balanced) occurrences, never a collision. This is actually a STRONGER
+      form of the no-half-pair guarantee (impossible for two racers to even attempt the same
+      conflicting insert), not a weaker one. The script's assertions were corrected to check the
+      real, achievable, and still-meaningful invariant: neither call ever returns NULL, total
+      posted rows for the definition are always even, and every transfer_group_id present has
+      exactly 2 rows summing to zero. Verified 4/4 clean runs. The genuine same-occurrence replay
+      scenario (spec.md scenario 2) remains covered by the pgTAP replay test's manual cursor
+      rewind (CC-007), which is the only way to reproduce it deterministically.
+    db_gate: >
+      EXECUTED for real against the local Supabase Postgres container (supabase_db_LIFE_OS) via
+      `docker exec -i supabase_db_LIFE_OS psql -U postgres` (MSYS_NO_PATHCONV=1 on Windows Git
+      Bash to prevent path mangling) — the documented workaround for this machine's
+      `supabase db reset`/`supabase test db` gap (missing supabase-go binary, same as prior
+      slices). CC-003 baseline run against the PRE-CHANGE function: 6/6 pass. Migration
+      ...021 applied, CC-002 shape test: 8/8 pass. Migration ...022 applied (after the min(uuid)
+      fix), CC-005 GREEN regression re-run UNCHANGED: 6/6 pass byte-identical to the CC-003
+      baseline, including the explicit no-suffix assertion. CC-006 atomicity: 10/10 pass.
+      CC-007 replay: 5/5 pass. CC-008 half-pair guard: 4/4 pass (after the min(uuid) fix).
+      CC-009 tenancy: 4/4 pass. CC-010 overload guard: 2/2 pass (exactly one
+      confirm_recurring_transaction overload, unchanged (uuid, bigint, date, text) signature).
+      CC-011 scripted 2-connection race (scripts/test-recurring-transfer-race.sh): 4/4 clean
+      runs, zero half-pairs, zero NULLs. Full pre-existing pgTAP suite re-run for regression
+      (all 10 files: 010_core_rls, 020_core_bootstrap_idempotency, 030_finance_rls,
+      040_finance_money, 050_finance_categories, 060_finance_recursion_guard,
+      070_finance_corrections, 080_finance_budgets, 090_finance_recurring — 43/43,
+      100_finance_dashboard) — zero failures, zero regressions.
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next build)
+      — PASS. check-tokens: OK, no raw hex outside src/design-system/tokens/. next build:
+      compiled successfully, 12 routes generated (unchanged — Slice A carries zero UI/route
+      changes by design).
+    test_gate: >
+      `pnpm test` (full vitest suite) — 157/157 pass across 28 files, including the new RED-first
+      finance-recurring-shape.test.ts (8/8) and the pre-existing finance-recurring-domain.test.ts
+      (19/19, unaffected). Zero regressions across the full suite.
+    dependency_diff_gate: >
+      `git diff --stat package.json pnpm-lock.yaml` from main — EMPTY. No new dependency.
+    pr: "not opened — implementation and local verification only, per instructions. Slice A must
+      merge alone before Slice B/C begin, per design.md's explicit instruction not to review
+      idempotency logic next to UI diff noise."
+
+  pr_2_slice_b_card_data:
+    name: "Slice B — card terms data + reads (schema, security, TS domain mirror, repository reads/writes, Zod union)"
+    status: complete
+    tasks_done: [CC-013, CC-014, CC-015, CC-016, CC-017, CC-018, CC-019, CC-020, CC-021]
+    tasks_total: 9
+    branch: feat/finance-credit-card-payments-2-card-data
+    base: feat/finance-credit-card-payments-1-recurring-core
+    commit: a90929a
+    renumbering_note: >
+      design.md planned ...018/...019 for the card-terms migrations; those version numbers were
+      occupied by sibling unmerged branches (finance-transaction-subtypes ...018,
+      finance-account-types-expansion ...019/...020), and this change's own Slice A had already
+      claimed ...021/...022. Renumbered to ...023 (card table+view+date-helpers) and ...024
+      (security), confirmed free via `git log --all -- supabase/migrations` and the live
+      `supabase_migrations.schema_migrations` table before writing either file — exactly the
+      prediction Slice A's apply-progress recorded.
+    files:
+      - supabase/migrations/20260804090023_finance_credit_cards.sql (CC-013 — table, type-gate
+        trigger, clamp_day_to_month/next_card_due_date, credit_card_status view; also carries a
+        gap-closure `create or replace view finance.recurring_due` appending type/to_account_id,
+        see deviation note below)
+      - supabase/migrations/20260804090024_finance_credit_cards_security.sql (CC-014 — RLS +
+        4 policies + grants, delete included unlike categories)
+      - supabase/tests/0xx_finance_credit_cards.sql (CC-015, 17 assertions: type-gate trigger,
+        cascade delete, has_terms=false empty state, tenancy select/insert/update/delete + anon
+        + view leakage, day-clamp x4)
+      - tests/unit/credit-card-domain.test.ts (CC-016, RED-first, 19 tests: clampDueDay,
+        nextCardDueDate, daysUntilDue, utilizationBp, isOverLimit)
+      - src/modules/finance/domain/credit-card.ts (CC-017, new — pure TS mirrors; `nextDueDate`
+        renamed to `nextCardDueDate` to avoid a barrel-export collision with
+        domain/recurring.ts's own `nextDueDate`, discovered when GREEN first ran)
+      - src/modules/finance/domain/account.ts (CC-018 — supportsCardDetail())
+      - src/modules/finance/data/account-repository.ts (CC-019 — listCreditCardStatus,
+        upsertCardDetails, removeCardDetails)
+      - src/modules/finance/data/recurring-repository.ts (CC-020 — type/toAccountId in
+        RecurringListItem/DueRecurringItem (nullable categoryId), discriminated-union input on
+        createRecurringDefinition, patch fields on updateRecurringDefinition)
+      - src/modules/finance/api/index.ts (CC-021 — re-exports listCreditCardStatus/
+        upsertCardDetails/removeCardDetails; new CreateRecurringInputSchema Zod discriminated
+        union on type; ConfirmRecurringInputSchema/confirmRecurring() untouched as designed)
+      - src/app/(app)/recurrentes/actions.ts (mechanical fix, not Slice C scope — passes
+        `type: "expense"` explicitly to createRecurringDefinition now that type is required)
+      - src/app/(app)/recurrentes/RecurringList.tsx (mechanical fix, not Slice C scope — widened
+        the local RecurringDefinition.categoryId to `string | null` to compile against the new
+        shared repository type; transfer-row rendering itself is Slice C's CC-027)
+    deviation_found_and_fixed: >
+      Real gap discovered mid-implementation, not called out in design.md: Slice A's
+      20260804090021_finance_recurring_transfer_shape.sql added type/to_account_id to
+      finance.recurring_transactions, but finance.recurring_due (defined earlier in
+      20260804090012_finance_recurring.sql, untouched by Slice A) still projected only the
+      pre-Slice-A column list. CC-020 requires recurring-repository.ts to read type/to_account_id
+      off that view. Fixed with a `create or replace view` appending both columns at the end of
+      the output list (Postgres only allows view-replace to ADD columns at the end, never
+      reorder/insert) inside 20260804090023_finance_credit_cards.sql, same security_invoker=true.
+      Applied for real against the local stack and re-verified with the full pgTAP regression
+      suite — zero failures.
+    pgtap_bug_found_and_fixed: >
+      0xx_finance_credit_cards.sql's first-pass tenancy assertions were wrong about Postgres RLS
+      semantics, caught by running the file for real (not simulated): (a) a non-member's INSERT
+      raised 22023 ("card terms apply only to credit_card accounts") instead of the expected
+      42501, because the type-gate trigger is a plain function (not SECURITY DEFINER) and its own
+      `exists (select 1 from finance.accounts ...)` lookup runs under the caller's RLS — the
+      account is invisible to a non-member, so the trigger's own existence check fails first,
+      same "not found before not allowed" precedent as finance.enforce_budget_category(). (b) a
+      non-member's UPDATE/DELETE did not throw at all — a USING-only RLS policy on a table that
+      DOES have a delete policy filters non-matching rows silently (0 rows affected), it does not
+      raise; throwing 42501 only happens when there is NO policy at all for that operation (as
+      with finance.accounts' delete, which has zero delete policies). Rewrote both assertions to
+      match the actual, correct, secure behavior instead of forcing a wrong expectation.
+    db_gate: >
+      EXECUTED for real against supabase_db_LIFE_OS via docker exec psql (MSYS_NO_PATHCONV=1).
+      CC-013/CC-014 migrations applied clean. CC-015 (0xx_finance_credit_cards.sql): 17/17 pass
+      after the two tenancy-assertion fixes above. Full pre-existing pgTAP suite re-run after
+      applying both new migrations AND the recurring_due view fix (10 files: 010_core_rls,
+      020_core_bootstrap_idempotency, 030_finance_rls, 040_finance_money, 050_finance_categories,
+      060_finance_recursion_guard, 070_finance_corrections, 080_finance_budgets,
+      090_finance_recurring, 100_finance_dashboard) — zero failures. All 7 Slice A pgTAP files
+      re-run alongside the new Slice B file — zero regressions from the recurring_due view change.
+    test_gate: >
+      `pnpm test` (full vitest) — 176/176 pass (157 prior + 19 new credit-card-domain.test.ts),
+      confirmed via a reduced-parallelism run (--poolOptions.threads.maxThreads=2). One
+      pre-existing flake noted below, not a regression.
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next build) —
+      PASS. 12 routes generated (unchanged route count; this slice is data-layer only, zero new
+      routes, per design.md's own slice boundary).
+    dependency_diff_gate: "`git diff --stat main -- package.json pnpm-lock.yaml` — EMPTY."
+    known_flake_not_a_regression: >
+      tests/unit/boundary-lint.test.ts times out at its hardcoded 5000ms limit ONLY when run
+      inside the full default-parallelism `pnpm test` suite (spawns a real ESLint child process;
+      contention from the now-larger 29-file/176-test suite tips it over). Verified NOT a
+      regression: passes in 1986ms run standalone, and the full suite is 176/176 green under
+      `--poolOptions.threads.maxThreads=2`. Pre-existing test-infra fragility, unrelated to any
+      Slice B file.
+    pr: "not opened — implementation and local verification only, per instructions."
+
+  pr_3_slice_c_ui:
+    name: "Slice C — UI (AccountForm card fieldset, /cuentas + dashboard surfacing, RecurringForm transfer mode, list + confirm sheet copy, RTL tests)"
+    status: complete
+    tasks_done: [CC-022, CC-023, CC-024, CC-025, CC-026, CC-027, CC-028]
+    tasks_total: 7
+    branch: feat/finance-credit-card-payments-3-ui
+    base: feat/finance-credit-card-payments-2-card-data
+    files:
+      - src/modules/finance/api/account-shape.ts (new — client-safe re-export of
+        supportsCardDetail/AccountType, same server-only-free pattern as budget-evaluation.ts,
+        so AccountForm's card-terms fieldset can decide visibility without pulling the
+        server-only barrel into the client bundle)
+      - src/app/(app)/cuentas/AccountForm.tsx (card-terms fieldset, all fields optional, shown
+        only when type=credit_card)
+      - src/app/(app)/cuentas/actions.ts (card-terms FormData branch, non-atomic two-step
+        create→upsertCardDetails per design.md's accepted tradeoff)
+      - src/app/(app)/cuentas/page.tsx (credit_card_status surfacing on /cuentas rows)
+      - src/app/(app)/page.tsx (dashboard due-date/over-limit visual signal, warning-only, never
+        a hard block)
+      - src/app/(app)/recurrentes/RecurringForm.tsx (transfer-type option: source account,
+        destination credit-card account, fixed amount, no category field — mirrors
+        TransactionForm's existing transfer-tab category omission)
+      - src/app/(app)/recurrentes/RecurringList.tsx, ConfirmRecurringSheet.tsx (transfer-row
+        rendering/copy)
+      - src/app/(app)/recurrentes/actions.ts, page.tsx (wiring for the type discriminated union)
+      - src/modules/finance/api/index.ts (+15 lines, additional re-exports)
+      - tests/unit/{account-form-render,accounts-page-render,home-page-render,
+        recurring-form-render,recurring-list-render}.test.tsx (RTL coverage, incl. the
+        "switching Tipo to Pago de tarjeta hides Categoría and shows Tarjeta destino" case)
+    process_note: >
+      The sdd-apply sub-agent implementing this slice was terminated mid-run by the account's
+      monthly spend cap after completing all file edits and marking tasks.md CC-022..CC-028
+      complete, but before running its own final verification/commit. The orchestrator (this
+      session) verified the already-written working-tree changes directly instead of
+      re-launching a new sub-agent: `tsc --noEmit` clean, `eslint --max-warnings=0` clean,
+      `node scripts/check-tokens.mjs` OK, `pnpm test` 183/183 pass across 29 files (zero
+      regressions from Slice B's 176), `next build` succeeded (13 routes, unchanged count — no
+      new routes added by this UI-only slice), then committed the verified tree directly.
+    verify_gate: >
+      `pnpm verify`-equivalent run manually (eslint --max-warnings=0 && tsc --noEmit &&
+      check-tokens.mjs && next build) — PASS. 13 routes generated.
+    test_gate: "`pnpm test` — 183/183 pass, 29/29 files, zero regressions."
+    dependency_diff_gate: "`git diff --stat -- package.json pnpm-lock.yaml` — EMPTY, no new dependency."
+    diff_size: "~551 insertions / 48 deletions across 15 files, within the ~330-400 line estimate range for this slice."
+    pr: "not opened — implementation and local verification only, per instructions."
+
+next_recommended: sdd-verify (all 28/28 tasks across 3 stacked slices now complete — this closes
+  out the highest-risk change and the final change in the 5-change Finance roadmap)

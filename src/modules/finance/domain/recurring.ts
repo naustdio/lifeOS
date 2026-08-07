@@ -5,6 +5,44 @@
 
 export type Frequency = "monthly" | "weekly" | "biweekly" | "yearly";
 
+/** Mirrors `finance.recurring_transactions.type` (design.md §1b, change:
+ *  finance-credit-card-payments CC-001). `expense` posts one row against a category; `transfer`
+ *  posts a balanced pair against a destination account. */
+export type RecurringType = "expense" | "transfer";
+
+export type RecurringShapeInput = {
+  type: RecurringType;
+  categoryId: string | null;
+  toAccountId: string | null;
+  /** Optional: when provided together with a transfer-type toAccountId, also rejects a
+   *  self-transfer (toAccountId === accountId), mirroring recurring_transfer_shape's third
+   *  clause. Omit when the source account is not yet known (e.g. a fresh, unattached form). */
+  accountId?: string | null;
+};
+
+/**
+ * Client-side mirror of the two DB CHECK constraints added by
+ * `20260804090021_finance_recurring_transfer_shape.sql` — `recurring_expense_shape` and
+ * `recurring_transfer_shape`. A defensive UX guard, NOT a second source of truth: the DB remains
+ * authoritative and re-validates independently of whatever this function returns.
+ *   expense:  categoryId required, toAccountId must be null.
+ *   transfer: categoryId must be null, toAccountId required and distinct from accountId (when
+ *             accountId is supplied).
+ */
+export function validateRecurringShape(input: RecurringShapeInput): boolean {
+  if (input.type === "expense") {
+    return input.categoryId !== null && input.toAccountId === null;
+  }
+  // type === "transfer"
+  if (input.categoryId !== null || input.toAccountId === null) {
+    return false;
+  }
+  if (input.accountId != null && input.toAccountId === input.accountId) {
+    return false;
+  }
+  return true;
+}
+
 type YMD = { year: number; month: number; day: number }; // month is 1-12
 
 function parseISO(iso: string): YMD {
