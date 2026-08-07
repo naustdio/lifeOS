@@ -13,6 +13,8 @@ import { confirmRecurringAction, type RecurringFormState } from "./actions";
 
 type DueItem = {
   recurringId: string;
+  type: "expense" | "transfer";
+  toAccountId: string | null;
   amountCents: number;
   description: string;
   frequency: Frequency;
@@ -34,14 +36,18 @@ export function ConfirmRecurringSheet({
   budget,
   accountLabel,
   categoryLabel,
+  destinationLabel,
   onClose,
 }: {
   dueItem: DueItem;
   budget: BudgetProgressItem | null;
   accountLabel: string;
   categoryLabel: string;
+  /** Only meaningful when `dueItem.type === "transfer"` (design.md §4, CC-027). */
+  destinationLabel?: string;
   onClose: () => void;
 }) {
+  const isTransfer = dueItem.type === "transfer";
   const [state, action, pending] = useActionState(confirmRecurringAction, INITIAL_STATE);
   const [, startTransition] = useTransition();
   const [pendingOverBudget, setPendingOverBudget] = useState<{ formData: FormData; impact: BudgetImpact } | null>(
@@ -92,8 +98,15 @@ export function ConfirmRecurringSheet({
         <CardContent className="flex flex-col gap-4 pt-6">
           <h3 className="text-base font-semibold">Confirmar recurrente</h3>
           <p className="text-xs text-muted-foreground">
-            {accountLabel} · {categoryLabel}
+            {isTransfer ? `${accountLabel} → ${destinationLabel ?? ""}` : `${accountLabel} · ${categoryLabel}`}
           </p>
+          {/* Auto-pay proposes, never posts silently (spec: "Transfer Auto-Pay Never
+              Auto-Executes") — this confirmation is the explicit user action that posts it. */}
+          {isTransfer && (
+            <p className="text-xs text-muted-foreground">
+              Al confirmar se registrará este pago ahora. El pago automático nunca se ejecuta solo.
+            </p>
+          )}
           <form action={action} onSubmit={handleSubmit} className="flex flex-col gap-4">
             <input type="hidden" name="recurringId" value={dueItem.recurringId} />
             <div className="flex flex-col gap-1">

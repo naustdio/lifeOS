@@ -17,16 +17,17 @@ import {
 } from "./actions";
 import { ConfirmRecurringSheet } from "./ConfirmRecurringSheet";
 
-type AccountOption = { id: string; name: string };
+type AccountOption = { id: string; name: string; class?: "asset" | "liability" };
 type CategoryOption = { id: string; name: string };
 
 type RecurringDefinition = {
   id: string;
   accountId: string;
-  // `string | null` since finance-credit-card-payments CC-020: null on a `type: "transfer"`
-  // definition. Rendering the transfer-specific row shape (Origen -> Destino, no category chip)
-  // is Slice C's job (tasks.md CC-027) — this widening only keeps the shared repository type
-  // compiling for the still-expense-only UI this slice ships.
+  // `type`/`toAccountId` since finance-credit-card-payments CC-020/CC-027: a `type: "transfer"`
+  // definition carries `categoryId: null` and a non-null `toAccountId` — its row renders
+  // "Origen -> Destino" instead of a category chip.
+  type: "expense" | "transfer";
+  toAccountId: string | null;
   categoryId: string | null;
   amountCents: number;
   description: string;
@@ -37,6 +38,8 @@ type RecurringDefinition = {
 
 type DueItem = {
   recurringId: string;
+  type: "expense" | "transfer";
+  toAccountId: string | null;
   amountCents: number;
   description: string;
   frequency: Frequency;
@@ -103,10 +106,13 @@ export function RecurringList({
                   key={def.id}
                   definition={def}
                   daysOverdue={overdue}
+                  accounts={accounts}
                   onConfirm={() =>
                     setConfirmTarget(
                       due ?? {
                         recurringId: def.id,
+                        type: def.type,
+                        toAccountId: def.toAccountId,
                         amountCents: def.amountCents,
                         description: def.description,
                         frequency: def.frequency,
@@ -132,6 +138,7 @@ export function RecurringList({
           categoryLabel={categoryName(
             definitions.find((d) => d.id === confirmTarget.recurringId)?.categoryId ?? "",
           )}
+          destinationLabel={accountName(confirmTarget.toAccountId ?? "")}
           onClose={() => setConfirmTarget(null)}
         />
       )}
@@ -143,14 +150,22 @@ function RecurringRowWithActions({
   definition,
   daysOverdue,
   onConfirm,
+  accounts,
 }: {
   definition: RecurringDefinition;
   daysOverdue: number;
   onConfirm: () => void;
+  accounts: AccountOption[];
 }) {
   const [discardState, discardAction, discardPending] = useActionState(discardRecurringAction, INITIAL_STATE);
   const [activeState, activeAction, activePending] = useActionState(setRecurringActiveAction, INITIAL_STATE);
   const [deleteState, deleteAction, deletePending] = useActionState(deleteRecurringAction, INITIAL_STATE);
+
+  // Transfer rows render "Origen -> Destino" instead of a category chip (design.md §4, CC-027) —
+  // this definition carries `categoryId: null` by DB shape CHECK, so there is no category to show.
+  const isTransfer = definition.type === "transfer";
+  const originName = accounts.find((a) => a.id === definition.accountId)?.name ?? "";
+  const destinationName = accounts.find((a) => a.id === definition.toAccountId)?.name ?? "";
 
   return (
     <div className="flex flex-col gap-2 py-1">
@@ -168,6 +183,11 @@ function RecurringRowWithActions({
         }}
         discardPending={discardPending}
       />
+      {isTransfer && (
+        <p className="pl-12 text-xs text-muted-foreground">
+          {originName} → {destinationName}
+        </p>
+      )}
       <div className="flex items-center gap-2 pl-12">
         <form
           action={(formData) => {

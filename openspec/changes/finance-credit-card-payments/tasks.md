@@ -163,28 +163,28 @@ Chain strategy: stacked-to-main
 
 ## Slice C — UI (~400 lines, stacked on Slice B)
 
-- [ ] CC-022 — `src/app/(app)/cuentas/AccountForm.tsx` (modify): third conditional fieldset gated on `supportsCardDetail(type)`, all fields optional, `statement_day`/`due_day` as Radix `Select`s 1..31 (never native `<select>`), limit/min-payment as `Input type="number"`. Two-step create: `createAccount()` then `upsertCardDetails()` — step-2 failure leaves a valid card with no terms (accepted empty-state tradeoff, not a bug).
+- [x] CC-022 — `src/app/(app)/cuentas/AccountForm.tsx` (modify): third conditional fieldset gated on `supportsCardDetail(type)`, all fields optional, `statement_day`/`due_day` as Radix `Select`s 1..31 (never native `<select>`), limit/min-payment as `Input type="number"`. Two-step create: `createAccount()` then `upsertCardDetails()` — step-2 failure leaves a valid card with no terms (accepted empty-state tradeoff, not a bug).
   - Satisfies: `Optional Credit Card Account Detail` (create-without-detail, add-later scenarios).
   - Depends on: CC-018, CC-021. Parallel: yes, parallel with CC-024.
 
-- [ ] CC-023 — `src/app/(app)/cuentas/page.tsx`, `actions.ts` (modify): row gains `Vence en N días`/`Vencido hace N días` + used/limit bar + over-limit warning chip; `has_terms=false` renders `Sin términos configurados · Agregar`, never `NaN`.
+- [x] CC-023 — `src/app/(app)/cuentas/page.tsx`, `actions.ts` (modify): row gains `Vence en N días`/`Vencido hace N días` + used/limit bar + over-limit warning chip; `has_terms=false` renders `Sin términos configurados · Agregar`, never `NaN`.
   - Satisfies: `Exceeding the Credit Limit Is a Visual Warning, Never a Block` (both scenarios).
   - Depends on: CC-021. Parallel: yes, parallel with CC-022/CC-024.
 
-- [ ] CC-024 — `src/app/(app)/page.tsx` (dashboard, modify): "Por pagar pronto" figure summing `owed_cents` for cards with `days_until_due between 0 and 7` beside existing `debt_cents`; `available_cents` and the assets-only hero rule untouched.
+- [x] CC-024 — `src/app/(app)/page.tsx` (dashboard, modify): "Por pagar pronto" figure summing `owed_cents` for cards with `days_until_due between 0 and 7` beside existing `debt_cents`; `available_cents` and the assets-only hero rule untouched.
   - Depends on: CC-021. Parallel: yes.
 
-- [ ] CC-025 [RED] — `tests/unit/recurring-form-render.test.tsx` (create/modify), `tests/unit/account-form-render.test.tsx` (create/modify): failing RTL tests — `RecurringForm`: switching `Tipo` to `Pago de tarjeta` hides Categoría, shows `Tarjeta destino` (options filtered `class='liability'`, excludes source account); `AccountForm`: card fieldset appears only for `credit_card`, days are Radix Selects, all optional. Fails: forms don't have the transfer/card branches yet.
+- [x] CC-025 [RED] — `tests/unit/recurring-form-render.test.tsx` (create/modify), `tests/unit/account-form-render.test.tsx` (create/modify): failing RTL tests — `RecurringForm`: switching `Tipo` to `Pago de tarjeta` hides Categoría, shows `Tarjeta destino` (options filtered `class='liability'`, excludes source account); `AccountForm`: card fieldset appears only for `credit_card`, days are Radix Selects, all optional. Fails: forms don't have the transfer/card branches yet.
   - Depends on: CC-021. Parallel: sequential, before CC-026/CC-027.
 
-- [ ] CC-026 [GREEN] — `src/app/(app)/recurrentes/RecurringForm.tsx` (modify): leading `Tipo` Select (`Gasto`/`Pago de tarjeta`); transfer swaps Categoría for `Tarjeta destino`, relabels Cuenta as `Cuenta origen`, amount copy states fixed-amount-per-occurrence — implemented to satisfy CC-025.
+- [x] CC-026 [GREEN] — `src/app/(app)/recurrentes/RecurringForm.tsx` (modify): leading `Tipo` Select (`Gasto`/`Pago de tarjeta`); transfer swaps Categoría for `Tarjeta destino`, relabels Cuenta as `Cuenta origen`, amount copy states fixed-amount-per-occurrence — implemented to satisfy CC-025.
   - Depends on: CC-025, CC-020. Parallel: yes, parallel with CC-022 (both consume CC-025's RTL contract independently).
 
-- [ ] CC-027 [GREEN] — `src/app/(app)/recurrentes/RecurringList.tsx`, `ConfirmRecurringSheet.tsx` (modify): transfer rows render `Origen → Destino`, no category chip; confirm sheet states explicitly that confirming posts the payment (auto-pay proposes, never posts silently) — implemented to satisfy CC-025.
+- [x] CC-027 [GREEN] — `src/app/(app)/recurrentes/RecurringList.tsx`, `ConfirmRecurringSheet.tsx` (modify): transfer rows render `Origen → Destino`, no category chip; confirm sheet states explicitly that confirming posts the payment (auto-pay proposes, never posts silently) — implemented to satisfy CC-025.
   - Satisfies: `Transfer Auto-Pay Never Auto-Executes`.
   - Depends on: CC-025, CC-020. Parallel: yes, parallel with CC-026.
 
-- [ ] CC-028 — Run `pnpm verify` (ESLint `app → api/` boundary, `domain` purity, `tsc --noEmit`, `check-tokens.mjs`, `next build`) and the full `supabase test db` suite end to end. Closes out Slice C and the change.
+- [x] CC-028 — Run `pnpm verify` (ESLint `app → api/` boundary, `domain` purity, `tsc --noEmit`, `check-tokens.mjs`, `next build`) and the full `supabase test db` suite end to end. Closes out Slice C and the change.
   - Depends on: CC-022, CC-023, CC-024, CC-026, CC-027. Parallel: sequential (last task).
 
 ---

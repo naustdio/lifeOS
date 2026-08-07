@@ -78,6 +78,14 @@ export {
 } from "../data";
 
 /**
+ * `validateRecurringShape`/`RecurringType` are pure domain (design.md §3, CC-012/CC-020) —
+ * re-exported here for the same Gate A reason as `supportsCardDetail` above: `app` may only
+ * import a module's `api/` barrel, never `domain/` directly. A defensive client-side mirror of
+ * `recurring_expense_shape`/`recurring_transfer_shape`; the DB CHECKs remain authoritative.
+ */
+export { validateRecurringShape, type RecurringType } from "../domain/recurring";
+
+/**
  * `finance-credit-card-payments` change: card terms are the same deliberate plain-RLS
  * exception documented above for budgets/recurring — re-exported here (not imported directly
  * from `../data`) because Gate A's ESLint boundary only allows `app` to import a module's
@@ -89,6 +97,13 @@ export {
   removeCardDetails,
   type CreditCardStatusItem,
 } from "../data";
+
+/**
+ * `supportsCardDetail` is a pure domain predicate (design.md §3, CC-018) — re-exported here
+ * because Gate A's ESLint boundary only allows `app` to import a module's `api/` barrel, never
+ * `domain/` directly. `AccountType` above already crosses this same boundary for the same reason.
+ */
+export { supportsCardDetail } from "../domain/account";
 
 const BaseRecurringFields = {
   householdId: z.string().uuid(),

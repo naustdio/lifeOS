@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * RTL smoke-render for the Home screen (finance-ui-polish P-019, extended by change:
@@ -30,6 +30,7 @@ const countDueRecurring = vi.fn();
 const getMonthSummary = vi.fn();
 const listCategorySpend = vi.fn();
 const listRecentTransactions = vi.fn();
+const listCreditCardStatus = vi.fn();
 vi.mock("@/modules/finance/api", () => ({
   getHouseholdSummary: (...args: unknown[]) => getHouseholdSummary(...args),
   listActiveAccounts: (...args: unknown[]) => listActiveAccounts(...args),
@@ -37,6 +38,7 @@ vi.mock("@/modules/finance/api", () => ({
   getMonthSummary: (...args: unknown[]) => getMonthSummary(...args),
   listCategorySpend: (...args: unknown[]) => listCategorySpend(...args),
   listRecentTransactions: (...args: unknown[]) => listRecentTransactions(...args),
+  listCreditCardStatus: (...args: unknown[]) => listCreditCardStatus(...args),
 }));
 
 const { default: HomePage } = await import("@/app/(app)/page");
@@ -51,9 +53,14 @@ function resetAllMocks() {
   getMonthSummary.mockReset();
   listCategorySpend.mockReset();
   listRecentTransactions.mockReset();
+  listCreditCardStatus.mockReset();
+  // Default: no credit cards, so the new "Por pagar pronto" card stays hidden unless a test
+  // explicitly opts in (finance-credit-card-payments CC-024).
+  listCreditCardStatus.mockResolvedValue([]);
 }
 
 describe("HomePage — smoke render (finance-ui-polish P-019, finance-dashboard-feed F-013)", () => {
+  beforeEach(resetAllMocks);
   afterEach(resetAllMocks);
 
   it("renders the balance hero, quick actions, and accounts via TransactionRow when populated", async () => {

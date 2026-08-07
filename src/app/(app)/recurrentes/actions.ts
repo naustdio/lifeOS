@@ -9,6 +9,7 @@ import {
   discardRecurring,
   setRecurringActive,
   updateRecurringDefinition,
+  validateRecurringShape,
 } from "@/modules/finance/api";
 import { nextFutureDueDate } from "@/modules/finance/api/recurring-schedule";
 import { pesosToCents } from "@/shared/money";
@@ -41,7 +42,9 @@ export async function saveRecurringAction(
 
   const id = String(formData.get("id") ?? "");
   const accountId = String(formData.get("accountId") ?? "");
+  const type = (String(formData.get("type") ?? "expense") as "expense" | "transfer") || "expense";
   const categoryId = String(formData.get("categoryId") ?? "");
+  const toAccountId = String(formData.get("toAccountId") ?? "");
   const amountCents = pesosToCents(Number(formData.get("amount") ?? 0));
   const description = String(formData.get("description") ?? "");
   const frequency = String(formData.get("frequency") ?? "monthly") as
@@ -51,21 +54,46 @@ export async function saveRecurringAction(
     | "yearly";
   const nextDueDate = String(formData.get("nextDueDate") ?? "");
 
-  if (!accountId || !categoryId || !(amountCents > 0) || !nextDueDate) {
-    return { error: "Completa cuenta, categoría, monto y fecha." };
+  if (!accountId || !(amountCents > 0) || !nextDueDate) {
+    return { error: "Completa cuenta, monto y fecha." };
+  }
+
+  const shapeValid = validateRecurringShape({
+    type,
+    categoryId: type === "expense" ? categoryId || null : null,
+    toAccountId: type === "transfer" ? toAccountId || null : null,
+    accountId,
+  });
+  if (!shapeValid) {
+    return {
+      error:
+        type === "expense" ? "Completa cuenta, categoría, monto y fecha." : "Selecciona una tarjeta destino distinta a la cuenta origen.",
+    };
   }
 
   if (id) {
-    // `type`/`toAccountId` are omitted here deliberately: this form still only edits
-    // expense-type definitions until Slice C (tasks.md CC-026) adds the `Tipo` selector.
     const { error } = await updateRecurringDefinition(supabase, spaceId, id, {
       accountId,
-      categoryId,
+      type,
+      categoryId: type === "expense" ? categoryId : null,
+      toAccountId: type === "transfer" ? toAccountId : null,
       amountCents,
       description,
       frequency,
     });
     if (error) return { error: "No se pudo guardar la recurrente." };
+  } else if (type === "transfer") {
+    const { error } = await createRecurringDefinition(supabase, {
+      householdId: spaceId,
+      accountId,
+      type: "transfer",
+      toAccountId,
+      amountCents,
+      description,
+      frequency,
+      nextDueDate,
+    });
+    if (error) return { error: "No se pudo crear la recurrente." };
   } else {
     const { error } = await createRecurringDefinition(supabase, {
       householdId: spaceId,

@@ -26,7 +26,10 @@ vi.mock("@/app/(app)/recurrentes/actions", () => ({
 
 const { RecurringList } = await import("@/app/(app)/recurrentes/RecurringList");
 
-const ACCOUNTS = [{ id: "acc-1", name: "Efectivo" }];
+const ACCOUNTS = [
+  { id: "acc-1", name: "Efectivo", class: "asset" as const },
+  { id: "acc-2", name: "Tarjeta Oro", class: "liability" as const },
+];
 const CATEGORIES = [{ id: "cat-1", name: "Renta" }];
 
 describe("RecurringList — smoke render (R-022)", () => {
@@ -49,6 +52,8 @@ describe("RecurringList — smoke render (R-022)", () => {
       {
         id: "rec-1",
         accountId: "acc-1",
+        type: "expense" as const,
+        toAccountId: null,
         categoryId: "cat-1",
         amountCents: 12000,
         description: "Renta",
@@ -59,6 +64,8 @@ describe("RecurringList — smoke render (R-022)", () => {
       {
         id: "rec-2",
         accountId: "acc-1",
+        type: "expense" as const,
+        toAccountId: null,
         categoryId: "cat-1",
         amountCents: 5000,
         description: "Internet",
@@ -70,6 +77,8 @@ describe("RecurringList — smoke render (R-022)", () => {
     const dueItems = [
       {
         recurringId: "rec-1",
+        type: "expense" as const,
+        toAccountId: null,
         amountCents: 12000,
         description: "Renta",
         frequency: "monthly" as const,
@@ -93,6 +102,8 @@ describe("RecurringList — smoke render (R-022)", () => {
       {
         id: "rec-3",
         accountId: "acc-1",
+        type: "expense" as const,
+        toAccountId: null,
         categoryId: "cat-1",
         amountCents: 8000,
         description: "Gimnasio",
@@ -115,6 +126,8 @@ describe("RecurringList — smoke render (R-022)", () => {
       {
         id: "rec-4",
         accountId: "acc-1",
+        type: "expense" as const,
+        toAccountId: null,
         categoryId: "cat-1",
         amountCents: 12000,
         description: "Renta",
@@ -126,6 +139,8 @@ describe("RecurringList — smoke render (R-022)", () => {
     const dueItems = [
       {
         recurringId: "rec-4",
+        type: "expense" as const,
+        toAccountId: null,
         amountCents: 12000,
         description: "Renta",
         frequency: "monthly" as const,
@@ -154,6 +169,8 @@ describe("RecurringList — smoke render (R-022)", () => {
       {
         id: "rec-5",
         accountId: "acc-1",
+        type: "expense" as const,
+        toAccountId: null,
         categoryId: "cat-1",
         amountCents: 2000,
         description: "Renta",
@@ -165,6 +182,8 @@ describe("RecurringList — smoke render (R-022)", () => {
     const dueItems = [
       {
         recurringId: "rec-5",
+        type: "expense" as const,
+        toAccountId: null,
         amountCents: 2000,
         description: "Renta",
         frequency: "monthly" as const,
@@ -228,6 +247,56 @@ describe("RecurringList — smoke render (R-022)", () => {
 
       expect(screen.queryByText("Vas a superar tu presupuesto")).not.toBeInTheDocument();
       expect(confirmRecurringAction).not.toHaveBeenCalled();
+    });
+  });
+
+  // finance-credit-card-payments CC-025/CC-027: a transfer-type definition's row renders
+  // "Origen -> Destino" (never a category chip, since categoryId is null by DB shape CHECK), and
+  // its ConfirmRecurringSheet states explicitly that confirming posts the payment now.
+  describe("transfer-type definitions (auto-pay)", () => {
+    const definitions = [
+      {
+        id: "rec-6",
+        accountId: "acc-1",
+        type: "transfer" as const,
+        toAccountId: "acc-2",
+        categoryId: null,
+        amountCents: 30000,
+        description: "Pago tarjeta oro",
+        frequency: "monthly" as const,
+        nextDueDate: "2026-08-06",
+        active: true,
+      },
+    ];
+    const dueItems = [
+      {
+        recurringId: "rec-6",
+        type: "transfer" as const,
+        toAccountId: "acc-2",
+        amountCents: 30000,
+        description: "Pago tarjeta oro",
+        frequency: "monthly" as const,
+        nextDueDate: "2026-08-06",
+        daysOverdue: 0,
+      },
+    ];
+
+    it("renders 'Efectivo -> Tarjeta Oro' on the row, with no category chip", () => {
+      render(
+        <RecurringList definitions={definitions} dueItems={dueItems} accounts={ACCOUNTS} categories={CATEGORIES} budgets={[]} />,
+      );
+
+      expect(screen.getByText("Efectivo → Tarjeta Oro")).toBeInTheDocument();
+    });
+
+    it("the confirm sheet states explicitly that confirming posts the payment now", () => {
+      render(
+        <RecurringList definitions={definitions} dueItems={dueItems} accounts={ACCOUNTS} categories={CATEGORIES} budgets={[]} />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+
+      expect(screen.getByText(/Al confirmar se registrará este pago ahora/)).toBeInTheDocument();
     });
   });
 });

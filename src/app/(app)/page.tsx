@@ -18,6 +18,7 @@ import {
   getMonthSummary,
   listActiveAccounts,
   listCategorySpend,
+  listCreditCardStatus,
   listRecentTransactions,
 } from "@/modules/finance/api";
 import { formatCentsAsMXN } from "@/shared/money";
@@ -58,19 +59,29 @@ export default async function HomePage() {
   const supabase = await createClient();
   const [profile, spaceId] = await Promise.all([getCurrentProfile(supabase), getCurrentHouseholdId(supabase)]);
 
-  const [summary, accounts, dueRecurringCount, monthSummary, categorySpend, recentTransactions] = spaceId
-    ? await Promise.all([
-        getHouseholdSummary(supabase, spaceId),
-        listActiveAccounts(supabase, spaceId),
-        countDueRecurring(supabase, spaceId),
-        getMonthSummary(supabase, spaceId),
-        listCategorySpend(supabase, spaceId),
-        listRecentTransactions(supabase, spaceId, 4, { postedOnly: true }),
-      ])
-    : [{ availableCents: 0, debtCents: 0 }, [], 0, { incomeCents: 0, expenseCents: 0 }, [], []];
+  const [summary, accounts, dueRecurringCount, monthSummary, categorySpend, recentTransactions, cardStatuses] =
+    spaceId
+      ? await Promise.all([
+          getHouseholdSummary(supabase, spaceId),
+          listActiveAccounts(supabase, spaceId),
+          countDueRecurring(supabase, spaceId),
+          getMonthSummary(supabase, spaceId),
+          listCategorySpend(supabase, spaceId),
+          listRecentTransactions(supabase, spaceId, 4, { postedOnly: true }),
+          listCreditCardStatus(supabase, spaceId),
+        ])
+      : [{ availableCents: 0, debtCents: 0 }, [], 0, { incomeCents: 0, expenseCents: 0 }, [], [], []];
 
   const goalAccounts = accounts.filter((a) => a.goal);
   const monthLabel = currentMonthLabel();
+
+  // "Por pagar pronto" (design.md §4, CC-024): cards due within the next week, visual signal
+  // only — `available_cents` and the assets-only hero rule are untouched by this addition.
+  const dueSoonCards = cardStatuses.filter(
+    (c) => c.daysUntilDue !== null && c.daysUntilDue >= 0 && c.daysUntilDue <= 7,
+  );
+  const dueSoonCents = dueSoonCards.reduce((sum, c) => sum + c.owedCents, 0);
+  const overdueCards = cardStatuses.filter((c) => c.daysUntilDue !== null && c.daysUntilDue < 0);
   const categorySpendItems = categorySpend.map((row) => ({
     categoryId: row.categoryId,
     categoryName: row.categoryName,
@@ -92,6 +103,23 @@ export default async function HomePage() {
           </CardHeader>
           <CardContent>
             <MoneyAmount formatted={formatCentsAsMXN(summary.debtCents)} kind="expense" />
+          </CardContent>
+        </Card>
+      )}
+
+      {dueSoonCards.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm text-muted-foreground">Por pagar pronto</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-1">
+            <MoneyAmount formatted={formatCentsAsMXN(dueSoonCents)} kind="expense" />
+            {overdueCards.length > 0 && (
+              <p className="text-xs text-expense">
+                {overdueCards.length} tarjeta{overdueCards.length === 1 ? "" : "s"} vencida
+                {overdueCards.length === 1 ? "" : "s"}
+              </p>
+            )}
           </CardContent>
         </Card>
       )}

@@ -10,7 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/design-system/ui/select";
+import { supportsCardDetail, type AccountType } from "@/modules/finance/api/account-shape";
 import { createAccountAction, type AccountFormState } from "./actions";
+
+const DAYS_1_TO_31 = Array.from({ length: 31 }, (_, i) => String(i + 1));
 
 const TYPE_LABELS: Record<string, string> = {
   cash: "Efectivo",
@@ -108,6 +111,60 @@ export function AccountForm() {
               Fecha de inicio
             </label>
             <Input id="startDate" name="startDate" type="date" required />
+          </div>
+        </fieldset>
+      )}
+
+      {supportsCardDetail(type as AccountType) && (
+        <fieldset className="flex flex-col gap-3 rounded-card border border-border p-4">
+          <legend className="px-1 text-xs font-medium text-muted-foreground">
+            Términos de la tarjeta (opcional)
+          </legend>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="creditLimitCents" className="text-sm">
+              Límite de crédito (MXN)
+            </label>
+            <Input id="creditLimitCents" name="creditLimitCents" type="number" step="0.01" min="0.01" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="statementDay" className="text-sm">
+              Día de corte
+            </label>
+            <Select name="statementDay">
+              <SelectTrigger id="statementDay">
+                <SelectValue placeholder="Sin definir" />
+              </SelectTrigger>
+              <SelectContent>
+                {DAYS_1_TO_31.map((day) => (
+                  <SelectItem key={day} value={day}>
+                    {day}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="dueDay" className="text-sm">
+              Día de pago
+            </label>
+            <Select name="dueDay">
+              <SelectTrigger id="dueDay">
+                <SelectValue placeholder="Sin definir" />
+              </SelectTrigger>
+              <SelectContent>
+                {DAYS_1_TO_31.map((day) => (
+                  <SelectItem key={day} value={day}>
+                    {day}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="minPaymentCents" className="text-sm">
+              Pago mínimo (MXN)
+            </label>
+            <Input id="minPaymentCents" name="minPaymentCents" type="number" step="0.01" min="0.01" />
           </div>
         </fieldset>
       )}

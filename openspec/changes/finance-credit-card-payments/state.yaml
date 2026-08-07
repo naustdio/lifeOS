@@ -198,9 +198,51 @@ apply_progress:
       Slice B file.
     pr: "not opened — implementation and local verification only, per instructions."
 
-next_recommended: sdd-apply (Slice C — CC-022..CC-028, UI: AccountForm card fieldset, /cuentas
-  row surfacing, dashboard signal, RecurringForm transfer mode, list + confirm sheet copy, RTL
-  tests, closing pnpm verify + full pgTAP run) — stacked on
-  feat/finance-credit-card-payments-2-card-data once Slice B is confirmed/merged, per the
-  stacked-to-main chain strategy. Alternatively sdd-verify for independent verification of
-  Slice A+B before merge.
+  pr_3_slice_c_ui:
+    name: "Slice C — UI (AccountForm card fieldset, /cuentas + dashboard surfacing, RecurringForm transfer mode, list + confirm sheet copy, RTL tests)"
+    status: complete
+    tasks_done: [CC-022, CC-023, CC-024, CC-025, CC-026, CC-027, CC-028]
+    tasks_total: 7
+    branch: feat/finance-credit-card-payments-3-ui
+    base: feat/finance-credit-card-payments-2-card-data
+    files:
+      - src/modules/finance/api/account-shape.ts (new — client-safe re-export of
+        supportsCardDetail/AccountType, same server-only-free pattern as budget-evaluation.ts,
+        so AccountForm's card-terms fieldset can decide visibility without pulling the
+        server-only barrel into the client bundle)
+      - src/app/(app)/cuentas/AccountForm.tsx (card-terms fieldset, all fields optional, shown
+        only when type=credit_card)
+      - src/app/(app)/cuentas/actions.ts (card-terms FormData branch, non-atomic two-step
+        create→upsertCardDetails per design.md's accepted tradeoff)
+      - src/app/(app)/cuentas/page.tsx (credit_card_status surfacing on /cuentas rows)
+      - src/app/(app)/page.tsx (dashboard due-date/over-limit visual signal, warning-only, never
+        a hard block)
+      - src/app/(app)/recurrentes/RecurringForm.tsx (transfer-type option: source account,
+        destination credit-card account, fixed amount, no category field — mirrors
+        TransactionForm's existing transfer-tab category omission)
+      - src/app/(app)/recurrentes/RecurringList.tsx, ConfirmRecurringSheet.tsx (transfer-row
+        rendering/copy)
+      - src/app/(app)/recurrentes/actions.ts, page.tsx (wiring for the type discriminated union)
+      - src/modules/finance/api/index.ts (+15 lines, additional re-exports)
+      - tests/unit/{account-form-render,accounts-page-render,home-page-render,
+        recurring-form-render,recurring-list-render}.test.tsx (RTL coverage, incl. the
+        "switching Tipo to Pago de tarjeta hides Categoría and shows Tarjeta destino" case)
+    process_note: >
+      The sdd-apply sub-agent implementing this slice was terminated mid-run by the account's
+      monthly spend cap after completing all file edits and marking tasks.md CC-022..CC-028
+      complete, but before running its own final verification/commit. The orchestrator (this
+      session) verified the already-written working-tree changes directly instead of
+      re-launching a new sub-agent: `tsc --noEmit` clean, `eslint --max-warnings=0` clean,
+      `node scripts/check-tokens.mjs` OK, `pnpm test` 183/183 pass across 29 files (zero
+      regressions from Slice B's 176), `next build` succeeded (13 routes, unchanged count — no
+      new routes added by this UI-only slice), then committed the verified tree directly.
+    verify_gate: >
+      `pnpm verify`-equivalent run manually (eslint --max-warnings=0 && tsc --noEmit &&
+      check-tokens.mjs && next build) — PASS. 13 routes generated.
+    test_gate: "`pnpm test` — 183/183 pass, 29/29 files, zero regressions."
+    dependency_diff_gate: "`git diff --stat -- package.json pnpm-lock.yaml` — EMPTY, no new dependency."
+    diff_size: "~551 insertions / 48 deletions across 15 files, within the ~330-400 line estimate range for this slice."
+    pr: "not opened — implementation and local verification only, per instructions."
+
+next_recommended: sdd-verify (all 28/28 tasks across 3 stacked slices now complete — this closes
+  out the highest-risk change and the final change in the 5-change Finance roadmap)
