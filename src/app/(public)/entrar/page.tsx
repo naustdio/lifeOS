@@ -2,6 +2,7 @@
 
 import { Button } from "@/design-system/ui/button";
 import { createClient } from "@/shared/supabase/browser";
+import { devSignIn } from "./dev-login-action";
 
 /**
  * Sign-in screen (design.md §6, spec `identity/Google OAuth Only`). Offers
@@ -30,6 +31,13 @@ export default function EntrarPage() {
       <Button size="lg" className="w-full" onClick={handleSignIn}>
         Iniciar sesión con Google
       </Button>
+      {process.env.NODE_ENV !== "production" && (
+        <form action={devSignIn}>
+          <Button type="submit" size="sm" variant="ghost" className="w-full">
+            Entrar como dev (solo local)
+          </Button>
+        </form>
+      )}
     </main>
   );
 }
