@@ -117,7 +117,7 @@ Chain strategy: stacked-to-main
 
 ### (c) Schema
 
-- [ ] CC-013 — Migration: `supabase/migrations/20260804090020_finance_credit_cards.sql`
+- [x] CC-013 — Migration: `supabase/migrations/20260804090020_finance_credit_cards.sql`
   (design.md §1a/§1c/§1d)
   - `finance.account_credit_card_details` (1:1, cascade-deleted, all columns except `account_id` nullable: `credit_limit_cents`, `statement_day`/`due_day` 1..31, `min_payment_cents`), `touch_updated_at` trigger.
   - Type-gate trigger `enforce_card_detail_account_type()` — a CHECK cannot reference `finance.accounts`, so this MUST be a trigger, not a CHECK.
@@ -126,11 +126,11 @@ Chain strategy: stacked-to-main
   - Satisfies: `Optional Credit Card Account Detail` (all 4 scenarios).
   - Depends on: none (independent of Slice A tables). Parallel: yes, can start once Slice A is merged.
 
-- [ ] CC-014 — Migration: `supabase/migrations/20260804090021_finance_credit_cards_security.sql`
+- [x] CC-014 — Migration: `supabase/migrations/20260804090021_finance_credit_cards_security.sql`
   - `enable row level security`; select/insert/update/delete policies `using (finance.can_read_account(account_id))`; `grant select, insert, update, delete on finance.account_credit_card_details to authenticated` (delete granted, unlike categories — no history to preserve).
   - Depends on: CC-013. Parallel: sequential.
 
-- [ ] CC-015 [pgTAP — card terms] — `supabase/tests/0xx_finance_credit_cards.sql` (create)
+- [x] CC-015 [pgTAP — card terms] — `supabase/tests/0xx_finance_credit_cards.sql` (create)
   - Detail row on a non-`credit_card` account rejected by the trigger; deleting the account cascades the detail row; card with no detail row appears in `credit_card_status` with `has_terms=false` and all-NULL derived columns.
   - Tenancy: non-member cannot select/insert/update/delete; `anon` zero rows; `credit_card_status` leaks no other household (`security_invoker` proof).
   - Day clamp: `next_card_due_date(31, '2026-02-10')` → `2026-02-28`; leap year → `2028-02-29`; day 15 vs today-20 → next month; day 20 vs today-20 → today.
@@ -139,24 +139,24 @@ Chain strategy: stacked-to-main
 
 ### (d) Domain + Repository
 
-- [ ] CC-016 [RED] — `tests/unit/credit-card-domain.test.ts` (create): failing test — `clampDueDay`/`nextDueDate` against the same fixture table as CC-015's clamp assertions; `utilizationBp` returns `null` (never `NaN`/`Infinity`) on a null/zero limit; `isOverLimit`/`daysUntilDue` pure and total. Fails: `credit-card.ts` does not exist yet.
+- [x] CC-016 [RED] — `tests/unit/credit-card-domain.test.ts` (create): failing test — `clampDueDay`/`nextDueDate` against the same fixture table as CC-015's clamp assertions; `utilizationBp` returns `null` (never `NaN`/`Infinity`) on a null/zero limit; `isOverLimit`/`daysUntilDue` pure and total. Fails: `credit-card.ts` does not exist yet.
   - Satisfies (drives): `Exceeding the Credit Limit Is a Visual Warning, Never a Block` (TS-side proof), `Optional Credit Card Account Detail` (empty-state proof).
   - Depends on: CC-013 (mirrors the SQL functions it asserts against). Parallel: sequential.
 
-- [ ] CC-017 [GREEN] — `src/modules/finance/domain/credit-card.ts` (create): `clampDueDay`, `nextDueDate`, `daysUntilDue`, `utilizationBp`, `isOverLimit` — framework-free pure mirrors, implemented to satisfy CC-016.
+- [x] CC-017 [GREEN] — `src/modules/finance/domain/credit-card.ts` (create): `clampDueDay`, `nextDueDate`, `daysUntilDue`, `utilizationBp`, `isOverLimit` — framework-free pure mirrors, implemented to satisfy CC-016.
   - Depends on: CC-016. Parallel: sequential.
 
-- [ ] CC-018 — `src/modules/finance/domain/account.ts` (modify): `supportsCardDetail(type) => type === "credit_card"`, beside `requiresLiabilityDetail`.
+- [x] CC-018 — `src/modules/finance/domain/account.ts` (modify): `supportsCardDetail(type) => type === "credit_card"`, beside `requiresLiabilityDetail`.
   - Depends on: none. Parallel: yes.
 
-- [ ] CC-019 — `src/modules/finance/data/account-repository.ts` (modify): `listCreditCardStatus(supabase, householdId)` over `finance.credit_card_status`; `upsertCardDetails`/`removeCardDetails` (plain RLS, `budget-repository.ts` shape, `Number()` every bigint, degrade to `[]`/`{ error }`).
+- [x] CC-019 — `src/modules/finance/data/account-repository.ts` (modify): `listCreditCardStatus(supabase, householdId)` over `finance.credit_card_status`; `upsertCardDetails`/`removeCardDetails` (plain RLS, `budget-repository.ts` shape, `Number()` every bigint, degrade to `[]`/`{ error }`).
   - Satisfies: `Optional Credit Card Account Detail` (create/edit/remove scenarios).
   - Depends on: CC-014, CC-017. Parallel: sequential.
 
-- [ ] CC-020 — `src/modules/finance/data/recurring-repository.ts` (modify): `type`/`to_account_id` in select and `RecurringListItem`/`DueRecurringItem`; `categoryId: string | null`; create/update accept the transfer variant.
+- [x] CC-020 — `src/modules/finance/data/recurring-repository.ts` (modify): `type`/`to_account_id` in select and `RecurringListItem`/`DueRecurringItem`; `categoryId: string | null`; create/update accept the transfer variant.
   - Depends on: CC-012. Parallel: yes, parallel with CC-019.
 
-- [ ] CC-021 — `src/modules/finance/data/index.ts`, `src/modules/finance/api/index.ts` (modify): re-export `listCreditCardStatus`/`upsertCardDetails`/`removeCardDetails` and the updated recurring repository functions; `CreateRecurringInputSchema` becomes a Zod discriminated union on `type` (`ConfirmRecurringInputSchema`/`confirmRecurring()` need zero changes — RPC signature is stable).
+- [x] CC-021 — `src/modules/finance/data/index.ts`, `src/modules/finance/api/index.ts` (modify): re-export `listCreditCardStatus`/`upsertCardDetails`/`removeCardDetails` and the updated recurring repository functions; `CreateRecurringInputSchema` becomes a Zod discriminated union on `type` (`ConfirmRecurringInputSchema`/`confirmRecurring()` need zero changes — RPC signature is stable).
   - Depends on: CC-019, CC-020. Parallel: sequential (closes out Slice B).
 
 ---

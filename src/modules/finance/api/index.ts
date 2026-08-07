@@ -77,6 +77,43 @@ export {
   type DueRecurringItem,
 } from "../data";
 
+/**
+ * `finance-credit-card-payments` change: card terms are the same deliberate plain-RLS
+ * exception documented above for budgets/recurring — re-exported here (not imported directly
+ * from `../data`) because Gate A's ESLint boundary only allows `app` to import a module's
+ * `api/` barrel.
+ */
+export {
+  listCreditCardStatus,
+  upsertCardDetails,
+  removeCardDetails,
+  type CreditCardStatusItem,
+} from "../data";
+
+const BaseRecurringFields = {
+  householdId: z.string().uuid(),
+  accountId: z.string().uuid(),
+  amountCents: z.number().int().positive(),
+  description: z.string().default(""),
+  frequency: z.enum(["monthly", "weekly", "biweekly", "yearly"]),
+  nextDueDate: z.string(),
+};
+
+/**
+ * A Zod DISCRIMINATED UNION on `type` (design.md §3, change: finance-credit-card-payments
+ * CC-021), mirroring `CreateAccountInputSchema`'s shape above: `categoryId`/`toAccountId` are
+ * required exactly when the type demands it, structurally absent otherwise — the same defensive
+ * pattern `validateRecurringShape()` checks client-side and `recurring_expense_shape`/
+ * `recurring_transfer_shape` enforce server-side. `confirmRecurring()`/`ConfirmRecurringInputSchema`
+ * below need ZERO changes — the RPC signature this discriminated union feeds is unrelated to
+ * `confirm_recurring_transaction`'s stable 4-parameter signature.
+ */
+export const CreateRecurringInputSchema = z.discriminatedUnion("type", [
+  z.object({ ...BaseRecurringFields, type: z.literal("expense"), categoryId: z.string().uuid() }),
+  z.object({ ...BaseRecurringFields, type: z.literal("transfer"), toAccountId: z.string().uuid() }),
+]);
+export type CreateRecurringInput = z.input<typeof CreateRecurringInputSchema>;
+
 export type OriginModule = "manual" | "shopping_list" | "car_control" | "recurring";
 
 /**

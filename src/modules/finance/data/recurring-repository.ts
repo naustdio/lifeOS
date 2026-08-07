@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Frequency } from "../domain/recurring";
+import type { Frequency, RecurringType } from "../domain/recurring";
 
 /**
  * Repository for `finance.recurring_transactions` + its derived `finance.recurring_due` view
@@ -13,7 +13,9 @@ export type RecurringListItem = {
   id: string;
   householdId: string;
   accountId: string;
-  categoryId: string;
+  categoryId: string | null;
+  type: RecurringType;
+  toAccountId: string | null;
   amountCents: number;
   description: string;
   frequency: Frequency;
@@ -25,7 +27,9 @@ export type DueRecurringItem = {
   recurringId: string;
   householdId: string;
   accountId: string;
-  categoryId: string;
+  categoryId: string | null;
+  type: RecurringType;
+  toAccountId: string | null;
   amountCents: number;
   description: string;
   frequency: Frequency;
@@ -41,7 +45,9 @@ export async function listRecurringDefinitions(
   const { data, error } = await supabase
     .schema("finance")
     .from("recurring_transactions")
-    .select("id, household_id, account_id, category_id, amount_cents, description, frequency, next_due_date, active")
+    .select(
+      "id, household_id, account_id, category_id, type, to_account_id, amount_cents, description, frequency, next_due_date, active",
+    )
     .eq("household_id", householdId)
     .order("next_due_date", { ascending: true });
 
@@ -53,7 +59,9 @@ export async function listRecurringDefinitions(
     id: r.id as string,
     householdId: r.household_id as string,
     accountId: r.account_id as string,
-    categoryId: r.category_id as string,
+    categoryId: (r.category_id as string | null) ?? null,
+    type: r.type as RecurringType,
+    toAccountId: (r.to_account_id as string | null) ?? null,
     amountCents: Number(r.amount_cents),
     description: r.description as string,
     frequency: r.frequency as Frequency,
@@ -67,7 +75,9 @@ export async function listDueRecurring(supabase: SupabaseClient, householdId: st
   const { data, error } = await supabase
     .schema("finance")
     .from("recurring_due")
-    .select("recurring_id, household_id, account_id, category_id, amount_cents, description, frequency, next_due_date, days_overdue")
+    .select(
+      "recurring_id, household_id, account_id, category_id, type, to_account_id, amount_cents, description, frequency, next_due_date, days_overdue",
+    )
     .eq("household_id", householdId)
     .order("days_overdue", { ascending: false });
 
@@ -79,7 +89,9 @@ export async function listDueRecurring(supabase: SupabaseClient, householdId: st
     recurringId: r.recurring_id as string,
     householdId: r.household_id as string,
     accountId: r.account_id as string,
-    categoryId: r.category_id as string,
+    categoryId: (r.category_id as string | null) ?? null,
+    type: r.type as RecurringType,
+    toAccountId: (r.to_account_id as string | null) ?? null,
     amountCents: Number(r.amount_cents),
     description: r.description as string,
     frequency: r.frequency as Frequency,
@@ -103,18 +115,36 @@ export async function countDueRecurring(supabase: SupabaseClient, householdId: s
   return count;
 }
 
-/** RLS-guarded insert. Creating a definition never posts a transaction (proposal). */
+/**
+ * RLS-guarded insert. Creating a definition never posts a transaction (proposal). Accepts
+ * either shape (design.md §3, change: finance-credit-card-payments CC-020): `type: "expense"`
+ * carries `categoryId`, `type: "transfer"` carries `toAccountId` instead — mirroring
+ * `recurring_expense_shape`/`recurring_transfer_shape`. Callers should run
+ * `validateRecurringShape()` before calling this; the DB CHECKs remain the source of truth.
+ */
 export async function createRecurringDefinition(
   supabase: SupabaseClient,
-  input: {
-    householdId: string;
-    accountId: string;
-    categoryId: string;
-    amountCents: number;
-    description: string;
-    frequency: Frequency;
-    nextDueDate: string;
-  },
+  input:
+    | {
+        householdId: string;
+        accountId: string;
+        type: "expense";
+        categoryId: string;
+        amountCents: number;
+        description: string;
+        frequency: Frequency;
+        nextDueDate: string;
+      }
+    | {
+        householdId: string;
+        accountId: string;
+        type: "transfer";
+        toAccountId: string;
+        amountCents: number;
+        description: string;
+        frequency: Frequency;
+        nextDueDate: string;
+      },
 ): Promise<{ id: string | null; error: string | null }> {
   const { data, error } = await supabase
     .schema("finance")
@@ -122,7 +152,9 @@ export async function createRecurringDefinition(
     .insert({
       household_id: input.householdId,
       account_id: input.accountId,
-      category_id: input.categoryId,
+      type: input.type,
+      category_id: input.type === "expense" ? input.categoryId : null,
+      to_account_id: input.type === "transfer" ? input.toAccountId : null,
       amount_cents: input.amountCents,
       description: input.description,
       frequency: input.frequency,
@@ -139,14 +171,18 @@ export async function createRecurringDefinition(
 }
 
 /** RLS-guarded update of the editable definition fields (not the cursor — that only advances
- *  through the confirm/discard seam or a pause/resume transition). */
+ *  through the confirm/discard seam or a pause/resume transition). `categoryId`/`toAccountId`
+ *  are mutually exclusive per the DB shape CHECKs; passing both is a caller error the DB will
+ *  reject, not something this function reconciles. */
 export async function updateRecurringDefinition(
   supabase: SupabaseClient,
   householdId: string,
   id: string,
   patch: {
     accountId?: string;
-    categoryId?: string;
+    type?: RecurringType;
+    categoryId?: string | null;
+    toAccountId?: string | null;
     amountCents?: number;
     description?: string;
     frequency?: Frequency;
@@ -154,7 +190,9 @@ export async function updateRecurringDefinition(
 ): Promise<{ error: string | null }> {
   const update: Record<string, unknown> = {};
   if (patch.accountId !== undefined) update.account_id = patch.accountId;
+  if (patch.type !== undefined) update.type = patch.type;
   if (patch.categoryId !== undefined) update.category_id = patch.categoryId;
+  if (patch.toAccountId !== undefined) update.to_account_id = patch.toAccountId;
   if (patch.amountCents !== undefined) update.amount_cents = patch.amountCents;
   if (patch.description !== undefined) update.description = patch.description;
   if (patch.frequency !== undefined) update.frequency = patch.frequency;

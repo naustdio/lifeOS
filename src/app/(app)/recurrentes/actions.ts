@@ -56,6 +56,8 @@ export async function saveRecurringAction(
   }
 
   if (id) {
+    // `type`/`toAccountId` are omitted here deliberately: this form still only edits
+    // expense-type definitions until Slice C (tasks.md CC-026) adds the `Tipo` selector.
     const { error } = await updateRecurringDefinition(supabase, spaceId, id, {
       accountId,
       categoryId,
@@ -68,6 +70,7 @@ export async function saveRecurringAction(
     const { error } = await createRecurringDefinition(supabase, {
       householdId: spaceId,
       accountId,
+      type: "expense",
       categoryId,
       amountCents,
       description,

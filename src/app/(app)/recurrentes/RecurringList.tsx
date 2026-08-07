@@ -23,7 +23,11 @@ type CategoryOption = { id: string; name: string };
 type RecurringDefinition = {
   id: string;
   accountId: string;
-  categoryId: string;
+  // `string | null` since finance-credit-card-payments CC-020: null on a `type: "transfer"`
+  // definition. Rendering the transfer-specific row shape (Origen -> Destino, no category chip)
+  // is Slice C's job (tasks.md CC-027) — this widening only keeps the shared repository type
+  // compiling for the still-expense-only UI this slice ships.
+  categoryId: string | null;
   amountCents: number;
   description: string;
   frequency: Frequency;

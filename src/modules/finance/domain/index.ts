@@ -5,3 +5,4 @@ export * from "./account";
 export * from "./category";
 export * from "./budget";
 export * from "./recurring";
+export * from "./credit-card";
