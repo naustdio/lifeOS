@@ -24,7 +24,15 @@ const ERROR_COPY: Record<string, string> = {
   TRANSFER_LEG_NOT_MOVABLE: "Una transferencia no se puede mover de cuenta; anúlala y regístrala de nuevo.",
   INVALID_DESTINATION_ACCOUNT: "Esa cuenta destino no es válida.",
   VOID_TRANSACTION_NOT_EDITABLE: "Ese movimiento ya fue anulado y no se puede editar.",
+  INVALID_SUBTYPE_FOR_TYPE: "Ese sub-tipo no es válido para este movimiento.",
 };
+
+/** "none" (the Select's placeholder option) <-> undefined, the sub-type Select's contract with
+ *  `recordTransaction`/`recordTransfer` (change: finance-transaction-subtypes). */
+function subtypeFromFormData(formData: FormData): string | undefined {
+  const raw = formData.get("subtype");
+  return raw === "none" || raw === null ? undefined : String(raw);
+}
 
 
 /** Server Action backing the income/expense entry form (T-037). Positive
@@ -45,6 +53,7 @@ export async function recordMovementAction(
     amountCents: pesosToCents(Number(formData.get("amount") ?? 0)),
     occurredOn: String(formData.get("occurredOn") ?? ""),
     description: String(formData.get("description") ?? ""),
+    subtype: subtypeFromFormData(formData),
   });
 
   if (!result.ok) {
@@ -78,6 +87,7 @@ export async function recordTransferAction(
     amountCents: pesosToCents(Number(formData.get("amount") ?? 0)),
     occurredOn: String(formData.get("occurredOn") ?? ""),
     description: String(formData.get("description") ?? ""),
+    subtype: subtypeFromFormData(formData),
   });
 
   if (!result.ok) {
@@ -104,11 +114,17 @@ export async function updateMovementAction(
   const amount = formData.get("amount");
   const occurredOn = formData.get("occurredOn");
   const description = formData.get("description");
+  const subtype = formData.get("subtype");
   if (accountId) patch.accountId = String(accountId);
   if (categoryId) patch.categoryId = String(categoryId);
   if (amount) patch.amountCents = pesosToCents(Number(amount));
   if (occurredOn) patch.occurredOn = String(occurredOn);
   if (description !== null) patch.description = String(description);
+  // change: finance-transaction-subtypes. The Select always submits something ("none" or a
+  // key), so this form's only two reachable states are "set" and "clear" — `undefined`
+  // (leave unchanged) is reachable only by a caller that omits the field entirely, which this
+  // form never does.
+  if (subtype !== null) patch.subtype = subtype === "none" ? null : String(subtype);
 
   const result = await updateTransaction(id, patch);
   if (!result.ok) {

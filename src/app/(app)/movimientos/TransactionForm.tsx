@@ -19,6 +19,7 @@ import {
 import { pesosToCents } from "@/shared/money";
 import { OverBudgetDialog } from "./OverBudgetDialog";
 import { recordMovementAction, recordTransferAction, type MovementFormState } from "./actions";
+import { SUBTYPE_OPTIONS_BY_TAB } from "./subtype-options";
 
 type AccountOption = { id: string; name: string };
 type CategoryOption = { id: string; name: string; kind: "income" | "expense" };
@@ -149,6 +150,28 @@ export function TransactionForm({
             </Select>
           </div>
           <div className="flex flex-col gap-1">
+            <label htmlFor="subtype" className="text-sm font-medium">
+              Sub-tipo
+            </label>
+            {/* keyed on `tab`, same remount idiom as `categoryId` above: switching tabs
+                resets the selection to "Sin subtipo" instead of carrying a stale value that
+                may not even exist in the new tab's option list (change:
+                finance-transaction-subtypes). */}
+            <Select key={tab} name="subtype" defaultValue="none">
+              <SelectTrigger id="subtype">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin subtipo</SelectItem>
+                {SUBTYPE_OPTIONS_BY_TAB[tab].map((o) => (
+                  <SelectItem key={o.key} value={o.key}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1">
             <label htmlFor="amount" className="text-sm font-medium">
               Monto (MXN)
             </label>
@@ -204,6 +227,24 @@ export function TransactionForm({
                 {accounts.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="transferSubtype" className="text-sm font-medium">
+              Sub-tipo
+            </label>
+            <Select name="subtype" defaultValue="none">
+              <SelectTrigger id="transferSubtype">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin subtipo</SelectItem>
+                {SUBTYPE_OPTIONS_BY_TAB.transfer.map((o) => (
+                  <SelectItem key={o.key} value={o.key}>
+                    {o.label}
                   </SelectItem>
                 ))}
               </SelectContent>

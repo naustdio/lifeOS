@@ -44,6 +44,7 @@ const INCOME_TRANSACTION = {
   amountCents: 5000,
   occurredOn: "2026-02-01",
   description: "Sueldo",
+  subtype: null,
 };
 
 const TRANSFER_LEG_TRANSACTION = {
@@ -54,6 +55,7 @@ const TRANSFER_LEG_TRANSACTION = {
   amountCents: -1000,
   occurredOn: "2026-02-02",
   description: "Ahorro",
+  subtype: null,
 };
 
 const BUDGETED_EXPENSE_TRANSACTION = {
@@ -64,6 +66,7 @@ const BUDGETED_EXPENSE_TRANSACTION = {
   amountCents: -1000,
   occurredOn: "2026-02-03",
   description: "Café",
+  subtype: null,
 };
 const BUDGETS = [{ budgetId: "b1", categoryId: "cat-1", limitCents: 4500, spentCents: 4500 }];
 
@@ -179,6 +182,7 @@ describe("EditTransactionForm — over-budget confirmation gate (B-011)", () => 
       amountCents: -1000,
       occurredOn: "2026-02-04",
       description: "Sin categoría",
+      subtype: null,
     };
 
     render(
