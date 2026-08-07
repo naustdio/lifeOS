@@ -119,7 +119,7 @@ Chain strategy: stacked-to-main
 
 ### (b) Design-System Pattern
 
-- [ ] K-009 — `tests/unit/calendar-grid-render.test.tsx` (create): RTL smoke test —
+- [x] K-009 — `tests/unit/calendar-grid-render.test.tsx` (create): RTL smoke test —
   `CalendarGrid` renders 7 weekday header cells (Sunday-first, `D L M M J V S`) plus
   `offset + daysInMonth` day cells; a `hasCharges` cell shows its marker; an `isNegative` cell carries
   the `--expense` token; clicking a cell calls `onSelectDate`; cells are `button`s with a
@@ -129,7 +129,7 @@ Chain strategy: stacked-to-main
   - Depends on: K-007 (`CalendarCell` type contract, design.md §4).
   - Parallel: yes, independent of K-011/K-012.
 
-- [ ] K-010 — `src/design-system/patterns/CalendarGrid.tsx` (create): `CalendarGrid` +
+- [x] K-010 — `src/design-system/patterns/CalendarGrid.tsx` (create): `CalendarGrid` +
   internal `CalendarDayCell`, primitive `CalendarCell` props only (no finance types, no cents),
   `grid grid-cols-7`, Sunday-first weekday header, leading blank cells for the 1st's offset,
   keyboard-operable `button` cells with `aria-pressed`/`aria-label` — implemented to satisfy K-009.
@@ -138,7 +138,7 @@ Chain strategy: stacked-to-main
 
 ### (c) Route
 
-- [ ] K-011 — `tests/unit/calendar-screen-render.test.tsx` (create): RTL smoke test — the
+- [x] K-011 — `tests/unit/calendar-screen-render.test.tsx` (create): RTL smoke test — the
   outflows-only disclaimer text is present (mitigation for the High-likelihood misreading risk); an
   all-zero projection renders a grid, not an error or blank; selecting a day updates
   `ProjectionDayPanel`; a folded-overdue row is visibly marked as overdue.
@@ -148,13 +148,13 @@ Chain strategy: stacked-to-main
   - Depends on: K-010.
   - Parallel: yes, independent of K-012/K-013 (drives the screen below).
 
-- [ ] K-012 — `src/app/(app)/calendario/ProjectionDayPanel.tsx` (create): client, presentational —
+- [x] K-012 — `src/app/(app)/calendario/ProjectionDayPanel.tsx` (create): client, presentational —
   selected day's occurrences (description, `MoneyAmount kind="expense"`), the day's closing balance,
   an overdue marker for folded rows.
   - Depends on: K-010.
   - Parallel: yes, parallel with K-013.
 
-- [ ] K-013 — `src/app/(app)/calendario/CalendarScreen.tsx` (create): client — visible-month +
+- [x] K-013 — `src/app/(app)/calendario/CalendarScreen.tsx` (create): client — visible-month +
   selected-day `useState` only, month prev/next bounded to the horizon's months, header showing
   `Disponible hoy` and `Próximos 90 días`, explicit "recurring outflows only, does not include future
   income" disclaimer line, renders `<CalendarGrid>` + `<ProjectionDayPanel>` — implemented to satisfy
@@ -162,7 +162,7 @@ Chain strategy: stacked-to-main
   - Depends on: K-011, K-012.
   - Parallel: sequential.
 
-- [ ] K-014 — `src/app/(app)/calendario/page.tsx` (create): server container — `getCurrentHouseholdId`
+- [x] K-014 — `src/app/(app)/calendario/page.tsx` (create): server container — `getCurrentHouseholdId`
   → `Promise.all([getHouseholdSummary, listRecurringDefinitions])` (unchanged repository reads) →
   `fromDate = new Date().toISOString().slice(0, 10)` computed **server-side** (design.md §3, Decision
   6 — avoids a UTC-midnight hydration mismatch) → `projectBalance(...)` runs server-side → renders
@@ -175,12 +175,12 @@ Chain strategy: stacked-to-main
   - Depends on: K-013.
   - Parallel: sequential.
 
-- [ ] K-015 — `src/app/(app)/layout.tsx` (modify): append one `OverflowMenu` item —
+- [x] K-015 — `src/app/(app)/layout.tsx` (modify): append one `OverflowMenu` item —
   `/calendario`, "Calendario", `CalendarDays` icon — matching the `/categorias` precedent.
   - Depends on: K-014.
   - Parallel: yes, can land alongside K-016.
 
-- [ ] K-016 — Verify against design.md Open Questions #2/#3: seven 44px touch targets fit
+- [x] K-016 — Verify against design.md Open Questions #2/#3: seven 44px touch targets fit
   `max-w-md` + `px-4` at 375px (else switch cells to a square aspect ratio, no horizontal scroll);
   month-nav bounds read naturally when the 90-day horizon ends mid-month. Confirm via real render,
   not inspection. Assert `supabase/migrations/`, `src/modules/finance/data/`, `package.json` show a

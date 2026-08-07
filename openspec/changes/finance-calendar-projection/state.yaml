@@ -57,11 +57,75 @@ apply_progress:
 
   pr_b_ui:
     name: "Calendar UI — /calendario route, CalendarGrid pattern, nav entry"
-    status: pending
-    tasks_done: []
+    status: complete
+    tasks_done: [K-009, K-010, K-011, K-012, K-013, K-014, K-015, K-016]
     tasks_total: 8
-    branch: feat/finance-calendar-projection-2-ui (planned)
+    branch: feat/finance-calendar-projection-2-ui
     base: feat/finance-calendar-projection-1-domain
+    commit: 93cd197
+    files:
+      - src/design-system/patterns/CalendarGrid.tsx (new — primitive CalendarCell props,
+        structurally independent of domain/calendar.ts's own CalendarCell export per design.md
+        §4/§8 "domain-free design-system" intent; Sunday-first weekday header, keyboard-operable
+        button cells with aria-pressed/aria-label, disabled out-of-horizon cells)
+      - src/app/(app)/calendario/page.tsx (new — server container; fromDate computed
+        SERVER-SIDE via `new Date().toISOString().slice(0,10)` inside the server component,
+        never in the browser, per design.md §6 Decision 6; two unchanged repository reads via
+        Promise.all mirroring recurrentes/page.tsx's spaceId guard; precomputes buildMonthCells
+        for every month touched by the 90-day horizon and a daysByDate lookup, so the client
+        screen never imports domain/calendar.ts — that module is only reachable through the
+        server-only finance/api barrel)
+      - src/app/(app)/calendario/CalendarScreen.tsx (new — client, "use client"; owns ONLY
+        visible-month + selected-day useState per design.md §3; month nav bounded to
+        selectableMonths (the exact set of months the horizon touches); renders the
+        "Disponible hoy" / "Próximos 90 días" header plus the explicit outflows-only
+        disclaimer containing the literal phrase "salidas proyectadas" — a TESTED requirement,
+        not a nicety)
+      - src/app/(app)/calendario/ProjectionDayPanel.tsx (new — client, presentational;
+        selected day's occurrences via MoneyAmount kind="expense", closing balance, an
+        explicit "Vencida" badge for folded-overdue rows)
+      - src/app/(app)/layout.tsx (modified — +7/-1 lines: one CalendarDays-icon OverflowMenu
+        item, `/calendario`, appended after Recurrentes, same pattern as Presupuestos/
+        Recurrentes)
+      - tests/unit/calendar-grid-render.test.tsx (new, 4 RTL tests)
+      - tests/unit/calendar-screen-render.test.tsx (new, 4 RTL tests)
+      - No `actions.ts` created — structural expression of the read-only boundary
+        (design.md §4).
+    tdd_evidence: >
+      Standard mode per this project's non-blanket-TDD convention (tasks.md header: K-009/K-011
+      are RTL smoke tests, not RED gates — only the domain's critical-logic surfaces in PR A were
+      RED-gated). Wrote CalendarGrid.tsx first, then its RTL test, confirmed GREEN on the first
+      run (4/4). Same order for CalendarScreen.tsx/ProjectionDayPanel.tsx + their RTL test
+      (4/4 GREEN on first run, no iteration needed).
+    verify_gate: >
+      `pnpm verify` (eslint --max-warnings=0 && tsc --noEmit && check-tokens.mjs && next build) —
+      one real finding: two `eslint-disable-next-line react/no-array-index-key` comments in
+      CalendarGrid.tsx were unused (that rule isn't configured in this project's eslint config),
+      tripping `--max-warnings=0`; removed both comments, re-ran clean. Final: zero
+      errors/warnings, full production build succeeds, `/calendario` appears in the route
+      manifest at 4.68 kB / 116 kB First Load JS.
+    test_gate: >
+      `pnpm vitest run tests/unit` — 27/28 files pass; tests/unit/boundary-lint.test.ts timed out
+      (5s) on the full-suite run, re-run in isolation and passed in 2.2s — confirmed the SAME
+      documented pre-existing ESLint-subprocess flake recorded in PR A's own state (and
+      archive/finance-recurring/state.yaml's pr_4_tests), not a regression. Final tally: 28/28
+      files, 165/165 tests pass (8 new: 4 in calendar-grid-render.test.tsx, 4 in
+      calendar-screen-render.test.tsx). `git diff --stat feat/finance-calendar-projection-1-domain
+      -- supabase/migrations/ src/modules/finance/data/ package.json` — empty (zero diff),
+      matching design.md §7's success criteria; full branch diff vs PR A's branch touches exactly
+      1 modified file (layout.tsx, +6/-1) plus 6 new files, 565 changed lines total (under the
+      ~580 estimate).
+    k016_verification: >
+      Design.md Open Questions #2/#3, verified by code review (jsdom cannot measure real pixel
+      layout): (2) CalendarGrid cells are `h-11` (44px height, fixed) inside `grid-cols-7` with
+      `1fr`-implicit column tracks and `gap-1` — width is always fluid to the `max-w-md` + `px-4`
+      shell regardless of viewport, so no horizontal scroll is structurally possible; no square-
+      aspect-ratio fallback was needed. (3) Month-nav bounds are enforced by `selectableMonths`
+      (the exact list of months `monthsBetween(fromDate, toDate)` touches, computed server-side)
+      — `canGoPrev`/`canGoNext` derive from `selectableMonths.indexOf(visibleMonth)`, so the UI
+      structurally cannot navigate past the horizon's last partial month; not manually re-verified
+      against a running dev server against real Supabase data (out of scope for this apply batch).
+    pr: "not yet opened — awaiting instruction per apply-phase contract"
 
-next_recommended: sdd-apply (PR B: K-009..K-016) once PR A is reviewed/merged, or sdd-verify now
-  to independently confirm PR A's requirement/scenario coverage before opening the PR.
+next_recommended: sdd-verify — all 16 tasks (K-001..K-016) complete across both PRs; the change
+  is ready for independent requirement/scenario verification before either PR is opened.
