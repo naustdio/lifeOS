@@ -132,6 +132,6 @@ export async function createAccountAction(
   }
 
   revalidatePath("/cuentas");
-  revalidatePath("/");
+  revalidatePath("/finance");
   redirect("/cuentas");
 }

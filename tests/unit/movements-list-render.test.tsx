@@ -36,7 +36,7 @@ vi.mock("@/modules/finance/api", () => ({
   voidTransactionById: vi.fn(),
 }));
 
-const { default: MovementsPage } = await import("@/app/(app)/movimientos/page");
+const { default: MovementsPage } = await import("@/app/(app)/(finance)/movimientos/page");
 
 describe("MovementsPage — smoke render (finance-ui-polish P-021)", () => {
   afterEach(() => {

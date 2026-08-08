@@ -16,15 +16,15 @@ const createCategoryAction = vi.fn();
 const updateCategoryAction = vi.fn();
 const archiveCategoryAction = vi.fn();
 
-vi.mock("@/app/(app)/categorias/actions", () => ({
+vi.mock("@/app/(app)/(finance)/categorias/actions", () => ({
   createCategoryAction,
   updateCategoryAction,
   archiveCategoryAction,
 }));
 
-const { CategoryEditor } = await import("@/app/(app)/categorias/CategoryEditor");
-const { IconPicker } = await import("@/app/(app)/categorias/IconPicker");
-const { ColorPicker } = await import("@/app/(app)/categorias/ColorPicker");
+const { CategoryEditor } = await import("@/app/(app)/(finance)/categorias/CategoryEditor");
+const { IconPicker } = await import("@/app/(app)/(finance)/categorias/IconPicker");
+const { ColorPicker } = await import("@/app/(app)/(finance)/categorias/ColorPicker");
 
 describe("IconPicker / ColorPicker — registry-only options", () => {
   afterEach(() => {

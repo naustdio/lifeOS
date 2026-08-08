@@ -17,14 +17,14 @@ const discardRecurringAction = vi.fn();
 const setRecurringActiveAction = vi.fn();
 const deleteRecurringAction = vi.fn();
 const confirmRecurringAction = vi.fn();
-vi.mock("@/app/(app)/recurrentes/actions", () => ({
+vi.mock("@/app/(app)/(finance)/recurrentes/actions", () => ({
   discardRecurringAction,
   setRecurringActiveAction,
   deleteRecurringAction,
   confirmRecurringAction,
 }));
 
-const { RecurringList } = await import("@/app/(app)/recurrentes/RecurringList");
+const { RecurringList } = await import("@/app/(app)/(finance)/recurrentes/RecurringList");
 
 const ACCOUNTS = [
   { id: "acc-1", name: "Efectivo", class: "asset" as const },

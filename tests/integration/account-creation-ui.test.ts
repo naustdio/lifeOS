@@ -31,7 +31,7 @@ vi.mock("@/shared/supabase/server", () => ({
 }));
 
 // Imported after the mocks above (vitest hoists `vi.mock`, so this resolves against them).
-const { createAccountAction } = await import("@/app/(app)/cuentas/actions");
+const { createAccountAction } = await import("@/app/(app)/(finance)/cuentas/actions");
 
 function formDataFrom(fields: Record<string, string>): FormData {
   const fd = new FormData();

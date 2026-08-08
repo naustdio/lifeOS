@@ -14,9 +14,9 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
 
 const saveRecurringAction = vi.fn();
-vi.mock("@/app/(app)/recurrentes/actions", () => ({ saveRecurringAction }));
+vi.mock("@/app/(app)/(finance)/recurrentes/actions", () => ({ saveRecurringAction }));
 
-const { RecurringForm } = await import("@/app/(app)/recurrentes/RecurringForm");
+const { RecurringForm } = await import("@/app/(app)/(finance)/recurrentes/RecurringForm");
 
 const ACCOUNTS = [
   { id: "acc-1", name: "Efectivo", class: "asset" as const },

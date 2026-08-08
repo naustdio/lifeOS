@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TRANSACTION_SUBTYPE_ICONS } from "@/design-system/tokens/transaction-subtype-style";
-import { SUBTYPE_OPTIONS_BY_TAB, subtypeOptionsForType } from "@/app/(app)/movimientos/subtype-options";
+import { SUBTYPE_OPTIONS_BY_TAB, subtypeOptionsForType } from "@/app/(app)/(finance)/movimientos/subtype-options";
 
 /**
  * Pure unit coverage for the per-tab/per-type sub-type option lists (design.md §6, change:

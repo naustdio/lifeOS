@@ -21,13 +21,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const updateMovementAction = vi.fn();
 const voidMovementAction = vi.fn();
 
-vi.mock("@/app/(app)/movimientos/actions", () => ({
+vi.mock("@/app/(app)/(finance)/movimientos/actions", () => ({
   updateMovementAction,
   voidMovementAction,
 }));
 
 const { EditTransactionForm } = await import(
-  "@/app/(app)/movimientos/[id]/editar/EditTransactionForm"
+  "@/app/(app)/(finance)/movimientos/[id]/editar/EditTransactionForm"
 );
 
 const ACCOUNTS = [

@@ -29,7 +29,7 @@ vi.mock("@/modules/finance/api", () => ({
   getHouseholdSummary: (...args: unknown[]) => getHouseholdSummary(...args),
 }));
 
-const { default: AccountsPage } = await import("@/app/(app)/cuentas/page");
+const { default: AccountsPage } = await import("@/app/(app)/(finance)/cuentas/page");
 
 describe("AccountsPage — smoke render (finance-ui-polish P-020)", () => {
   beforeEach(() => {

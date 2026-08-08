@@ -23,7 +23,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
 
-const { AccountForm } = await import("@/app/(app)/cuentas/AccountForm");
+const { AccountForm } = await import("@/app/(app)/(finance)/cuentas/AccountForm");
 
 describe("AccountForm — smoke render (T-036 / C-1)", () => {
   afterEach(() => {

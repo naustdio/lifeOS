@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { AccountsScreen, type AccountItem, type CardStatusItem } from "@/app/(app)/cuentas/AccountsScreen";
+import { AccountsScreen, type AccountItem, type CardStatusItem } from "@/app/(app)/(finance)/cuentas/AccountsScreen";
 
 /**
  * RTL smoke-render for `AccountsScreen`'s tabbed type filter (change: cuentas-tabbed-filter).

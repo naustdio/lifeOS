@@ -2,14 +2,16 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * RTL smoke-render for the Home screen (finance-ui-polish P-019, extended by change:
- * finance-dashboard-feed F-013), mirroring `tests/unit/account-form-render.test.tsx`'s exact
- * mocking pattern. `HomePage` is an `async` Server Component — approach (ii) from
- * `design.md`/`tasks.md` group (d): `await` the invoked async page function to get its
- * returned element, then render that element with RTL. Mocks `server-only`, `next/cache`,
- * `next/navigation`, `@/shared/supabase/server`, plus the two module `api/` barrels the page
- * reads through (`@/modules/core/api`, `@/modules/finance/api`) so no real Supabase call
- * happens. Text/label/role assertions only, zero className assertions.
+ * RTL smoke-render for the Finance dashboard screen at `/finance` (finance-ui-polish P-019,
+ * extended by change: finance-dashboard-feed F-013; relocated by change: app-module-hub —
+ * `/` now renders the neutral module hub, and this dashboard moved to `/finance`, see
+ * `tests/unit/hub-page-render.test.tsx` for the hub's own coverage), mirroring
+ * `tests/unit/account-form-render.test.tsx`'s exact mocking pattern. `HomePage` is an `async`
+ * Server Component — approach (ii) from `design.md`/`tasks.md` group (d): `await` the invoked
+ * async page function to get its returned element, then render that element with RTL. Mocks
+ * `server-only`, `next/cache`, `next/navigation`, `@/shared/supabase/server`, plus the two
+ * module `api/` barrels the page reads through (`@/modules/core/api`, `@/modules/finance/api`)
+ * so no real Supabase call happens. Text/label/role assertions only, zero className assertions.
  */
 
 vi.mock("server-only", () => ({}));
@@ -41,7 +43,7 @@ vi.mock("@/modules/finance/api", () => ({
   listCreditCardStatus: (...args: unknown[]) => listCreditCardStatus(...args),
 }));
 
-const { default: HomePage } = await import("@/app/(app)/page");
+const { default: HomePage } = await import("@/app/(app)/(finance)/finance/page");
 
 function resetAllMocks() {
   cleanup();

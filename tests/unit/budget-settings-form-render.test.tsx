@@ -14,9 +14,9 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
 
 const saveBudgetSettingsAction = vi.fn();
-vi.mock("@/app/(app)/presupuestos/actions", () => ({ saveBudgetSettingsAction }));
+vi.mock("@/app/(app)/(finance)/presupuestos/actions", () => ({ saveBudgetSettingsAction }));
 
-const { BudgetSettingsForm } = await import("@/app/(app)/presupuestos/BudgetSettingsForm");
+const { BudgetSettingsForm } = await import("@/app/(app)/(finance)/presupuestos/BudgetSettingsForm");
 
 describe("BudgetSettingsForm — smoke render", () => {
   afterEach(() => {

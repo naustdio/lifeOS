@@ -63,7 +63,7 @@ export async function recordMovementAction(
   }
 
   revalidatePath("/movimientos");
-  revalidatePath("/");
+  revalidatePath("/finance");
   redirect("/movimientos");
 }
 
@@ -97,7 +97,7 @@ export async function recordTransferAction(
   }
 
   revalidatePath("/movimientos");
-  revalidatePath("/");
+  revalidatePath("/finance");
   redirect("/movimientos");
 }
 
@@ -130,7 +130,7 @@ export async function recordInstallmentPurchaseAction(
   }
 
   revalidatePath("/movimientos");
-  revalidatePath("/");
+  revalidatePath("/finance");
   redirect("/movimientos");
 }
 
@@ -167,7 +167,7 @@ export async function updateMovementAction(
   }
 
   revalidatePath("/movimientos");
-  revalidatePath("/");
+  revalidatePath("/finance");
   redirect("/movimientos");
 }
 
@@ -186,6 +186,6 @@ export async function voidMovementAction(
   }
 
   revalidatePath("/movimientos");
-  revalidatePath("/");
+  revalidatePath("/finance");
   redirect("/movimientos");
 }

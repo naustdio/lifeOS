@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
  * `ProjectionDayPanel`, and a folded-overdue row is visibly marked as overdue.
  */
 
-const { CalendarScreen } = await import("@/app/(app)/calendario/CalendarScreen");
+const { CalendarScreen } = await import("@/app/(app)/(finance)/calendario/CalendarScreen");
 
 function buildMonthCells(
   month: string,

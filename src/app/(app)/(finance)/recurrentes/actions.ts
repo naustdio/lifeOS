@@ -124,7 +124,7 @@ export async function saveRecurringAction(
   }
 
   revalidatePath("/recurrentes");
-  revalidatePath("/");
+  revalidatePath("/finance");
   return { error: null };
 }
 
@@ -153,7 +153,7 @@ export async function setRecurringActiveAction(
   if (error) return { error: "No se pudo actualizar la recurrente." };
 
   revalidatePath("/recurrentes");
-  revalidatePath("/");
+  revalidatePath("/finance");
   return { error: null };
 }
 
@@ -172,7 +172,7 @@ export async function deleteRecurringAction(
   if (error) return { error: "No se pudo eliminar la recurrente." };
 
   revalidatePath("/recurrentes");
-  revalidatePath("/");
+  revalidatePath("/finance");
   return { error: null };
 }
 
@@ -199,7 +199,7 @@ export async function confirmRecurringAction(
   }
 
   revalidatePath("/recurrentes");
-  revalidatePath("/");
+  revalidatePath("/finance");
   revalidatePath("/movimientos");
   return { error: null };
 }
@@ -217,6 +217,6 @@ export async function discardRecurringAction(
   }
 
   revalidatePath("/recurrentes");
-  revalidatePath("/");
+  revalidatePath("/finance");
   return { error: null };
 }

@@ -14,12 +14,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const setBudgetLimitAction = vi.fn();
 const removeBudgetAction = vi.fn();
 
-vi.mock("@/app/(app)/presupuestos/actions", () => ({
+vi.mock("@/app/(app)/(finance)/presupuestos/actions", () => ({
   setBudgetLimitAction,
   removeBudgetAction,
 }));
 
-const { BudgetForm } = await import("@/app/(app)/presupuestos/BudgetForm");
+const { BudgetForm } = await import("@/app/(app)/(finance)/presupuestos/BudgetForm");
 
 const CATEGORIES = [
   { id: "cat-1", name: "Comida", parentId: null },

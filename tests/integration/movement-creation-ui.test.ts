@@ -23,7 +23,7 @@ vi.mock("@/shared/supabase/server", () => ({
 }));
 
 const { recordMovementAction, recordTransferAction, updateMovementAction, voidMovementAction } = await import(
-  "@/app/(app)/movimientos/actions"
+  "@/app/(app)/(finance)/movimientos/actions"
 );
 
 function formDataFrom(fields: Record<string, string>): FormData {

@@ -18,7 +18,7 @@ const recordTransferAction = vi.fn();
 const updateMovementAction = vi.fn();
 const voidMovementAction = vi.fn();
 
-vi.mock("@/app/(app)/movimientos/actions", () => ({
+vi.mock("@/app/(app)/(finance)/movimientos/actions", () => ({
   recordMovementAction,
   recordTransferAction,
   recordInstallmentPurchaseAction: vi.fn(),
@@ -26,9 +26,9 @@ vi.mock("@/app/(app)/movimientos/actions", () => ({
   voidMovementAction,
 }));
 
-const { TransactionForm } = await import("@/app/(app)/movimientos/TransactionForm");
+const { TransactionForm } = await import("@/app/(app)/(finance)/movimientos/TransactionForm");
 const { EditTransactionForm } = await import(
-  "@/app/(app)/movimientos/[id]/editar/EditTransactionForm"
+  "@/app/(app)/(finance)/movimientos/[id]/editar/EditTransactionForm"
 );
 
 const ACCOUNTS = [

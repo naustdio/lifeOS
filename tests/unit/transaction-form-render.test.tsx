@@ -20,13 +20,13 @@ const recordMovementAction = vi.fn();
 const recordTransferAction = vi.fn();
 const recordInstallmentPurchaseAction = vi.fn();
 
-vi.mock("@/app/(app)/movimientos/actions", () => ({
+vi.mock("@/app/(app)/(finance)/movimientos/actions", () => ({
   recordMovementAction,
   recordTransferAction,
   recordInstallmentPurchaseAction,
 }));
 
-const { TransactionForm } = await import("@/app/(app)/movimientos/TransactionForm");
+const { TransactionForm } = await import("@/app/(app)/(finance)/movimientos/TransactionForm");
 
 const ACCOUNTS = [
   { id: "acc-1", name: "Cuenta A" },
