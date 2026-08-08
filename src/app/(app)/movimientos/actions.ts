@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentHouseholdId } from "@/modules/core/api";
 import {
+  recordInstallmentPurchase,
   recordTransaction,
   recordTransfer,
   updateTransaction,
@@ -25,6 +26,7 @@ const ERROR_COPY: Record<string, string> = {
   INVALID_DESTINATION_ACCOUNT: "Esa cuenta destino no es válida.",
   VOID_TRANSACTION_NOT_EDITABLE: "Ese movimiento ya fue anulado y no se puede editar.",
   INVALID_SUBTYPE_FOR_TYPE: "Ese sub-tipo no es válido para este movimiento.",
+  INSTALLMENT_INVALID_INPUT: "Revisa la cuenta, el número de cuotas o el monto de la compra.",
 };
 
 /** "none" (the Select's placeholder option) <-> undefined, the sub-type Select's contract with
@@ -88,6 +90,39 @@ export async function recordTransferAction(
     occurredOn: String(formData.get("occurredOn") ?? ""),
     description: String(formData.get("description") ?? ""),
     subtype: subtypeFromFormData(formData),
+  });
+
+  if (!result.ok) {
+    return { error: ERROR_COPY[result.error.code] ?? result.error.message };
+  }
+
+  revalidatePath("/movimientos");
+  revalidatePath("/");
+  redirect("/movimientos");
+}
+
+/** Server Action backing "Compra a meses": posts all N installments atomically. Fixed number of
+ *  installments (2-60), no `origin`/`idempotencyKey` — always a direct user action. */
+export async function recordInstallmentPurchaseAction(
+  _prevState: MovementFormState,
+  formData: FormData,
+): Promise<MovementFormState> {
+  const supabase = await createClient();
+  const spaceId = await getCurrentHouseholdId(supabase);
+  if (!spaceId) return { error: ERROR_COPY.NOT_A_MEMBER };
+
+  const installmentCount = Number(formData.get("installmentCount") ?? 0);
+  if (!Number.isInteger(installmentCount) || installmentCount < 2 || installmentCount > 60) {
+    return { error: "El número de cuotas debe ser un entero entre 2 y 60." };
+  }
+
+  const result = await recordInstallmentPurchase({
+    accountId: String(formData.get("accountId") ?? ""),
+    categoryId: String(formData.get("categoryId") ?? ""),
+    totalAmountCents: pesosToCents(Number(formData.get("amount") ?? 0)),
+    installmentCount,
+    firstInstallmentOn: String(formData.get("occurredOn") ?? ""),
+    description: String(formData.get("description") ?? ""),
   });
 
   if (!result.ok) {

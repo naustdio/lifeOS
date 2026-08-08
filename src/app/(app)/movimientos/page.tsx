@@ -46,7 +46,7 @@ export default async function MovementsPage() {
       <Card id="top">
         <CardContent className="pt-6">
           <TransactionForm
-            accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
+            accounts={accounts.map((a) => ({ id: a.id, name: a.name, type: a.type }))}
             categories={categories.map((c) => ({ id: c.id, name: c.name, kind: c.kind }))}
             budgets={budgets}
           />

@@ -18,10 +18,12 @@ vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
 
 const recordMovementAction = vi.fn();
 const recordTransferAction = vi.fn();
+const recordInstallmentPurchaseAction = vi.fn();
 
 vi.mock("@/app/(app)/movimientos/actions", () => ({
   recordMovementAction,
   recordTransferAction,
+  recordInstallmentPurchaseAction,
 }));
 
 const { TransactionForm } = await import("@/app/(app)/movimientos/TransactionForm");
@@ -36,6 +38,10 @@ const CATEGORIES = [
 ];
 const BUDGETED_CATEGORY = [{ id: "cat-expense-1", name: "Café", kind: "expense" as const }];
 const BUDGETS = [{ budgetId: "b1", categoryId: "cat-expense-1", limitCents: 5000, spentCents: 4000 }];
+const ACCOUNTS_WITH_CARD = [
+  { id: "acc-1", name: "Cuenta A", type: "checking" },
+  { id: "acc-3", name: "Tarjeta Oro", type: "credit_card" },
+];
 
 describe("TransactionForm — smoke render (T-037 / C-1)", () => {
   afterEach(() => {
@@ -83,6 +89,29 @@ describe("TransactionForm — smoke render (T-037 / C-1)", () => {
     expect(screen.getByRole("button", { name: "Registrar transferencia" })).toBeInTheDocument();
     // Income/expense-only fields are gone.
     expect(screen.queryByLabelText("Categoría")).not.toBeInTheDocument();
+  });
+
+  it("switches to the Compra a meses tab and shows only credit_card accounts", () => {
+    render(<TransactionForm accounts={ACCOUNTS_WITH_CARD} categories={CATEGORIES} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Compra a meses" }));
+
+    fireEvent.click(screen.getByLabelText("Tarjeta"));
+    expect(screen.getByRole("option", { name: "Tarjeta Oro" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Cuenta A" })).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("listbox"), { key: "Escape" });
+
+    expect(screen.getByLabelText("Número de cuotas")).toHaveValue(3);
+    expect(screen.getByRole("button", { name: "Registrar compra a meses" })).toBeInTheDocument();
+  });
+
+  it("shows a guidance message instead of the form when there is no credit_card account", () => {
+    render(<TransactionForm accounts={ACCOUNTS} categories={CATEGORIES} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Compra a meses" }));
+
+    expect(screen.getByText(/necesitas una cuenta de tipo tarjeta de crédito/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Registrar compra a meses" })).not.toBeInTheDocument();
   });
 });
 

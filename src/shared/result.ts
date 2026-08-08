@@ -14,6 +14,7 @@ export type AppErrorCode =
   | "INVALID_SUBTYPE_FOR_TYPE"
   | "CATEGORY_NAME_TAKEN"
   | "RECURRING_INVALID_STATE"
+  | "INSTALLMENT_INVALID_INPUT"
   | "UNKNOWN_ERROR";
 
 export type AppError = {

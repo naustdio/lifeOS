@@ -184,6 +184,8 @@ export type TransactionRef = { id: string; householdId: string; status: "posted"
 export type AccountRef = { id: string; householdId: string; type: AccountType; class: "asset" | "liability" };
 export type TransferRef = { transferGroupId: string; householdId: string };
 
+export type InstallmentPurchaseRef = { installmentGroupId: string };
+
 export type { AccountType } from "../domain/account";
 
 const BaseAccountFields = {
@@ -288,6 +290,19 @@ export const RecordTransferInputSchema = z.object({
 /** `z.input`, same reasoning as `CreateAccountInput`. */
 export type RecordTransferInput = z.input<typeof RecordTransferInputSchema>;
 
+/** "Compra a meses": a single purchase split into N monthly credit-card charges, posted
+ *  atomically at creation time — no `origin`/`idempotencyKey`, since this is always a direct
+ *  user action, never a module-originated write (change: finance-installment-purchases). */
+export const RecordInstallmentPurchaseInputSchema = z.object({
+  accountId: z.string().uuid(),
+  categoryId: z.string().uuid(),
+  totalAmountCents: z.number().int().positive(),
+  installmentCount: z.number().int().min(2).max(60),
+  firstInstallmentOn: z.string(),
+  description: z.string().default(""),
+});
+export type RecordInstallmentPurchaseInput = z.input<typeof RecordInstallmentPurchaseInputSchema>;
+
 export const TransactionPatchSchema = z.object({
   accountId: z.string().uuid().optional(),
   categoryId: z.string().uuid().optional(),
@@ -305,7 +320,10 @@ export type TransactionPatch = z.infer<typeof TransactionPatchSchema>;
 // ---------------------------------------------------------------------------
 type PostgrestLikeError = { code?: string; message?: string };
 
-function mapPgError(e: PostgrestLikeError, context: "create_account" | "move" | "generic" | "recurring"): AppError {
+function mapPgError(
+  e: PostgrestLikeError,
+  context: "create_account" | "move" | "generic" | "recurring" | "installment",
+): AppError {
   const code = e.code;
   if (code === "23505") {
     return { code: "CATEGORY_NAME_TAKEN", message: "A category with that name already exists.", cause: e };
@@ -325,6 +343,9 @@ function mapPgError(e: PostgrestLikeError, context: "create_account" | "move" | 
     }
     if (context === "recurring") {
       return { code: "RECURRING_INVALID_STATE", message: "That recurring definition is paused or the amount is invalid.", cause: e };
+    }
+    if (context === "installment") {
+      return { code: "INSTALLMENT_INVALID_INPUT", message: e.message ?? "That installment purchase is invalid.", cause: e };
     }
     // change: finance-transaction-subtypes. A sub-type/type pairing rejection also arrives as
     // 22023 (finance.subtype_matches_type) — disambiguate it BEFORE the existing context
@@ -488,6 +509,35 @@ export async function recordTransfer(input: RecordTransferInput): Promise<Result
   }
 
   return ok({ transferGroupId: data as string, householdId: i.householdId });
+}
+
+/** "Compra a meses": posts all N installments atomically via `finance.record_installment_purchase()`
+ *  (one multi-row INSERT, either every installment commits or none). No `origin`/`idempotencyKey`
+ *  — this is always a direct user action. */
+export async function recordInstallmentPurchase(
+  input: RecordInstallmentPurchaseInput,
+): Promise<Result<InstallmentPurchaseRef>> {
+  const parsed = RecordInstallmentPurchaseInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return err({ code: "VALIDATION_ERROR", message: parsed.error.message, cause: parsed.error });
+  }
+  const i = parsed.data;
+  const supabase = await client();
+
+  const { data, error } = await supabase.schema("finance").rpc("record_installment_purchase", {
+    p_account_id: i.accountId,
+    p_category_id: i.categoryId,
+    p_total_amount_cents: i.totalAmountCents,
+    p_installment_count: i.installmentCount,
+    p_first_installment_on: i.firstInstallmentOn,
+    p_description: i.description,
+  });
+
+  if (error) {
+    return err(mapPgError(error, "installment"));
+  }
+
+  return ok({ installmentGroupId: data as string });
 }
 
 export async function updateTransaction(id: string, patch: TransactionPatch): Promise<Result<TransactionRef>> {

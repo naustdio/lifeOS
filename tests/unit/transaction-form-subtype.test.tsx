@@ -21,6 +21,7 @@ const voidMovementAction = vi.fn();
 vi.mock("@/app/(app)/movimientos/actions", () => ({
   recordMovementAction,
   recordTransferAction,
+  recordInstallmentPurchaseAction: vi.fn(),
   updateMovementAction,
   voidMovementAction,
 }));
@@ -77,13 +78,17 @@ describe("TransactionForm — sub-type Select (T-009)", () => {
     expect(options).toEqual(["Sin subtipo", "Pago de tarjeta"]);
   });
 
-  it("never offers compra_meses as an option on any tab", () => {
+  it("never offers compra_meses as a sub-type option on any tab (it has its own dedicated tab instead)", () => {
     render(<TransactionForm accounts={ACCOUNTS} categories={CATEGORIES} />);
 
     for (const tabLabel of ["Gasto", "Ingreso", "Transferencia"]) {
       fireEvent.click(screen.getByRole("button", { name: tabLabel }));
       fireEvent.click(screen.getByLabelText("Sub-tipo"));
-      expect(screen.queryByText(/mensualidades|meses/i)).not.toBeInTheDocument();
+      // Scoped to the sub-type listbox's own options — the "Compra a meses" TAB button
+      // legitimately contains "meses" and lives outside this listbox, so a page-wide text
+      // query would false-positive on it.
+      const optionLabels = screen.getAllByRole("option").map((o) => o.textContent);
+      expect(optionLabels.some((label) => /mensualidades|meses/i.test(label ?? ""))).toBe(false);
       fireEvent.keyDown(screen.getByRole("listbox"), { key: "Escape" });
     }
   });
