@@ -60,6 +60,8 @@ describe("RecurringList — smoke render (R-022)", () => {
         frequency: "monthly" as const,
         nextDueDate: "2026-07-25",
         active: true,
+        installmentsRemaining: null,
+        installmentTotal: null,
       },
       {
         id: "rec-2",
@@ -72,6 +74,8 @@ describe("RecurringList — smoke render (R-022)", () => {
         frequency: "monthly" as const,
         nextDueDate: "2026-09-01",
         active: true,
+        installmentsRemaining: null,
+        installmentTotal: null,
       },
     ];
     const dueItems = [
@@ -110,6 +114,8 @@ describe("RecurringList — smoke render (R-022)", () => {
         frequency: "monthly" as const,
         nextDueDate: "2026-08-01",
         active: false,
+        installmentsRemaining: null,
+        installmentTotal: null,
       },
     ];
 
@@ -119,6 +125,33 @@ describe("RecurringList — smoke render (R-022)", () => {
     expect(screen.queryByRole("button", { name: "Confirmar" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Omitir" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reanudar" })).toBeInTheDocument();
+  });
+
+  it("an installment-purchase definition shows the remaining-payments badge, hides Omitir, and offers early payoff instead of Eliminar", () => {
+    const definitions = [
+      {
+        id: "rec-6",
+        accountId: "acc-1",
+        type: "expense" as const,
+        toAccountId: null,
+        categoryId: "cat-1",
+        amountCents: 33333,
+        description: "Consola (2/4)",
+        frequency: "monthly" as const,
+        nextDueDate: "2026-08-01",
+        active: true,
+        installmentsRemaining: 2,
+        installmentTotal: 4,
+      },
+    ];
+
+    render(<RecurringList definitions={definitions} dueItems={[]} accounts={ACCOUNTS} categories={CATEGORIES} budgets={[]} />);
+
+    expect(screen.getByText(/Quedan 2 de 4 pagos/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Omitir" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pagar antes de tiempo" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Eliminar" })).not.toBeInTheDocument();
   });
 
   it("clicking Confirmar opens the ConfirmRecurringSheet prefilled with the due item", () => {
@@ -134,6 +167,8 @@ describe("RecurringList — smoke render (R-022)", () => {
         frequency: "monthly" as const,
         nextDueDate: "2026-08-06",
         active: true,
+        installmentsRemaining: null,
+        installmentTotal: null,
       },
     ];
     const dueItems = [
@@ -180,6 +215,8 @@ describe("RecurringList — smoke render (R-022)", () => {
         frequency: "monthly" as const,
         nextDueDate: "2026-08-06",
         active: true,
+        installmentsRemaining: null,
+        installmentTotal: null,
       },
     ];
     const dueItems = [
@@ -269,6 +306,8 @@ describe("RecurringList — smoke render (R-022)", () => {
         frequency: "monthly" as const,
         nextDueDate: "2026-08-06",
         active: true,
+        installmentsRemaining: null,
+        installmentTotal: null,
       },
     ];
     const dueItems = [

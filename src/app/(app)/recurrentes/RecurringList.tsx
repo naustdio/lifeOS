@@ -34,6 +34,8 @@ type RecurringDefinition = {
   frequency: Frequency;
   nextDueDate: string;
   active: boolean;
+  installmentsRemaining: number | null;
+  installmentTotal: number | null;
 };
 
 type DueItem = {
@@ -182,6 +184,8 @@ function RecurringRowWithActions({
           discardAction(formData);
         }}
         discardPending={discardPending}
+        installmentsRemaining={definition.installmentsRemaining}
+        installmentTotal={definition.installmentTotal}
       />
       {isTransfer && (
         <p className="pl-12 text-xs text-muted-foreground">
@@ -208,17 +212,17 @@ function RecurringRowWithActions({
             deleteAction(formData);
           }}
           onSubmit={(event) => {
-            if (
-              !window.confirm(
-                "¿Eliminar esta recurrente? Sus transacciones ya registradas se conservan en el historial.",
-              )
-            ) {
+            const confirmMessage =
+              definition.installmentsRemaining != null
+                ? `¿Dar por pagados los ${definition.installmentsRemaining} pagos restantes? No se registrarán más cargos de esta compra a meses; los pagos ya hechos se conservan en el historial.`
+                : "¿Eliminar esta recurrente? Sus transacciones ya registradas se conservan en el historial.";
+            if (!window.confirm(confirmMessage)) {
               event.preventDefault();
             }
           }}
         >
           <Button type="submit" variant="ghost" size="sm" disabled={deletePending}>
-            Eliminar
+            {definition.installmentsRemaining != null ? "Pagar antes de tiempo" : "Eliminar"}
           </Button>
         </form>
       </div>

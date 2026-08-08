@@ -21,6 +21,10 @@ export type RecurringListItem = {
   frequency: Frequency;
   nextDueDate: string;
   active: boolean;
+  /** Non-null only for a bounded installment-purchase definition (finance-installment-recurring):
+   *  occurrences left to post / the fixed total, e.g. 2 of 4. Null for every other definition. */
+  installmentsRemaining: number | null;
+  installmentTotal: number | null;
 };
 
 export type DueRecurringItem = {
@@ -35,6 +39,8 @@ export type DueRecurringItem = {
   frequency: Frequency;
   nextDueDate: string;
   daysOverdue: number;
+  installmentsRemaining: number | null;
+  installmentTotal: number | null;
 };
 
 /** All recurring definitions for the space, most-due-first. */
@@ -46,7 +52,7 @@ export async function listRecurringDefinitions(
     .schema("finance")
     .from("recurring_transactions")
     .select(
-      "id, household_id, account_id, category_id, type, to_account_id, amount_cents, description, frequency, next_due_date, active",
+      "id, household_id, account_id, category_id, type, to_account_id, amount_cents, description, frequency, next_due_date, active, installments_remaining, installment_total",
     )
     .eq("household_id", householdId)
     .order("next_due_date", { ascending: true });
@@ -67,6 +73,8 @@ export async function listRecurringDefinitions(
     frequency: r.frequency as Frequency,
     nextDueDate: r.next_due_date as string,
     active: r.active as boolean,
+    installmentsRemaining: r.installments_remaining === null ? null : Number(r.installments_remaining),
+    installmentTotal: r.installment_total === null ? null : Number(r.installment_total),
   }));
 }
 
@@ -76,7 +84,7 @@ export async function listDueRecurring(supabase: SupabaseClient, householdId: st
     .schema("finance")
     .from("recurring_due")
     .select(
-      "recurring_id, household_id, account_id, category_id, type, to_account_id, amount_cents, description, frequency, next_due_date, days_overdue",
+      "recurring_id, household_id, account_id, category_id, type, to_account_id, amount_cents, description, frequency, next_due_date, days_overdue, installments_remaining, installment_total",
     )
     .eq("household_id", householdId)
     .order("days_overdue", { ascending: false });
@@ -97,6 +105,8 @@ export async function listDueRecurring(supabase: SupabaseClient, householdId: st
     frequency: r.frequency as Frequency,
     nextDueDate: r.next_due_date as string,
     daysOverdue: Number(r.days_overdue),
+    installmentsRemaining: r.installments_remaining === null ? null : Number(r.installments_remaining),
+    installmentTotal: r.installment_total === null ? null : Number(r.installment_total),
   }));
 }
 

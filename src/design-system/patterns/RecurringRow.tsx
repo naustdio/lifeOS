@@ -21,6 +21,11 @@ export interface RecurringRowProps extends React.HTMLAttributes<HTMLDivElement> 
   onDiscard?: () => void;
   confirmPending?: boolean;
   discardPending?: boolean;
+  /** Set only for a bounded installment-purchase definition (finance-installment-recurring):
+   *  occurrences left to post / the fixed total. Hides "Omitir" — skipping a scheduled debt
+   *  installment isn't a real option the way skipping a discretionary expense is. */
+  installmentsRemaining?: number | null;
+  installmentTotal?: number | null;
 }
 
 function dueLabel(daysOverdue: number): string {
@@ -50,39 +55,48 @@ export const RecurringRow = React.forwardRef<HTMLDivElement, RecurringRowProps>(
       onDiscard,
       confirmPending,
       discardPending,
+      installmentsRemaining,
+      installmentTotal,
       className,
       ...props
     },
     ref,
-  ) => (
-    <div
-      ref={ref}
-      className={cn("flex items-center gap-3 py-3", paused && "opacity-50", className)}
-      {...props}
-    >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-pill bg-secondary text-secondary-foreground">
-        <Repeat className="h-4 w-4" aria-hidden />
-      </span>
-      <div className="min-w-0 flex-1 flex flex-col">
-        <span className="truncate text-sm font-medium">{description}</span>
-        <span className={cn("truncate text-xs", !paused && daysOverdue > 0 ? "text-expense" : "text-muted-foreground")}>
-          {paused ? "En pausa" : dueLabel(daysOverdue)} · {FREQUENCY_LABELS[frequency] ?? frequency}
+  ) => {
+    const isInstallment = installmentsRemaining != null && installmentTotal != null;
+
+    return (
+      <div
+        ref={ref}
+        className={cn("flex items-center gap-3 py-3", paused && "opacity-50", className)}
+        {...props}
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-pill bg-secondary text-secondary-foreground">
+          <Repeat className="h-4 w-4" aria-hidden />
         </span>
+        <div className="min-w-0 flex-1 flex flex-col">
+          <span className="truncate text-sm font-medium">{description}</span>
+          <span className={cn("truncate text-xs", !paused && daysOverdue > 0 ? "text-expense" : "text-muted-foreground")}>
+            {paused ? "En pausa" : dueLabel(daysOverdue)} · {FREQUENCY_LABELS[frequency] ?? frequency}
+            {isInstallment && ` · Quedan ${installmentsRemaining} de ${installmentTotal} pagos`}
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-sm font-medium">{formattedAmount}</span>
+          {!paused && (
+            <div className="flex gap-1">
+              {!isInstallment && (
+                <Button type="button" size="sm" variant="ghost" onClick={onDiscard} disabled={discardPending}>
+                  Omitir
+                </Button>
+              )}
+              <Button type="button" size="sm" onClick={onConfirm} disabled={confirmPending}>
+                Confirmar
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <span className="text-sm font-medium">{formattedAmount}</span>
-        {!paused && (
-          <div className="flex gap-1">
-            <Button type="button" size="sm" variant="ghost" onClick={onDiscard} disabled={discardPending}>
-              Omitir
-            </Button>
-            <Button type="button" size="sm" onClick={onConfirm} disabled={confirmPending}>
-              Confirmar
-            </Button>
-          </div>
-        )}
-      </div>
-    </div>
-  ),
+    );
+  },
 );
 RecurringRow.displayName = "RecurringRow";
