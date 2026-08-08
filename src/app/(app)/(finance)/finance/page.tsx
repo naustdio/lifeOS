@@ -92,10 +92,8 @@ export default async function HomePage() {
 
   return (
     <main className="flex flex-col gap-6">
-      <BalanceHero
-        formatted={formatCentsAsMXN(summary.availableCents)}
-        footer={<QuickActionRow actions={QUICK_ACTIONS} />}
-      />
+      <BalanceHero formatted={formatCentsAsMXN(summary.availableCents)} />
+      <QuickActionRow actions={QUICK_ACTIONS} />
 
       {dueRecurringCount > 0 && <DueRecurringBanner count={dueRecurringCount} />}
 
