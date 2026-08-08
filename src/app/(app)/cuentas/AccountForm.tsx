@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Button } from "@/design-system/ui/button";
+import { DatePicker } from "@/design-system/patterns/DatePicker";
 import { Input } from "@/design-system/ui/input";
 import {
   Select,
@@ -127,7 +128,7 @@ export function AccountForm() {
             <label htmlFor="startDate" className="text-sm">
               Fecha de inicio
             </label>
-            <Input id="startDate" name="startDate" type="date" required />
+            <DatePicker id="startDate" name="startDate" required />
           </div>
         </fieldset>
       )}
@@ -199,7 +200,7 @@ export function AccountForm() {
             <label htmlFor="targetDate" className="text-sm">
               Fecha objetivo (opcional)
             </label>
-            <Input id="targetDate" name="targetDate" type="date" />
+            <DatePicker id="targetDate" name="targetDate" />
           </div>
         </fieldset>
       )}
@@ -226,7 +227,7 @@ export function AccountForm() {
             <label htmlFor="valuedOn" className="text-sm">
               Fecha de valuación (opcional)
             </label>
-            <Input id="valuedOn" name="valuedOn" type="date" />
+            <DatePicker id="valuedOn" name="valuedOn" />
           </div>
         </fieldset>
       )}
@@ -262,7 +263,7 @@ export function AccountForm() {
             <label htmlFor="expectedReturnDate" className="text-sm">
               Fecha de retorno esperada (opcional)
             </label>
-            <Input id="expectedReturnDate" name="expectedReturnDate" type="date" />
+            <DatePicker id="expectedReturnDate" name="expectedReturnDate" />
           </div>
         </fieldset>
       )}

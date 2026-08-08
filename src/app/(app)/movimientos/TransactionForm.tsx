@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import type { FormEvent } from "react";
+import { DatePicker } from "@/design-system/patterns/DatePicker";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
 import {
@@ -198,7 +199,7 @@ export function TransactionForm({
             <label htmlFor="occurredOn" className="text-sm font-medium">
               Fecha
             </label>
-            <Input id="occurredOn" name="occurredOn" type="date" defaultValue={today()} required />
+            <DatePicker id="occurredOn" name="occurredOn" defaultValue={today()} required />
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="description" className="text-sm font-medium">
@@ -277,7 +278,7 @@ export function TransactionForm({
             <label htmlFor="transferOccurredOn" className="text-sm font-medium">
               Fecha
             </label>
-            <Input id="transferOccurredOn" name="occurredOn" type="date" defaultValue={today()} required />
+            <DatePicker id="transferOccurredOn" name="occurredOn" defaultValue={today()} required />
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="transferDescription" className="text-sm font-medium">
@@ -359,7 +360,7 @@ export function TransactionForm({
                 <label htmlFor="installmentOccurredOn" className="text-sm font-medium">
                   Fecha de la primera cuota
                 </label>
-                <Input id="installmentOccurredOn" name="occurredOn" type="date" defaultValue={today()} required />
+                <DatePicker id="installmentOccurredOn" name="occurredOn" defaultValue={today()} required />
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="installmentDescription" className="text-sm font-medium">

@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import type { FormEvent } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent } from "@/design-system/ui/card";
+import { DatePicker } from "@/design-system/patterns/DatePicker";
 import { Input } from "@/design-system/ui/input";
 import { evaluateBudgetImpact, type BudgetImpact, type BudgetProgressItem } from "@/modules/finance/api/budget-evaluation";
 import type { Frequency } from "@/modules/finance/api/recurring-schedule";
@@ -128,7 +129,7 @@ export function ConfirmRecurringSheet({
                 Fecha
               </label>
               {/* Pre-fills with the ORIGINAL next_due_date, not today (proposal, design.md §9). */}
-              <Input id="confirmOccurredOn" name="occurredOn" type="date" defaultValue={dueItem.nextDueDate} required />
+              <DatePicker id="confirmOccurredOn" name="occurredOn" defaultValue={dueItem.nextDueDate} required />
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor="confirmDescription" className="text-sm font-medium">

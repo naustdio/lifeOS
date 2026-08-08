@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
+import { DatePicker } from "@/design-system/patterns/DatePicker";
 import { Input } from "@/design-system/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/design-system/ui/select";
 import { saveRecurringAction, type RecurringFormState } from "./actions";
@@ -165,7 +166,7 @@ export function RecurringForm({
             <label htmlFor="recurringNextDueDate" className="text-sm font-medium">
               Primera fecha de vencimiento
             </label>
-            <Input id="recurringNextDueDate" name="nextDueDate" type="date" defaultValue={today()} required />
+            <DatePicker id="recurringNextDueDate" name="nextDueDate" defaultValue={today()} required />
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="recurringDescription" className="text-sm font-medium">

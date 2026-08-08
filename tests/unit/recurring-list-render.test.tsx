@@ -156,7 +156,10 @@ describe("RecurringList — smoke render (R-022)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
 
     expect(screen.getByText("Confirmar recurrente")).toBeInTheDocument();
-    expect(screen.getByLabelText("Fecha")).toHaveValue("2026-08-06");
+    // DatePicker's visible trigger is a button (labelled via htmlFor); the ISO value lives on
+    // its paired hidden input, same "hidden native input" contract Select already establishes.
+    const hidden = document.querySelector('input[name="occurredOn"]');
+    expect(hidden).toHaveValue("2026-08-06");
   });
 
   /**

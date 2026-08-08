@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import type { FormEvent } from "react";
 import { Button } from "@/design-system/ui/button";
+import { DatePicker } from "@/design-system/patterns/DatePicker";
 import { Input } from "@/design-system/ui/input";
 import {
   Select,
@@ -189,7 +190,7 @@ export function EditTransactionForm({
           <label htmlFor="occurredOn" className="text-sm font-medium">
             Fecha
           </label>
-          <Input id="occurredOn" name="occurredOn" type="date" defaultValue={transaction.occurredOn} />
+          <DatePicker id="occurredOn" name="occurredOn" defaultValue={transaction.occurredOn} />
         </div>
 
         <div className="flex flex-col gap-1">
