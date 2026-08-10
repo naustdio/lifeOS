@@ -88,6 +88,16 @@ export {
 } from "../data";
 
 /**
+ * change: health-tracking (design.md Decision 1, "two-hop indirection"). A recurring health
+ * series is 1:N over time via `finance.transactions.recurring_id` — a fundamentally different
+ * shape from `findByOrigin`'s 1:1 origin-ref contract, so it needs its own read rather than
+ * overloading `findByOrigin`. Plain RLS-guarded SELECT, no new RPC/SQL seam function (design.md's
+ * relaxed spec-delta criterion). Re-exported here (not imported directly from `../data`) for the
+ * same Gate A reason as every other `../data` re-export in this file.
+ */
+export { listTransactionsByRecurring } from "../data";
+
+/**
  * `finance-calendar-projection` change: the day-by-day balance projection is pure domain logic
  * with no data-layer counterpart (design.md §1 — deliberately NOT added to `../data`), so its
  * public surface is re-exported directly from `../domain/calendar` here. This barrel previously
@@ -162,7 +172,9 @@ export const CreateRecurringInputSchema = z.discriminatedUnion("type", [
 ]);
 export type CreateRecurringInput = z.input<typeof CreateRecurringInputSchema>;
 
-export type OriginModule = "manual" | "shopping_list" | "car_control" | "recurring";
+/** `"health"` added by change: health-tracking (design.md's Migration Sequence #1 widens the
+ *  `transactions_origin_module_check` CHECK the same way). */
+export type OriginModule = "manual" | "shopping_list" | "car_control" | "recurring" | "health";
 
 /**
  * DEVIATION FROM design.md's literal `OriginRef` shape (documented, matching the SQL
@@ -175,7 +187,8 @@ export type OriginModule = "manual" | "shopping_list" | "car_control" | "recurri
  */
 export const OriginRefSchema = z.object({
   householdId: z.string().uuid(),
-  module: z.enum(["manual", "shopping_list", "car_control", "recurring"]),
+  // `"health"` added by change: health-tracking — see `OriginModule` above.
+  module: z.enum(["manual", "shopping_list", "car_control", "recurring", "health"]),
   entityId: z.string().min(1),
 });
 export type OriginRef = z.infer<typeof OriginRefSchema>;

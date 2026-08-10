@@ -119,3 +119,48 @@ export async function listRecentTransactions(
     subtype: (r.subtype as string | null) ?? null,
   }));
 }
+
+/**
+ * change: health-tracking (design.md Decision 1, "two-hop indirection"). Every posted
+ * occurrence of a recurring definition, newest first — resolved via
+ * `finance.transactions.recurring_id`, which `confirm_recurring_transaction` populates on every
+ * branch. This is deliberately NOT `findByOrigin`: a recurring series is 1:N over time with the
+ * same origin entity id and different idempotency keys, so overloading the 1:1 origin-ref
+ * contract would make it ambiguous rather than correct. Plain RLS-guarded SELECT, no new
+ * RPC/SQL seam function.
+ */
+export async function listTransactionsByRecurring(
+  supabase: SupabaseClient,
+  householdId: string,
+  recurringId: string,
+): Promise<TransactionListItem[]> {
+  const { data: rows, error } = await supabase
+    .schema("finance")
+    .from("transactions")
+    .select(
+      "id, account_id, category_id, type, amount_cents, occurred_on, description, status, transfer_group_id, subtype",
+    )
+    .eq("household_id", householdId)
+    .eq("recurring_id", recurringId)
+    .order("occurred_on", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (error || !rows) {
+    return [];
+  }
+
+  return rows.map((r) => ({
+    id: r.id as string,
+    accountId: r.account_id as string,
+    accountName: "",
+    categoryId: (r.category_id as string | null) ?? null,
+    categoryName: null,
+    type: r.type as "income" | "expense" | "transfer",
+    amountCents: Number(r.amount_cents),
+    occurredOn: r.occurred_on as string,
+    description: (r.description as string) ?? "",
+    status: r.status as "posted" | "void",
+    transferGroupId: (r.transfer_group_id as string | null) ?? null,
+    subtype: (r.subtype as string | null) ?? null,
+  }));
+}

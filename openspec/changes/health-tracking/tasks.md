@@ -39,11 +39,11 @@ Chain strategy: pending
 
 ## Phase 2: Finance Module Widening
 
-- [ ] 2.1 RED: `tests/integration/finance-recurring-subscription.test.ts` (existing) — extend for `listTransactionsByRecurring` and bounded `createRecurringDefinition`.
-- [ ] 2.2 `src/modules/finance/api/index.ts` — `OriginModule` += `"health"`, `OriginRefSchema.module` += `"health"`, re-export `listTransactionsByRecurring`.
-- [ ] 2.3 `src/modules/finance/data/recurring-repository.ts` — `createRecurringDefinition` optional `bounded?: {totalOccurrences, anchorDate}` → installment_* columns.
-- [ ] 2.4 `src/modules/finance/data/transaction-repository.ts` — add `listTransactionsByRecurring(supabase, householdId, recurringId)`.
-- [ ] 2.5 GREEN: vitest passes; verify no new RPC/SQL seam change (spec-delta criterion).
+- [x] 2.1 RED: `tests/integration/finance-recurring-subscription.test.ts` (existing) — extend for `listTransactionsByRecurring` and bounded `createRecurringDefinition`. (New `describe` block appended below the pre-existing B8 suite; 2/3 new tests genuinely failed pre-implementation.)
+- [x] 2.2 `src/modules/finance/api/index.ts` — `OriginModule` += `"health"`, `OriginRefSchema.module` += `"health"`, re-export `listTransactionsByRecurring`.
+- [x] 2.3 `src/modules/finance/data/recurring-repository.ts` — `createRecurringDefinition` optional `bounded?: {totalOccurrences, anchorDate}` → installment_* columns.
+- [x] 2.4 `src/modules/finance/data/transaction-repository.ts` — add `listTransactionsByRecurring(supabase, householdId, recurringId)`.
+- [x] 2.5 GREEN: vitest passes (6/6 focused, 316/316 full suite counting the boundary-lint isolated re-run); verified no new RPC/SQL seam change (spec-delta criterion) — zero migration files touched this phase.
 
 ## Phase 3: Health Module Scaffold
 

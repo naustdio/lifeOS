@@ -25,6 +25,9 @@ export type RecurringListItem = {
    *  occurrences left to post / the fixed total, e.g. 2 of 4. Null for every other definition. */
   installmentsRemaining: number | null;
   installmentTotal: number | null;
+  /** Plain boolean marker, no provider/logo/catalog (change: finance-subscriptions). Always
+   *  present, never `undefined`/`null` — defaults to `false` when the column is null. */
+  isSubscription: boolean;
 };
 
 export type DueRecurringItem = {
@@ -52,7 +55,7 @@ export async function listRecurringDefinitions(
     .schema("finance")
     .from("recurring_transactions")
     .select(
-      "id, household_id, account_id, category_id, type, to_account_id, amount_cents, description, frequency, next_due_date, active, installments_remaining, installment_total",
+      "id, household_id, account_id, category_id, type, to_account_id, amount_cents, description, frequency, next_due_date, active, installments_remaining, installment_total, is_subscription",
     )
     .eq("household_id", householdId)
     .order("next_due_date", { ascending: true });
@@ -75,6 +78,7 @@ export async function listRecurringDefinitions(
     active: r.active as boolean,
     installmentsRemaining: r.installments_remaining === null ? null : Number(r.installments_remaining),
     installmentTotal: r.installment_total === null ? null : Number(r.installment_total),
+    isSubscription: (r.is_subscription as boolean | null) ?? false,
   }));
 }
 
@@ -126,6 +130,17 @@ export async function countDueRecurring(supabase: SupabaseClient, householdId: s
 }
 
 /**
+ * `bounded` (change: health-tracking, design.md Decision 6): reuses the pre-existing
+ * `installment_*` columns unrenamed — the same bounded-cursor mechanism
+ * `record_installment_purchase`/`confirm_recurring_transaction` already implement for "compra a
+ * meses". `installment_group_id` is generated client-side (this insert is the only writer for a
+ * health-originated bounded series; no purchase-splitting RPC is involved). Per Decision 6, the
+ * bounded cursor ignores `frequency` and always advances by clamped months — bounded series are
+ * therefore monthly-cadence only.
+ */
+type BoundedRecurrence = { totalOccurrences: number; anchorDate: string };
+
+/**
  * RLS-guarded insert. Creating a definition never posts a transaction (proposal). Accepts
  * either shape (design.md §3, change: finance-credit-card-payments CC-020): `type: "expense"`
  * carries `categoryId`, `type: "transfer"` carries `toAccountId` instead — mirroring
@@ -144,6 +159,8 @@ export async function createRecurringDefinition(
         description: string;
         frequency: Frequency;
         nextDueDate: string;
+        isSubscription?: boolean;
+        bounded?: BoundedRecurrence;
       }
     | {
         householdId: string;
@@ -154,6 +171,8 @@ export async function createRecurringDefinition(
         description: string;
         frequency: Frequency;
         nextDueDate: string;
+        isSubscription?: boolean;
+        bounded?: BoundedRecurrence;
       }
     | {
         householdId: string;
@@ -164,6 +183,8 @@ export async function createRecurringDefinition(
         description: string;
         frequency: Frequency;
         nextDueDate: string;
+        isSubscription?: boolean;
+        bounded?: BoundedRecurrence;
       },
 ): Promise<{ id: string | null; error: string | null }> {
   const { data, error } = await supabase
@@ -179,6 +200,11 @@ export async function createRecurringDefinition(
       description: input.description,
       frequency: input.frequency,
       next_due_date: input.nextDueDate,
+      is_subscription: input.isSubscription ?? false,
+      installment_group_id: input.bounded ? crypto.randomUUID() : null,
+      installment_anchor_date: input.bounded ? input.bounded.anchorDate : null,
+      installments_remaining: input.bounded ? input.bounded.totalOccurrences : null,
+      installment_total: input.bounded ? input.bounded.totalOccurrences : null,
     })
     .select("id")
     .single();
@@ -206,6 +232,7 @@ export async function updateRecurringDefinition(
     amountCents?: number;
     description?: string;
     frequency?: Frequency;
+    isSubscription?: boolean;
   },
 ): Promise<{ error: string | null }> {
   const update: Record<string, unknown> = {};
@@ -216,6 +243,7 @@ export async function updateRecurringDefinition(
   if (patch.amountCents !== undefined) update.amount_cents = patch.amountCents;
   if (patch.description !== undefined) update.description = patch.description;
   if (patch.frequency !== undefined) update.frequency = patch.frequency;
+  if (patch.isSubscription !== undefined) update.is_subscription = patch.isSubscription;
 
   const { error } = await supabase
     .schema("finance")
