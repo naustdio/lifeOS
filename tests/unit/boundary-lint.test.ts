@@ -32,17 +32,23 @@ describe("ESLint boundary rule fires on a real violation", () => {
     }
   });
 
-  it("reports exactly one boundaries/element-types error for a cross-module internal import", async () => {
-    mkdirSync(path.dirname(targetPath), { recursive: true });
-    writeFileSync(targetPath, readFileSync(fixtureSource, "utf8"));
+  // Spawns a real ESLint run, which can exceed vitest's 5000ms default under full-suite
+  // parallel load even though it consistently finishes in ~2s isolated.
+  it(
+    "reports exactly one boundaries/element-types error for a cross-module internal import",
+    async () => {
+      mkdirSync(path.dirname(targetPath), { recursive: true });
+      writeFileSync(targetPath, readFileSync(fixtureSource, "utf8"));
 
-    const eslint = new ESLint({ cwd: repoRoot });
-    const results = await eslint.lintFiles([targetPath]);
+      const eslint = new ESLint({ cwd: repoRoot });
+      const results = await eslint.lintFiles([targetPath]);
 
-    const boundaryErrors = results
-      .flatMap((result) => result.messages)
-      .filter((message) => message.ruleId === "boundaries/element-types");
+      const boundaryErrors = results
+        .flatMap((result) => result.messages)
+        .filter((message) => message.ruleId === "boundaries/element-types");
 
-    expect(boundaryErrors).toHaveLength(1);
-  });
+      expect(boundaryErrors).toHaveLength(1);
+    },
+    20000,
+  );
 });
