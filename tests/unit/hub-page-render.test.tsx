@@ -25,6 +25,13 @@ describe("HubPage — smoke render (app-module-hub)", () => {
     expect(screen.getByRole("link", { name: "Finanzas" })).toHaveAttribute("href", "/finance");
   });
 
+  it("renders the Salud module card linking to /salud (change: health-tracking)", () => {
+    render(<HubPage />);
+
+    expect(screen.getByText("Salud")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Salud" })).toHaveAttribute("href", "/salud");
+  });
+
   it("renders no per-module data (balances, due counts)", () => {
     render(<HubPage />);
 

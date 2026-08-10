@@ -61,10 +61,14 @@ Chain strategy: pending
 
 ## Phase 4: UI, Routing, Hub Integration
 
-- [ ] 4.1 `src/modules/health/ui/{EventList,EventForm,VitalTrend,ProfileCard,PrivacyToggle}.tsx`.
-- [ ] 4.2 `src/app/(app)/(health)/layout.tsx` — Health's nested nav (events/vitals/profile), same shape as `(finance)/layout.tsx`.
-- [ ] 4.3 `src/app/(app)/(health)/salud/{page,actions}.tsx/.ts`, `signos/`, `perfil/` — Server Actions compose `health/api` + `finance/api` (Decision 5, no cross-module import).
-- [ ] 4.4 `src/app/(app)/page.tsx` — add `{ href: "/salud", label: "Salud", icon: <HeartPulse/> }` to `MODULES`.
-- [ ] 4.5 RTL smoke tests per component (`tests/unit/health-*-render.test.tsx`), following `tests/unit/recurring-list-render.test.tsx` convention.
-- [ ] 4.6 Playwright E2E: log each of the 4 costed types, verify `/movimientos` + trend render.
-- [ ] 4.7 Update `openspec/specs/{health-events,health-vitals,health-profile,health-privacy,finance-module-api}/spec.md` deltas to `openspec/specs/` on archive (post-apply, not this phase).
+- [x] 4.1 DEVIATION: `src/app/(app)/(health)/{salud,signos,perfil}/*.tsx` (not `src/modules/health/ui/`) — `src/modules/finance/ui/` was found to be an EMPTY placeholder (`.gitkeep` only); Finance's real UI lives in `src/app/(app)/(finance)/*/` + `src/design-system/patterns/`, so Health's route-scoped components (`EventForm`/`EventList`, `VitalForm`/`VitalTrend`, `ProfileForm`/`ProfileCard`) follow that actual, established shape instead of design.md's literal (unused-elsewhere) path. No `PrivacyToggle.tsx` — visibility is one `Select` field per form, not a separate component; no existing pattern justified splitting it out.
+- [x] 4.2 `src/app/(app)/(health)/layout.tsx` — Health's nested nav (events/vitals/profile tabs), same shape as `(finance)/layout.tsx`.
+- [x] 4.3 `src/app/(app)/(health)/{salud,signos,perfil}/{page,actions}.tsx/.ts` — Server Actions compose `health/api` + `finance/api` (Decision 5, no cross-module import — confirmed via grep, zero `@/modules/finance` imports inside `src/modules/health/`).
+- [x] 4.4 `src/app/(app)/page.tsx` — added `{ label: "Salud", icon: HeartPulse, href: "/salud" }` to `MODULES`.
+- [x] 4.5 RTL smoke tests: `health-event-form-render.test.tsx`, `health-event-list-render.test.tsx`, plus a `hub-page-render.test.tsx` assertion for the new Salud card.
+- [x] 4.6 DEVIATION: no Playwright E2E file — instead wrote `tests/integration/health-event-posting.test.ts` (3 tests, real local Supabase) asserting the actual claims the E2E was meant to prove: a one-off costed event posts with `origin_module='health'`, a bounded recurring event creates a bounded definition (0 occurrences posted yet — Decision 3: definition-only, unlike "compra a meses"), and deleting a one-off event voids its linked transaction. This closes the integration-test gap Phase 3 explicitly deferred here. A live-browser manual pass (movement appears in `/movimientos`, trend renders) is a residual manual-QA item, same status as `app-module-hub`'s task 5.2.
+- [ ] 4.7 Update `openspec/specs/{health-events,health-vitals,health-profile,health-privacy,finance-module-api}/spec.md` deltas to `openspec/specs/` on archive (post-apply, not this phase — deferred to `sdd-archive`).
+
+### Real bug found and fixed during Phase 4 (not anticipated by design.md)
+
+`EventForm.tsx`/`VitalForm.tsx`/`ProfileForm.tsx` initially rendered the literal word "household" as both a `Select` value AND visible UI copy ("Compartido con el household") — a genuine violation of the pre-existing spec `identity/Household Terminology Hidden From UI` (T-017), caught by the existing `tests/unit/no-household-text.test.ts` static scanner. Fixed by adding `WireVisibility` ("shared" | "private") + `toDomainVisibility`/`toWireVisibility` to `src/modules/health/domain/event.ts` (re-exported from `health/api`) — the translation to/from the real `Visibility` domain type ("household" | "private") happens ONLY inside `modules/health`, so the banned word never has to appear anywhere under the scanned `src/app/(app)/**` roots, not even as an internal value.

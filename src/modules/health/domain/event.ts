@@ -26,6 +26,24 @@ export function isValidVisibility(value: string): value is Visibility {
   return (VISIBILITIES as readonly string[]).includes(value);
 }
 
+/**
+ * Wire-level visibility values for anything under `src/app/(app)/**` (spec `identity/Household
+ * Terminology Hidden From UI`, T-017: the literal word "household" must never appear in UI-facing
+ * source — `tests/unit/no-household-text.test.ts` statically scans for it, not just rendered
+ * text). "shared" is this module's own UI-facing synonym; `toDomainVisibility`/`toWireVisibility`
+ * are the ONLY place the translation happens, kept inside `modules/health` (outside the scanned
+ * roots) precisely so the `app` layer never has to write the banned word itself.
+ */
+export type WireVisibility = "shared" | "private";
+
+export function toDomainVisibility(wire: WireVisibility): Visibility {
+  return wire === "shared" ? "household" : "private";
+}
+
+export function toWireVisibility(visibility: Visibility): WireVisibility {
+  return visibility === "household" ? "shared" : "private";
+}
+
 export type CostFields = {
   amountCents: number | null;
   accountId: string | null;

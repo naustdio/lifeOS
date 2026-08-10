@@ -1,4 +1,4 @@
-import { Wallet } from "lucide-react";
+import { HeartPulse, Wallet } from "lucide-react";
 import type { ModuleItem } from "@/design-system/patterns/ModuleGrid";
 import { ModuleGrid } from "@/design-system/patterns/ModuleGrid";
 
@@ -10,7 +10,10 @@ import { ModuleGrid } from "@/design-system/patterns/ModuleGrid";
  * module-owned, e.g. Finance's `(finance)/layout.tsx`). Adding a module is
  * one new `MODULES` entry, never a dynamic registry.
  */
-const MODULES: ModuleItem[] = [{ label: "Finanzas", icon: Wallet, href: "/finance" }];
+const MODULES: ModuleItem[] = [
+  { label: "Finanzas", icon: Wallet, href: "/finance" },
+  { label: "Salud", icon: HeartPulse, href: "/salud" },
+];
 
 export default function HubPage() {
   return (
