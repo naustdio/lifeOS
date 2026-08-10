@@ -47,12 +47,17 @@ Chain strategy: pending
 
 ## Phase 3: Health Module Scaffold
 
-- [ ] 3.1 RED: `tests/unit/health-domain.test.ts` — `requiresPrivateAccount`, type/column legality, bounded-occurrence math.
-- [ ] 3.2 `src/modules/health/domain/{event,vital,profile}.ts` — pure predicates mirroring DB CHECKs.
-- [ ] 3.3 RED: `tests/unit/health-repository.test.ts` — costed event posts via `origin_module='health'`; retry idempotent; bounded auto-deactivates.
-- [ ] 3.4 `src/modules/health/data/{event,vital,profile}-repository.ts`, `data/index.ts` — RLS CRUD, `recurring-repository.ts` shape.
-- [ ] 3.5 `src/modules/health/api/index.ts` — `server-only` barrel re-exporting `../data` + `../domain`.
-- [ ] 3.6 GREEN: unit + integration tests pass; assert `findByOrigin`/`listTransactionsByRecurring` resolve per Decision 1.
+- [x] 3.1 RED: `tests/unit/health-domain.test.ts` — `requiresPrivateAccount`, type/column legality, bounded-occurrence math.
+- [x] 3.2 `src/modules/health/domain/{event,vital,profile}.ts` — pure predicates mirroring DB CHECKs.
+- [x] 3.3 RED — DEVIATION: `tests/integration/health-events-repository.test.ts` (not `tests/unit/health-repository.test.ts`) — CRUD + RLS privacy round-trip against the real local stack. Does NOT assert "costed event posts via `origin_module='health'`" / "retry idempotent" / "bounded auto-deactivates" — those require the Finance-posting composition Decision 5 places at the `app` Server Action layer (`health/api` cannot import `finance/api`), which is Phase 4 scope. This phase's own critical-logic surface (the `health-privacy` RLS boundary + `events_cost_all_or_none`/private-account trigger) is covered instead.
+- [x] 3.4 `src/modules/health/data/{event,vital,profile}-repository.ts`, `data/index.ts` — RLS CRUD, `recurring-repository.ts` shape.
+- [x] 3.5 `src/modules/health/api/index.ts` — `server-only` barrel re-exporting `../data` + `../domain`.
+- [x] 3.6 GREEN: `tests/unit/health-domain.test.ts` (16/16) + `tests/integration/health-events-repository.test.ts` (7/7) pass. `listTransactionsByRecurring` resolution (Decision 1) is exercised in Phase 2's `tests/integration/finance-health-recurring.test.ts`, not re-tested here.
+
+### Infrastructure fixes discovered during Phase 3 (not anticipated by design.md, applied directly)
+
+- `supabase/config.toml`: `health` was missing from the PostgREST-exposed `schemas` list — every `health.*` call failed with `"Invalid schema: health"` until added. Required a full `supabase stop && supabase start` (the exposed-schema list is baked into the PostgREST container's env at startup, not hot-reloadable via `notify pgrst, 'reload schema'`).
+- `supabase/migrations/20260804090035_core_service_role_fixtures.sql`: `service_role` had zero grants on `core` (not even schema `USAGE`) — needed to add a second household member as a test fixture (no invite/join RPC exists in this schema). Minimal, additive grant (`usage` + CRUD on `core.household_members` to `service_role` only); production RLS/business logic is unaffected since `service_role` already bypasses RLS by design and is never exposed to any client.
 
 ## Phase 4: UI, Routing, Hub Integration
 
