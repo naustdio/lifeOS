@@ -79,4 +79,17 @@ describe("EventForm — smoke render (health-tracking)", () => {
     expect(screen.getByLabelText("Dosis")).toBeInTheDocument();
     expect(screen.queryByLabelText("Resultado")).not.toBeInTheDocument();
   });
+
+  it("offers 'Nutrición' as its own event type, distinct from 'Consulta médica' (change: nutrition-tracking)", () => {
+    render(<EventForm accounts={ACCOUNTS} categories={CATEGORIES} />);
+
+    fireEvent.click(screen.getByLabelText("Tipo"));
+    expect(screen.getByRole("option", { name: "Nutrición" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Consulta médica" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("option", { name: "Nutrición" }));
+    // Same shape as consultation — no Resultado/Dosis field for this type either.
+    expect(screen.queryByLabelText("Resultado")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Dosis")).not.toBeInTheDocument();
+  });
 });

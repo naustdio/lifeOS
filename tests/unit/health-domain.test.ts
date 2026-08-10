@@ -21,12 +21,13 @@ import { isValidVitalMetric, sortForTrend } from "@/modules/health/domain/vital"
 import { bloodTypeAlreadySet, currentFacts, isValidFactType, severityAllowed } from "@/modules/health/domain/profile";
 
 describe("health.events type/column legality (mirrors health_schema.sql CHECKs)", () => {
-  it("accepts exactly the four costed event types", () => {
+  it("accepts exactly the five costed event types (change: nutrition-tracking)", () => {
     expect(isValidEventType("study")).toBe(true);
     expect(isValidEventType("consultation")).toBe(true);
     expect(isValidEventType("medication")).toBe(true);
     expect(isValidEventType("vaccine")).toBe(true);
-    expect(isValidEventType("nutrition")).toBe(false);
+    expect(isValidEventType("nutrition")).toBe(true);
+    expect(isValidEventType("surgery")).toBe(false);
   });
 
   it("accepts exactly household/private visibility", () => {
@@ -95,13 +96,30 @@ describe("bounded-occurrence math (design.md Decision 6, mirrors confirm_recurri
 });
 
 describe("health.vital_readings (mirrors health_schema.sql CHECKs)", () => {
-  it("accepts exactly the five vital metrics", () => {
+  it("accepts exactly the five original vital metrics", () => {
     expect(isValidVitalMetric("weight_kg")).toBe(true);
     expect(isValidVitalMetric("systolic_bp")).toBe(true);
     expect(isValidVitalMetric("diastolic_bp")).toBe(true);
     expect(isValidVitalMetric("glucose_mgdl")).toBe(true);
     expect(isValidVitalMetric("heart_rate")).toBe(true);
     expect(isValidVitalMetric("cholesterol")).toBe(false);
+  });
+
+  it("accepts the 14 body-composition metrics added by change: nutrition-tracking", () => {
+    expect(isValidVitalMetric("body_fat_pct")).toBe(true);
+    expect(isValidVitalMetric("body_fat_kg")).toBe(true);
+    expect(isValidVitalMetric("muscle_mass_pct")).toBe(true);
+    expect(isValidVitalMetric("muscle_mass_kg")).toBe(true);
+    expect(isValidVitalMetric("skinfold_biceps_mm")).toBe(true);
+    expect(isValidVitalMetric("skinfold_triceps_mm")).toBe(true);
+    expect(isValidVitalMetric("skinfold_subscapular_mm")).toBe(true);
+    expect(isValidVitalMetric("skinfold_iliac_crest_mm")).toBe(true);
+    expect(isValidVitalMetric("skinfold_supraspinal_mm")).toBe(true);
+    expect(isValidVitalMetric("skinfold_abdominal_mm")).toBe(true);
+    expect(isValidVitalMetric("waist_cm")).toBe(true);
+    expect(isValidVitalMetric("hip_cm")).toBe(true);
+    expect(isValidVitalMetric("thigh_cm")).toBe(true);
+    expect(isValidVitalMetric("arm_flexed_cm")).toBe(true);
   });
 
   it("sorts entries chronologically ascending for trend rendering", () => {

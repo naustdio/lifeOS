@@ -17,6 +17,20 @@ const METRICS = [
   { value: "diastolic_bp", label: "Presión diastólica" },
   { value: "glucose_mgdl", label: "Glucosa (mg/dL)" },
   { value: "heart_rate", label: "Frecuencia cardiaca" },
+  { value: "body_fat_pct", label: "Grasa (%)" },
+  { value: "body_fat_kg", label: "Grasa (kg)" },
+  { value: "muscle_mass_pct", label: "Músculo (%)" },
+  { value: "muscle_mass_kg", label: "Músculo (kg)" },
+  { value: "skinfold_biceps_mm", label: "Pliegue bíceps (mm)" },
+  { value: "skinfold_triceps_mm", label: "Pliegue tríceps (mm)" },
+  { value: "skinfold_subscapular_mm", label: "Pliegue subescapular (mm)" },
+  { value: "skinfold_iliac_crest_mm", label: "Pliegue cresta ilíaca (mm)" },
+  { value: "skinfold_supraspinal_mm", label: "Pliegue supraespinal (mm)" },
+  { value: "skinfold_abdominal_mm", label: "Pliegue abdominal (mm)" },
+  { value: "waist_cm", label: "Cintura (cm)" },
+  { value: "hip_cm", label: "Cadera (cm)" },
+  { value: "thigh_cm", label: "Muslo (cm)" },
+  { value: "arm_flexed_cm", label: "Brazo contraído (cm)" },
 ] as const;
 
 export function VitalForm() {

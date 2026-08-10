@@ -11,7 +11,7 @@ import { EditEventSheet } from "./EditEventSheet";
 
 type HealthEvent = {
   id: string;
-  eventType: "study" | "consultation" | "medication" | "vaccine";
+  eventType: "study" | "consultation" | "medication" | "vaccine" | "nutrition";
   title: string;
   occurredOn: string;
   notes: string;
@@ -25,6 +25,7 @@ const TYPE_LABELS: Record<HealthEvent["eventType"], string> = {
   consultation: "Consulta médica",
   medication: "Medicamento",
   vaccine: "Vacuna",
+  nutrition: "Nutrición",
 };
 
 const INITIAL_STATE: HealthEventFormState = { error: null };

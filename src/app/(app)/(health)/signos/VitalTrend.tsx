@@ -5,22 +5,41 @@ import { useActionState } from "react";
 import { EmptyState } from "@/design-system/patterns/EmptyState";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent } from "@/design-system/ui/card";
+import type { VitalMetric } from "@/modules/health/api";
 import { deleteVitalReadingAction, type VitalFormState } from "./actions";
 
 type VitalReading = {
   id: string;
-  metric: "weight_kg" | "systolic_bp" | "diastolic_bp" | "glucose_mgdl" | "heart_rate";
+  metric: VitalMetric;
   valueNumeric: number;
   measuredAt: string;
   visibility: "shared" | "private";
 };
 
-const METRIC_LABELS: Record<VitalReading["metric"], string> = {
+// change: nutrition-tracking — 14 body-composition entries added below the original 5. Every
+// new label carries its unit in parentheses (design.md Decision 3's binding follow-on), matching
+// the pre-existing weight_kg -> "Peso (kg)" precedent; the older BP/glucose/heart-rate labels
+// are left as-is (out of scope for this change).
+const METRIC_LABELS: Record<VitalMetric, string> = {
   weight_kg: "Peso (kg)",
   systolic_bp: "Presión sistólica",
   diastolic_bp: "Presión diastólica",
   glucose_mgdl: "Glucosa (mg/dL)",
   heart_rate: "Frecuencia cardiaca",
+  body_fat_pct: "Grasa (%)",
+  body_fat_kg: "Grasa (kg)",
+  muscle_mass_pct: "Músculo (%)",
+  muscle_mass_kg: "Músculo (kg)",
+  skinfold_biceps_mm: "Pliegue bíceps (mm)",
+  skinfold_triceps_mm: "Pliegue tríceps (mm)",
+  skinfold_subscapular_mm: "Pliegue subescapular (mm)",
+  skinfold_iliac_crest_mm: "Pliegue cresta ilíaca (mm)",
+  skinfold_supraspinal_mm: "Pliegue supraespinal (mm)",
+  skinfold_abdominal_mm: "Pliegue abdominal (mm)",
+  waist_cm: "Cintura (cm)",
+  hip_cm: "Cadera (cm)",
+  thigh_cm: "Muslo (cm)",
+  arm_flexed_cm: "Brazo contraído (cm)",
 };
 
 const INITIAL_STATE: VitalFormState = { error: null };
@@ -38,7 +57,7 @@ export function VitalTrend({ readings }: { readings: VitalReading[] }) {
       <EmptyState
         icon={LineChart}
         heading="Aún no registraste signos vitales"
-        description="Peso, presión, glucosa y frecuencia cardiaca aparecerán aquí como tendencia."
+        description="Peso, composición corporal, presión, glucosa y frecuencia cardiaca aparecerán aquí como tendencia."
       />
     );
   }

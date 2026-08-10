@@ -4,11 +4,12 @@
 // re-validates independently of whatever this module returns (same discipline as
 // `finance/domain/recurring.ts`'s `validateRecurringShape`).
 
-/** Mirrors `health.events.event_type` CHECK — the four costed event types (design.md Schema;
- *  spec `health-events` "Four Costed Event Types"). Nutrition-domain types land later by
- *  extending this list, not by redesigning the shape (spec `health-profile` "Profile Structure
- *  Does Not Foreclose Nutrition"). */
-export const EVENT_TYPES = ["study", "consultation", "medication", "vaccine"] as const;
+/** Mirrors `health.events.event_type` CHECK — the five costed event types (design.md Schema;
+ *  spec `health-events` "Five Costed Event Types", change: nutrition-tracking). `nutrition` was
+ *  added by extending this list, not by redesigning the shape (spec `health-profile` "Profile
+ *  Structure Does Not Foreclose Nutrition") — byte-identical shape to `consultation`, inheriting
+ *  "no dosage, no result_summary" for free from the allowlist-style CHECKs on those columns. */
+export const EVENT_TYPES = ["study", "consultation", "medication", "vaccine", "nutrition"] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
 export function isValidEventType(value: string): value is EventType {

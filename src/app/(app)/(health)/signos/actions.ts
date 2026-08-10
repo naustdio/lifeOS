@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentHouseholdId } from "@/modules/core/api";
-import { createVitalReading, deleteVitalReading, toDomainVisibility, type WireVisibility } from "@/modules/health/api";
+import {
+  createVitalReading,
+  deleteVitalReading,
+  toDomainVisibility,
+  type VitalMetric,
+  type WireVisibility,
+} from "@/modules/health/api";
 import { createClient } from "@/shared/supabase/server";
 
 export type VitalFormState = {
@@ -26,12 +32,7 @@ export async function createVitalReadingAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: ERROR_COPY.NOT_A_MEMBER };
 
-  const metric = String(formData.get("metric") ?? "weight_kg") as
-    | "weight_kg"
-    | "systolic_bp"
-    | "diastolic_bp"
-    | "glucose_mgdl"
-    | "heart_rate";
+  const metric = String(formData.get("metric") ?? "weight_kg") as VitalMetric;
   const valueNumeric = Number(formData.get("valueNumeric") ?? 0);
   const measuredOn = String(formData.get("measuredOn") ?? "");
   const visibility = toDomainVisibility(String(formData.get("visibility") ?? "shared") as WireVisibility);

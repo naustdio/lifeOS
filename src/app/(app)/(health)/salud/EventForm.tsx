@@ -19,6 +19,7 @@ const EVENT_TYPES = [
   { value: "consultation", label: "Consulta médica" },
   { value: "medication", label: "Medicamento" },
   { value: "vaccine", label: "Vacuna" },
+  { value: "nutrition", label: "Nutrición" },
 ] as const;
 
 const FREQUENCIES = [

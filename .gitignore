@@ -46,3 +46,6 @@ Thumbs.db
 # Vercel
 .vercel
 .playwright-cli/
+
+# Personal reference files (never commit — may contain sensitive data)
+/EXTRAS/

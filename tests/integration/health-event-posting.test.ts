@@ -117,6 +117,37 @@ describe("salud/actions — Finance composition (health-tracking Phase 4)", () =
     }
   });
 
+  it("a costed nutrition event posts a finance.transactions row with origin_module='health' (change: nutrition-tracking)", async () => {
+    const result = await actions.createHealthEventAction(
+      { error: null },
+      formData({
+        eventType: "nutrition",
+        title: "Consulta nutriologo",
+        occurredOn: "2026-08-10",
+        visibility: "shared",
+        hasCost: "on",
+        accountId,
+        categoryId,
+        amount: "900.00",
+        recurrenceMode: "none",
+      }),
+    );
+    expect(result.error).toBeNull();
+
+    const events = await (await import("@/modules/health/api")).listEvents(activeClient, householdId);
+    const created = events.find((e) => e.title === "Consulta nutriologo");
+    expect(created).toBeTruthy();
+    expect(created?.eventType).toBe("nutrition");
+    expect(created?.amountCents).toBe(90000);
+
+    const found = await financeApi.findByOrigin({ householdId, module: "health", entityId: created!.id });
+    expect(found.ok).toBe(true);
+    if (found.ok) {
+      expect(found.value).not.toBeNull();
+      expect(found.value?.status).toBe("posted");
+    }
+  });
+
   it("a retried submission (same clientEventId) creates exactly one event and one transaction (spec health-events)", async () => {
     const clientEventId = crypto.randomUUID();
     const submission = formData({

@@ -75,6 +75,27 @@ describe("EventList — smoke render (health-tracking)", () => {
     expect(screen.getByText(/Recurrente/)).toBeInTheDocument();
   });
 
+  it("renders the 'Nutrición' label for a nutrition event (change: nutrition-tracking)", () => {
+    render(
+      <EventList
+        events={[
+          {
+            id: "evt-3",
+            eventType: "nutrition",
+            title: "Consulta nutriologo",
+            occurredOn: "2026-08-10",
+            notes: "",
+            visibility: "shared",
+            amountCents: 90000,
+            recurringTransactionId: null,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText(/Nutrición/)).toBeInTheDocument();
+  });
+
   it("clicking Editar on a one-off costed event opens EditEventSheet with the amount field; a recurring event's sheet hides it", () => {
     render(
       <EventList

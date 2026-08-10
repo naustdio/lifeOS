@@ -56,7 +56,8 @@ export async function createHealthEventAction(
     | "study"
     | "consultation"
     | "medication"
-    | "vaccine";
+    | "vaccine"
+    | "nutrition";
   const title = String(formData.get("title") ?? "").trim();
   const occurredOn = String(formData.get("occurredOn") ?? "");
   const notes = String(formData.get("notes") ?? "");
