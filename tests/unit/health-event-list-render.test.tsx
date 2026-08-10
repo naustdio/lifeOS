@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -14,7 +14,8 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
 
 const deleteHealthEventAction = vi.fn();
-vi.mock("@/app/(app)/(health)/salud/actions", () => ({ deleteHealthEventAction }));
+const updateHealthEventAction = vi.fn();
+vi.mock("@/app/(app)/(health)/salud/actions", () => ({ deleteHealthEventAction, updateHealthEventAction }));
 
 const { EventList } = await import("@/app/(app)/(health)/salud/EventList");
 
@@ -39,6 +40,7 @@ describe("EventList — smoke render (health-tracking)", () => {
             eventType: "consultation",
             title: "Chequeo anual",
             occurredOn: "2026-08-10",
+            notes: "",
             visibility: "shared",
             amountCents: 45000,
             recurringTransactionId: null,
@@ -60,6 +62,7 @@ describe("EventList — smoke render (health-tracking)", () => {
             eventType: "medication",
             title: "Receta privada",
             occurredOn: "2026-08-10",
+            notes: "",
             visibility: "private",
             amountCents: null,
             recurringTransactionId: "rec-1",
@@ -70,5 +73,44 @@ describe("EventList — smoke render (health-tracking)", () => {
 
     expect(screen.getByLabelText("Privado")).toBeInTheDocument();
     expect(screen.getByText(/Recurrente/)).toBeInTheDocument();
+  });
+
+  it("clicking Editar on a one-off costed event opens EditEventSheet with the amount field; a recurring event's sheet hides it", () => {
+    render(
+      <EventList
+        events={[
+          {
+            id: "evt-1",
+            eventType: "consultation",
+            title: "Chequeo anual",
+            occurredOn: "2026-08-10",
+            notes: "",
+            visibility: "shared",
+            amountCents: 45000,
+            recurringTransactionId: null,
+          },
+          {
+            id: "evt-2",
+            eventType: "vaccine",
+            title: "Serie de dosis",
+            occurredOn: "2026-08-10",
+            notes: "",
+            visibility: "shared",
+            amountCents: 50000,
+            recurringTransactionId: "rec-1",
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Editar" })[0]!);
+    expect(screen.getByText("Editar evento")).toBeInTheDocument();
+    expect(screen.getByLabelText("Monto (MXN)")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByText("Editar evento")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Editar" })[1]!);
+    expect(screen.queryByLabelText("Monto (MXN)")).not.toBeInTheDocument();
+    expect(screen.getByText(/se administra desde Recurrentes/)).toBeInTheDocument();
   });
 });

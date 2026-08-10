@@ -1,18 +1,20 @@
 "use client";
 
 import { HeartPulse, Lock } from "lucide-react";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { EmptyState } from "@/design-system/patterns/EmptyState";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent } from "@/design-system/ui/card";
 import { formatCentsAsMXN } from "@/shared/money";
 import { deleteHealthEventAction, type HealthEventFormState } from "./actions";
+import { EditEventSheet } from "./EditEventSheet";
 
 type HealthEvent = {
   id: string;
   eventType: "study" | "consultation" | "medication" | "vaccine";
   title: string;
   occurredOn: string;
+  notes: string;
   visibility: "shared" | "private";
   amountCents: number | null;
   recurringTransactionId: string | null;
@@ -35,6 +37,7 @@ const INITIAL_STATE: HealthEventFormState = { error: null };
  */
 export function EventList({ events }: { events: HealthEvent[] }) {
   const [deleteState, deleteAction, deletePending] = useActionState(deleteHealthEventAction, INITIAL_STATE);
+  const [editTarget, setEditTarget] = useState<HealthEvent | null>(null);
 
   if (events.length === 0) {
     return (
@@ -70,6 +73,9 @@ export function EventList({ events }: { events: HealthEvent[] }) {
               )}
             </div>
             <div className="flex items-center gap-2 pl-12">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setEditTarget(event)}>
+                Editar
+              </Button>
               <form
                 action={(formData) => {
                   formData.set("id", event.id);
@@ -90,6 +96,7 @@ export function EventList({ events }: { events: HealthEvent[] }) {
         ))}
         {deleteState.error && <p className="px-4 pb-2 text-xs text-expense">{deleteState.error}</p>}
       </CardContent>
+      {editTarget && <EditEventSheet event={editTarget} onClose={() => setEditTarget(null)} />}
     </Card>
   );
 }

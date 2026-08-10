@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { getCurrentHouseholdId } from "@/modules/core/api";
 import * as healthApi from "@/modules/health/api";
 import { toDomainVisibility, type WireVisibility } from "@/modules/health/api";
-import { createRecurringDefinition, findByOrigin, recordTransaction, voidTransactionById } from "@/modules/finance/api";
+import {
+  createRecurringDefinition,
+  findByOrigin,
+  recordTransaction,
+  updateOriginTransaction,
+  voidTransactionById,
+} from "@/modules/finance/api";
 import { pesosToCents } from "@/shared/money";
 import { createClient } from "@/shared/supabase/server";
 
@@ -135,6 +141,61 @@ export async function createHealthEventAction(
     });
     if (attachErr) {
       return { error: "El evento y la recurrencia se crearon, pero no se pudieron vincular." };
+    }
+  }
+
+  revalidatePath("/salud");
+  revalidatePath("/finance");
+  revalidatePath("/movimientos");
+  return { error: null };
+}
+
+/**
+ * Edits an existing event (spec `health-events` "Editing or Deleting a Health Event Follows the
+ * Source" — "editing a costed health event's cost or details MUST update the linked Finance
+ * transaction"). Title/notes/visibility always update. The amount only updates the linked
+ * transaction for a ONE-OFF costed event (no `recurringTransactionId`) — a recurring-linked
+ * event has no single "the transaction" a bare amount edit could unambiguously mean (which of
+ * its N occurrences?), so the amount field is intentionally read-only for those in the UI and
+ * ignored here even if posted.
+ */
+export async function updateHealthEventAction(
+  _prevState: HealthEventFormState,
+  formData: FormData,
+): Promise<HealthEventFormState> {
+  const supabase = await createClient();
+  const spaceId = await getCurrentHouseholdId(supabase);
+  if (!spaceId) return { error: ERROR_COPY.NOT_A_MEMBER };
+
+  const id = String(formData.get("id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const occurredOn = String(formData.get("occurredOn") ?? "");
+  const notes = String(formData.get("notes") ?? "");
+  const visibility = toDomainVisibility(String(formData.get("visibility") ?? "shared") as WireVisibility);
+  if (!title || !occurredOn) {
+    return { error: "Completa el título y la fecha." };
+  }
+
+  const event = await healthApi.getEventById(supabase, spaceId, id);
+  if (!event) return { error: "No se encontró el evento." };
+
+  const { error: updateErr } = await healthApi.updateEvent(supabase, spaceId, id, {
+    title,
+    occurredOn,
+    notes,
+    visibility,
+  });
+  if (updateErr) return { error: "No se pudo actualizar el evento." };
+
+  if (event.amountCents !== null && !event.recurringTransactionId) {
+    const newAmount = formData.get("amount");
+    const amountCents = newAmount ? pesosToCents(Number(newAmount)) : event.amountCents;
+    const result = await updateOriginTransaction(
+      { householdId: spaceId, module: "health", entityId: id },
+      { amountCents, occurredOn, description: title },
+    );
+    if (!result.ok) {
+      return { error: "El evento se actualizó, pero no se pudo actualizar el gasto vinculado." };
     }
   }
 

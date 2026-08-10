@@ -211,4 +211,49 @@ describe("salud/actions — Finance composition (health-tracking Phase 4)", () =
     const afterDelete = await financeApi.findByOrigin({ householdId, module: "health", entityId: created!.id });
     expect(afterDelete.ok && afterDelete.value?.status).toBe("void");
   });
+
+  it("editing a one-off costed event's amount updates the linked transaction (spec health-events)", async () => {
+    const create = await actions.createHealthEventAction(
+      { error: null },
+      formData({
+        eventType: "consultation",
+        title: "Consulta a editar",
+        occurredOn: "2026-08-10",
+        visibility: "shared",
+        hasCost: "on",
+        accountId,
+        categoryId,
+        amount: "100.00",
+        recurrenceMode: "none",
+      }),
+    );
+    expect(create.error).toBeNull();
+
+    const events = await (await import("@/modules/health/api")).listEvents(activeClient, householdId);
+    const created = events.find((e) => e.title === "Consulta a editar");
+    expect(created).toBeTruthy();
+
+    const edit = await actions.updateHealthEventAction(
+      { error: null },
+      formData({
+        id: created!.id,
+        title: "Consulta editada",
+        occurredOn: "2026-08-11",
+        visibility: "shared",
+        amount: "150.00",
+      }),
+    );
+    expect(edit.error).toBeNull();
+
+    const updatedEvent = await (await import("@/modules/health/api")).getEventById(activeClient, householdId, created!.id);
+    expect(updatedEvent?.title).toBe("Consulta editada");
+
+    const found = await financeApi.findByOrigin({ householdId, module: "health", entityId: created!.id });
+    expect(found.ok).toBe(true);
+    if (found.ok && found.value) {
+      const tx = await financeApi.getTransactionById(activeClient, householdId, found.value.id);
+      expect(tx?.amountCents).toBe(-15000);
+      expect(tx?.description).toBe("Consulta editada");
+    }
+  });
 });
