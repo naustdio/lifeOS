@@ -46,6 +46,10 @@ export function EventForm({
   const [eventType, setEventType] = useState<(typeof EVENT_TYPES)[number]["value"]>("consultation");
   const [hasCost, setHasCost] = useState(false);
   const [recurrenceMode, setRecurrenceMode] = useState<"none" | "unbounded" | "bounded">("none");
+  // Generated once per form mount, resent unchanged on every retry of the SAME submission (spec
+  // `health-events` "a retried log submission MUST NOT create a second transaction") — a fresh id
+  // only appears after a genuinely new mount (e.g. the form resets post-success).
+  const [clientEventId] = useState(() => crypto.randomUUID());
 
   return (
     <Card id="health-event-form">
@@ -54,6 +58,7 @@ export function EventForm({
       </CardHeader>
       <CardContent>
         <form action={action} className="flex flex-col gap-4">
+          <input type="hidden" name="clientEventId" value={clientEventId} />
           <div className="flex flex-col gap-1">
             <label htmlFor="eventType" className="text-sm font-medium">
               Tipo

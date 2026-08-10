@@ -117,6 +117,34 @@ describe("salud/actions — Finance composition (health-tracking Phase 4)", () =
     }
   });
 
+  it("a retried submission (same clientEventId) creates exactly one event and one transaction (spec health-events)", async () => {
+    const clientEventId = crypto.randomUUID();
+    const submission = formData({
+      clientEventId,
+      eventType: "consultation",
+      title: "Retry test",
+      occurredOn: "2026-08-10",
+      visibility: "shared",
+      hasCost: "on",
+      accountId,
+      categoryId,
+      amount: "200.00",
+      recurrenceMode: "none",
+    });
+
+    const first = await actions.createHealthEventAction({ error: null }, submission);
+    const second = await actions.createHealthEventAction({ error: null }, submission);
+    expect(first.error).toBeNull();
+    expect(second.error).toBeNull();
+
+    const events = await (await import("@/modules/health/api")).listEvents(activeClient, householdId);
+    const matches = events.filter((e) => e.title === "Retry test");
+    expect(matches.length).toBe(1);
+
+    const found = await financeApi.findByOrigin({ householdId, module: "health", entityId: matches[0]!.id });
+    expect(found.ok && found.value?.status).toBe("posted");
+  });
+
   it("a bounded recurring event creates a bounded recurring definition (0 occurrences posted yet) and attaches it to the event", async () => {
     const result = await actions.createHealthEventAction(
       { error: null },

@@ -89,12 +89,24 @@ export async function getEventById(supabase: SupabaseClient, householdId: string
   return mapEventRow(data);
 }
 
-/** RLS-guarded insert. Creating an event never posts a `finance.transactions` row by itself —
- *  see this file's header note. `ownerUserId` is a caller-supplied parameter (not
- *  session-resolved here), matching `finance/data`'s "household_id is a parameter" convention. */
+/**
+ * RLS-guarded insert. Creating an event never posts a `finance.transactions` row by itself —
+ * see this file's header note. `ownerUserId` is a caller-supplied parameter (not
+ * session-resolved here), matching `finance/data`'s "household_id is a parameter" convention.
+ *
+ * `id` is an OPTIONAL, caller-supplied primary key (spec `health-events` "Exactly One Resolvable
+ * Transaction Per Costed Event" — "a retried log submission MUST NOT create a second
+ * transaction"). The `app` layer generates a stable id once per form render and resends the SAME
+ * id on a retried submission; a `23505` unique-violation on that id here means "this exact
+ * submission already landed", so the existing row's id is returned instead of erroring — the
+ * caller's downstream `idempotencyKey` (derived from this id) then also resolves to the SAME
+ * already-posted Finance transaction via `record_transaction`'s own idempotency check, closing
+ * the loop without a second write on either side.
+ */
 export async function createEvent(
   supabase: SupabaseClient,
   input: {
+    id?: string;
     householdId: string;
     ownerUserId: string;
     eventType: EventType;
@@ -115,6 +127,7 @@ export async function createEvent(
     .schema("health")
     .from("events")
     .insert({
+      ...(input.id ? { id: input.id } : {}),
       household_id: input.householdId,
       owner_user_id: input.ownerUserId,
       event_type: input.eventType,
@@ -132,6 +145,10 @@ export async function createEvent(
     })
     .select("id")
     .single();
+
+  if (error?.code === "23505" && input.id) {
+    return { id: input.id, error: null };
+  }
 
   if (error || !data) {
     return { id: null, error: error?.message ?? "insert failed" };

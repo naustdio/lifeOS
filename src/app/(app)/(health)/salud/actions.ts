@@ -78,7 +78,10 @@ export async function createHealthEventAction(
     return { error: "El número de ocurrencias debe ser entre 2 y 60." };
   }
 
+  const clientEventId = String(formData.get("clientEventId") ?? "") || undefined;
+
   const { id: eventId, error: createErr } = await healthApi.createEvent(supabase, {
+    id: clientEventId,
     householdId: spaceId,
     ownerUserId: user.id,
     eventType,
