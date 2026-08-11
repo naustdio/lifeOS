@@ -32,17 +32,18 @@ export async function devSignIn() {
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
-  const { data: existing } = await admin.auth.admin.listUsers();
-  const alreadyExists = existing?.users.some((u) => u.email === email);
-  if (!alreadyExists) {
-    const { error: createErr } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-    });
-    if (createErr) {
-      throw new Error(`devSignIn: failed to create local dev user: ${createErr.message}`);
-    }
+  // Attempt-then-tolerate instead of a `listUsers()` pre-check: `listUsers()` is paginated
+  // (GoTrue defaults to 50 users per page) and this local stack has accumulated hundreds of
+  // pgTAP/integration-test fixture users over time — a page-1-only existence check went stale
+  // once the dev user fell off the first page, throwing "already registered" on every sign-in
+  // even though the user was fine. Real bug, caught live, not hypothetical.
+  const { error: createErr } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (createErr && createErr.code !== "email_exists") {
+    throw new Error(`devSignIn: failed to create local dev user: ${createErr.message}`);
   }
 
   const supabase = await createClient();
