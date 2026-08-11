@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/car
 import { DatePicker } from "@/design-system/patterns/DatePicker";
 import { Input } from "@/design-system/ui/input";
 import { MetricTrendChart, type TrendSeries } from "@/design-system/patterns/MetricTrendChart";
+import { PhotoPickerGrid } from "@/design-system/patterns/PhotoPickerGrid";
 import type { VitalMetric } from "@/modules/health/api";
 import {
   addVisitMetricsAction,
@@ -184,10 +185,8 @@ export function VisitDetail({ eventId, readings, photos }: { eventId: string; re
           <form action={photosAction} className="flex flex-col gap-3">
             <input type="hidden" name="eventId" value={eventId} />
             <div className="flex flex-col gap-1">
-              <label htmlFor="addPhotos" className="text-sm font-medium">
-                Fotos (privadas, hasta {PHOTO_MAX_COUNT - photos.length} más)
-              </label>
-              <input id="addPhotos" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+              <span className="text-sm font-medium">Privadas, hasta {PHOTO_MAX_COUNT - photos.length} más</span>
+              <PhotoPickerGrid name="photos" maxImages={Math.max(PHOTO_MAX_COUNT - photos.length, 0)} />
             </div>
             {photosState.error && <p className="text-sm text-expense">{photosState.error}</p>}
             <Button type="submit" disabled={photosPending}>

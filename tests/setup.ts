@@ -23,3 +23,14 @@ if (typeof window !== "undefined") {
     writable: true,
   });
 }
+
+// jsdom implements neither URL.createObjectURL nor revokeObjectURL (PhotoPickerGrid,
+// nutrition-submodule fast-follow) — real browsers always have both.
+if (typeof URL !== "undefined") {
+  if (!URL.createObjectURL) {
+    URL.createObjectURL = () => "blob:mock-url";
+  }
+  if (!URL.revokeObjectURL) {
+    URL.revokeObjectURL = () => {};
+  }
+}

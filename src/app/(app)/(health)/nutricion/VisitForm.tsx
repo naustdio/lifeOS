@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
 import { DatePicker } from "@/design-system/patterns/DatePicker";
+import { PhotoPickerGrid } from "@/design-system/patterns/PhotoPickerGrid";
 import { Input } from "@/design-system/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/design-system/ui/select";
 import type { VitalMetric } from "@/modules/health/api";
@@ -53,7 +54,6 @@ export function VisitForm({ accounts, categories }: { accounts: AccountOption[];
   const [state, action, pending] = useActionState(createNutritionVisitAction, INITIAL_STATE);
   const [open, setOpen] = useState(false);
   const [hasCost, setHasCost] = useState(false);
-  const [photoCount, setPhotoCount] = useState(0);
   const [clientEventId] = useState(() => crypto.randomUUID());
 
   if (!open) {
@@ -136,22 +136,9 @@ export function VisitForm({ accounts, categories }: { accounts: AccountOption[];
           </details>
 
           <details open className={SECTION_CLASS}>
-            <summary className="text-sm font-medium">Fotos de avance</summary>
-            <div className="mt-3 flex flex-col gap-1">
-              <label htmlFor="visitPhotos" className="text-sm font-medium">
-                Privadas, máx. {PHOTO_MAX_COUNT}
-              </label>
-              <input
-                id="visitPhotos"
-                name="photos"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                onChange={(e) => setPhotoCount(e.target.files?.length ?? 0)}
-              />
-              {photoCount > PHOTO_MAX_COUNT && (
-                <p className="text-xs text-expense">Máximo {PHOTO_MAX_COUNT} fotos por visita.</p>
-              )}
+            <summary className="text-sm font-medium">Fotos de avance (privadas, máx. {PHOTO_MAX_COUNT})</summary>
+            <div className="mt-3">
+              <PhotoPickerGrid name="photos" maxImages={PHOTO_MAX_COUNT} />
             </div>
           </details>
 

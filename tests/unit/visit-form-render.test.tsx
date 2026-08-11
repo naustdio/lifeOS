@@ -51,8 +51,9 @@ describe("VisitForm — smoke render (nutrition-submodule)", () => {
 
     // change: nutrition-submodule fast-follow (4th round) — "Fotos de avance" opens expanded by
     // default (live-testing: repeatedly reported as "can't add photos" — the real cause was this
-    // section being collapsed and easy to miss, not a broken upload).
-    expect(screen.getByLabelText(/Privadas, máx\. 6/)).toBeInTheDocument();
+    // section being collapsed and easy to miss, not a broken upload). 5th round replaced the raw
+    // file input with PhotoPickerGrid (thumbnail preview grid).
+    expect(screen.getByLabelText("Agregar fotos")).toBeInTheDocument();
   });
 
   it("checking 'tiene un costo' inside the Costo section reveals account/category/amount fields", () => {
@@ -67,15 +68,17 @@ describe("VisitForm — smoke render (nutrition-submodule)", () => {
     expect(screen.getByLabelText("Monto (MXN)")).toBeInTheDocument();
   });
 
-  it("surfaces a client-side warning past the 6-file cap", () => {
+  it("surfaces a client-side warning past the 6-file cap (PhotoPickerGrid, see its own test file for full coverage)", () => {
     render(<VisitForm accounts={ACCOUNTS} categories={CATEGORIES} />);
     fireEvent.click(screen.getByRole("button", { name: "+ Nueva visita" }));
 
-    const input = screen.getByLabelText(/Privadas, máx\. 6/) as HTMLInputElement;
+    const input = screen.getByLabelText("Agregar fotos") as HTMLInputElement;
     const files = Array.from({ length: 7 }, (_, i) => new File(["x"], `p${i}.jpg`, { type: "image/jpeg" }));
-    Object.defineProperty(input, "files", { value: files });
+    const fileList = files as unknown as FileList & File[];
+    (fileList as unknown as { item: (i: number) => File }).item = (i: number) => files[i];
+    Object.defineProperty(input, "files", { value: fileList, configurable: true });
     fireEvent.change(input);
 
-    expect(screen.getByText("Máximo 6 fotos por visita.")).toBeInTheDocument();
+    expect(screen.getByText(/Solo se agregaron 6/)).toBeInTheDocument();
   });
 });
