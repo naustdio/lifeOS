@@ -76,12 +76,12 @@ Revert the app commit; drop `nutrition_visit_photos`, drop the `event_id` column
 
 ## Success Criteria
 
-- [ ] A visit created in `/nutricion` produces one event, N `vital_readings` with that `event_id`, and 0..N private photos.
-- [ ] It still posts exactly one `finance.transactions` row with `origin_module='health'`.
-- [ ] `Nutrición` is absent from the `/salud` type dropdown.
-- [ ] A photo URL is unreachable by a household member of a household-shared visit.
-- [ ] `/signos` and the visit detail both render a real chart from the shared component.
-- [ ] No calculators appear anywhere in the diff.
+- [x] A visit created in `/nutricion` produces one event, N `vital_readings` with that `event_id`, and 0..N private photos. Verified: `tests/integration/nutrition-visit-delete.test.ts`.
+- [x] It still posts exactly one `finance.transactions` row with `origin_module='health'`. Verified: same integration test, `findByOrigin` status `posted`.
+- [x] `Nutrición` is absent from the `/salud` type dropdown. Verified: `tests/unit/health-event-form-render.test.tsx`.
+- [x] A photo URL is unreachable by a household member of a household-shared visit. Verified: `supabase/tests/140_nutrition_visits.sql` (RLS + storage object policy).
+- [x] `/signos` and the visit detail both render a real chart from the shared component. Verified: both import `MetricTrendChart`; `tests/unit/vital-trend-render.test.tsx`, `tests/unit/metric-trend-chart-render.test.tsx`.
+- [x] No calculators appear anywhere in the diff. Verified: no calculator files/routes exist in this change.
 
 ## Delivery Notes (cached preflight)
 

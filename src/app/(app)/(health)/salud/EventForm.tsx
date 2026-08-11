@@ -14,12 +14,14 @@ type CategoryOption = { id: string; name: string };
 const INITIAL_STATE: HealthEventFormState = { error: null };
 const today = () => new Date().toISOString().slice(0, 10);
 
+// change: nutrition-submodule — "Nutrición" removed. /nutricion is now the sole creation path for
+// nutrition-type events (spec `health-events` "The generic form no longer offers nutrition"),
+// so a nutrition visit's metrics/photos are never orphaned from an event created here instead.
 const EVENT_TYPES = [
   { value: "study", label: "Estudio médico" },
   { value: "consultation", label: "Consulta médica" },
   { value: "medication", label: "Medicamento" },
   { value: "vaccine", label: "Vacuna" },
-  { value: "nutrition", label: "Nutrición" },
 ] as const;
 
 const FREQUENCIES = [

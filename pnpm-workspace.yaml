@@ -2,3 +2,6 @@ allowBuilds:
   esbuild: true
   sharp: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@tanstack/charts@0.11.0'
+  - '@tanstack/react-charts@0.11.0'
