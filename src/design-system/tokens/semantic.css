@@ -61,6 +61,16 @@
   --category-pink: var(--cat-pink-500);
   --category-pink-surface: var(--cat-pink-100);
 
+  /* ---- chart series palette (light) — 6 hues for multi-series trend charts
+   * (MetricTrendChart, nutrition-submodule), reusing the same bounded cat-* hues as the
+   * category palette above so no new primitives are needed. ---- */
+  --chart-series-1: var(--cat-blue-500);
+  --chart-series-2: var(--cat-green-500);
+  --chart-series-3: var(--cat-violet-500);
+  --chart-series-4: var(--cat-amber-500);
+  --chart-series-5: var(--cat-teal-500);
+  --chart-series-6: var(--cat-pink-500);
+
   /* ---- typography scale ---- */
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -141,6 +151,14 @@
   --category-violet-surface: var(--cat-violet-900);
   --category-pink: var(--cat-pink-400);
   --category-pink-surface: var(--cat-pink-900);
+
+  /* ---- chart series palette (dark) — SAME names, dark-theme primitives ---- */
+  --chart-series-1: var(--cat-blue-400);
+  --chart-series-2: var(--cat-green-400);
+  --chart-series-3: var(--cat-violet-400);
+  --chart-series-4: var(--cat-amber-400);
+  --chart-series-5: var(--cat-teal-400);
+  --chart-series-6: var(--cat-pink-400);
 
   --shadow-soft: 0 8px 30px -8px hsl(0 0% 0% / 0.4);
   --shadow-soft-lg: 0 16px 48px -12px hsl(0 0% 0% / 0.5);

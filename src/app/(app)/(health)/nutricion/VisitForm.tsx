@@ -37,16 +37,32 @@ const METRICS: { value: VitalMetric; label: string }[] = [
   { value: "arm_flexed_cm", label: "Brazo contraído (cm)" },
 ];
 
+// change: nutrition-submodule fast-follow — the shared `<details>` section style used below,
+// native HTML disclosure (no new dependency) matching the "compact accordion, collapsed by
+// default" live-testing feedback.
+const SECTION_CLASS = "rounded-lg border border-border/60 px-3 py-2 [&_summary]:cursor-pointer [&_summary]:list-none";
+
 /**
  * Nutrition visit creation form — spec `health-nutrition-visits` "A Visit Is a Composed Record":
  * event fields + metric grid + photo upload all submit together as one visit. The sole creation
- * path (spec "`/nutricion` Is the Sole Creation Path for Visits").
+ * path (spec "`/nutricion` Is the Sole Creation Path for Visits"). Collapsed behind a "Nueva
+ * visita" button, and internally split into `<details>` sections (Datos básicos / Métricas /
+ * Fotos / Costo) — live-testing feedback: the flat 20+ field form was too long/heavy to scan.
  */
 export function VisitForm({ accounts, categories }: { accounts: AccountOption[]; categories: CategoryOption[] }) {
   const [state, action, pending] = useActionState(createNutritionVisitAction, INITIAL_STATE);
+  const [open, setOpen] = useState(false);
   const [hasCost, setHasCost] = useState(false);
   const [photoCount, setPhotoCount] = useState(0);
   const [clientEventId] = useState(() => crypto.randomUUID());
+
+  if (!open) {
+    return (
+      <Button type="button" onClick={() => setOpen(true)} className="w-full">
+        + Nueva visita
+      </Button>
+    );
+  }
 
   return (
     <Card id="nutrition-visit-form">
@@ -54,143 +70,163 @@ export function VisitForm({ accounts, categories }: { accounts: AccountOption[];
         <CardTitle>Nueva visita de nutrición</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={action} className="flex flex-col gap-4">
+        <form action={action} className="flex flex-col gap-3">
           <input type="hidden" name="clientEventId" value={clientEventId} />
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="visitTitle" className="text-sm font-medium">
-              Título
-            </label>
-            <Input id="visitTitle" name="title" maxLength={120} required defaultValue="Consulta de nutrición" />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label htmlFor="visitOccurredOn" className="text-sm font-medium">
-              Fecha
-            </label>
-            <DatePicker id="visitOccurredOn" name="occurredOn" defaultValue={today()} required />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label htmlFor="visitProviderName" className="text-sm font-medium">
-              Nutriólogo
-            </label>
-            <Input id="visitProviderName" name="providerName" maxLength={120} />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label htmlFor="visitNotes" className="text-sm font-medium">
-              Notas
-            </label>
-            <Input id="visitNotes" name="notes" maxLength={500} />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label htmlFor="visitVisibility" className="text-sm font-medium">
-              Visibilidad
-            </label>
-            <Select name="visibility" defaultValue="shared">
-              <SelectTrigger id="visitVisibility">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="shared">Visible para todos</SelectItem>
-                <SelectItem value="private">Privado — solo yo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <fieldset className="flex flex-col gap-3">
-            <legend className="text-sm font-medium">Métricas de esta visita</legend>
-            {METRICS.map((m) => (
-              <div key={m.value} className="flex flex-col gap-1">
-                <label htmlFor={`metric_${m.value}`} className="text-xs text-muted-foreground">
-                  {m.label}
-                </label>
-                <Input id={`metric_${m.value}`} name={`metric_${m.value}`} type="number" step="0.1" />
-              </div>
-            ))}
-          </fieldset>
-
-          <div className="flex flex-col gap-1">
-            <label htmlFor="visitPhotos" className="text-sm font-medium">
-              Fotos de avance (privadas, máx. {PHOTO_MAX_COUNT})
-            </label>
-            <input
-              id="visitPhotos"
-              name="photos"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              onChange={(e) => setPhotoCount(e.target.files?.length ?? 0)}
-            />
-            {photoCount > PHOTO_MAX_COUNT && (
-              <p className="text-xs text-expense">Máximo {PHOTO_MAX_COUNT} fotos por visita.</p>
-            )}
-          </div>
-
-          <label htmlFor="visitHasCost" className="flex items-center gap-2 text-sm font-medium">
-            <input
-              id="visitHasCost"
-              name="hasCost"
-              type="checkbox"
-              checked={hasCost}
-              onChange={(e) => setHasCost(e.target.checked)}
-            />
-            Esta visita tiene un costo
-          </label>
-
-          {hasCost && (
-            <>
+          <details open className={SECTION_CLASS}>
+            <summary className="text-sm font-medium">Datos básicos</summary>
+            <div className="mt-3 flex flex-col gap-3">
               <div className="flex flex-col gap-1">
-                <label htmlFor="visitAccountId" className="text-sm font-medium">
-                  Cuenta
+                <label htmlFor="visitTitle" className="text-sm font-medium">
+                  Título
                 </label>
-                <Select name="accountId" defaultValue={accounts[0]?.id}>
-                  <SelectTrigger id="visitAccountId">
+                <Input id="visitTitle" name="title" maxLength={120} required defaultValue="Consulta de nutrición" />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label htmlFor="visitOccurredOn" className="text-sm font-medium">
+                  Fecha
+                </label>
+                <DatePicker id="visitOccurredOn" name="occurredOn" defaultValue={today()} required />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label htmlFor="visitProviderName" className="text-sm font-medium">
+                  Nutriólogo
+                </label>
+                <Input id="visitProviderName" name="providerName" maxLength={120} />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label htmlFor="visitNotes" className="text-sm font-medium">
+                  Notas
+                </label>
+                <Input id="visitNotes" name="notes" maxLength={500} />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label htmlFor="visitVisibility" className="text-sm font-medium">
+                  Visibilidad
+                </label>
+                <Select name="visibility" defaultValue="shared">
+                  <SelectTrigger id="visitVisibility">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.name}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="shared">Visible para todos</SelectItem>
+                    <SelectItem value="private">Privado — solo yo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+          </details>
 
-              <div className="flex flex-col gap-1">
-                <label htmlFor="visitCategoryId" className="text-sm font-medium">
-                  Categoría
-                </label>
-                <Select name="categoryId" defaultValue={categories[0]?.id}>
-                  <SelectTrigger id="visitCategoryId">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <details className={SECTION_CLASS}>
+            <summary className="text-sm font-medium">Métricas de esta visita</summary>
+            <div className="mt-3 flex flex-col gap-3">
+              {METRICS.map((m) => (
+                <div key={m.value} className="flex flex-col gap-1">
+                  <label htmlFor={`metric_${m.value}`} className="text-xs text-muted-foreground">
+                    {m.label}
+                  </label>
+                  <Input id={`metric_${m.value}`} name={`metric_${m.value}`} type="number" step="0.1" />
+                </div>
+              ))}
+            </div>
+          </details>
 
-              <div className="flex flex-col gap-1">
-                <label htmlFor="visitAmount" className="text-sm font-medium">
-                  Monto (MXN)
-                </label>
-                <Input id="visitAmount" name="amount" type="number" step="0.01" min="0.01" required />
-              </div>
-            </>
-          )}
+          <details className={SECTION_CLASS}>
+            <summary className="text-sm font-medium">Fotos de avance</summary>
+            <div className="mt-3 flex flex-col gap-1">
+              <label htmlFor="visitPhotos" className="text-sm font-medium">
+                Privadas, máx. {PHOTO_MAX_COUNT}
+              </label>
+              <input
+                id="visitPhotos"
+                name="photos"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={(e) => setPhotoCount(e.target.files?.length ?? 0)}
+              />
+              {photoCount > PHOTO_MAX_COUNT && (
+                <p className="text-xs text-expense">Máximo {PHOTO_MAX_COUNT} fotos por visita.</p>
+              )}
+            </div>
+          </details>
+
+          <details className={SECTION_CLASS}>
+            <summary className="text-sm font-medium">Costo</summary>
+            <div className="mt-3 flex flex-col gap-3">
+              <label htmlFor="visitHasCost" className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  id="visitHasCost"
+                  name="hasCost"
+                  type="checkbox"
+                  checked={hasCost}
+                  onChange={(e) => setHasCost(e.target.checked)}
+                />
+                Esta visita tiene un costo
+              </label>
+
+              {hasCost && (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="visitAccountId" className="text-sm font-medium">
+                      Cuenta
+                    </label>
+                    <Select name="accountId" defaultValue={accounts[0]?.id}>
+                      <SelectTrigger id="visitAccountId">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="visitCategoryId" className="text-sm font-medium">
+                      Categoría
+                    </label>
+                    <Select name="categoryId" defaultValue={categories[0]?.id}>
+                      <SelectTrigger id="visitCategoryId">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="visitAmount" className="text-sm font-medium">
+                      Monto (MXN)
+                    </label>
+                    <Input id="visitAmount" name="amount" type="number" step="0.01" min="0.01" required />
+                  </div>
+                </>
+              )}
+            </div>
+          </details>
 
           {state.error && <p className="text-sm text-expense">{state.error}</p>}
-          <Button type="submit" disabled={pending}>
-            {pending ? "Guardando…" : "Registrar visita"}
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={pending}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={pending} className="flex-1">
+              {pending ? "Guardando…" : "Registrar visita"}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>

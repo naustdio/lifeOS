@@ -32,15 +32,9 @@ Nutrition visits MUST be creatable only through the `/nutricion` route. No other
 - WHEN they view the event type options
 - THEN "Nutrición" is not among them
 
-### Requirement: A Visit Is Editable After Creation
+### Requirement: A Visit's Photos Are Editable After Creation
 
-A saved nutrition visit MUST remain editable: its event details, its linked metric readings, and its photos MAY each be added, changed, or removed after the initial save.
-
-#### Scenario: Metrics are added after the initial save
-
-- GIVEN a household member saved a visit with no metric values
-- WHEN they later open that visit and add metric values
-- THEN the readings are linked to the visit's `event_id` and persist
+A saved nutrition visit's photos MAY be added or removed after the initial save. (Fast-follow revision, live-testing feedback: metric readings are captured once, at the visit that produced them — a later measurement is a new visit, not an edit to this one. The one exception is completing a legacy pre-`/nutricion` visit with zero readings, covered by its own requirement below.)
 
 #### Scenario: A photo is removed from an existing visit
 

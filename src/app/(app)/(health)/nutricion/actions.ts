@@ -202,8 +202,15 @@ export async function createNutritionVisitAction(
   return { error: null };
 }
 
-/** Adds metric readings to an already-saved visit (spec `health-nutrition-visits` "A Visit Is
- *  Editable After Creation"). */
+/**
+ * Adds metric readings to an already-saved visit — narrowly for completing a LEGACY zero-metric
+ * visit (spec `health-nutrition-visits` "Legacy Pre-Change Nutrition Events Are Visible as
+ * Completable Visits"), not for a normal already-complete visit. The UI (`VisitDetail.tsx`) only
+ * renders this form when the visit has zero readings; a visit created with metrics from the start
+ * has no path back to this action — a later measurement is a new visit, not an edit to this one
+ * (live-testing feedback: re-opening a complete visit to "add more metrics" reads as pointless
+ * since that's really a different appointment).
+ */
 export async function addVisitMetricsAction(
   _prevState: NutritionVisitFormState,
   formData: FormData,

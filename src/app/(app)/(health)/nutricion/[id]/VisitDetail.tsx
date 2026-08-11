@@ -15,60 +15,119 @@ import {
 } from "../actions";
 
 const INITIAL_STATE: NutritionVisitFormState = { error: null };
-const today = () => new Date().toISOString().slice(0, 10);
 const PHOTO_MAX_COUNT = 6;
+const today = () => new Date().toISOString().slice(0, 10);
 
-const METRICS: { value: VitalMetric; label: string }[] = [
-  { value: "weight_kg", label: "Peso (kg)" },
-  { value: "body_fat_pct", label: "Grasa (%)" },
-  { value: "body_fat_kg", label: "Grasa (kg)" },
-  { value: "muscle_mass_pct", label: "Músculo (%)" },
-  { value: "muscle_mass_kg", label: "Músculo (kg)" },
-  { value: "skinfold_biceps_mm", label: "Pliegue bíceps (mm)" },
-  { value: "skinfold_triceps_mm", label: "Pliegue tríceps (mm)" },
-  { value: "skinfold_subscapular_mm", label: "Pliegue subescapular (mm)" },
-  { value: "skinfold_iliac_crest_mm", label: "Pliegue cresta ilíaca (mm)" },
-  { value: "skinfold_supraspinal_mm", label: "Pliegue supraespinal (mm)" },
-  { value: "skinfold_abdominal_mm", label: "Pliegue abdominal (mm)" },
-  { value: "waist_cm", label: "Cintura (cm)" },
-  { value: "hip_cm", label: "Cadera (cm)" },
-  { value: "thigh_cm", label: "Muslo (cm)" },
-  { value: "arm_flexed_cm", label: "Brazo contraído (cm)" },
+const METRIC_LABELS: Record<VitalMetric, string> = {
+  weight_kg: "Peso (kg)",
+  systolic_bp: "Presión sistólica",
+  diastolic_bp: "Presión diastólica",
+  glucose_mgdl: "Glucosa (mg/dL)",
+  heart_rate: "Frecuencia cardiaca",
+  body_fat_pct: "Grasa (%)",
+  body_fat_kg: "Grasa (kg)",
+  muscle_mass_pct: "Músculo (%)",
+  muscle_mass_kg: "Músculo (kg)",
+  skinfold_biceps_mm: "Pliegue bíceps (mm)",
+  skinfold_triceps_mm: "Pliegue tríceps (mm)",
+  skinfold_subscapular_mm: "Pliegue subescapular (mm)",
+  skinfold_iliac_crest_mm: "Pliegue cresta ilíaca (mm)",
+  skinfold_supraspinal_mm: "Pliegue supraespinal (mm)",
+  skinfold_abdominal_mm: "Pliegue abdominal (mm)",
+  waist_cm: "Cintura (cm)",
+  hip_cm: "Cadera (cm)",
+  thigh_cm: "Muslo (cm)",
+  arm_flexed_cm: "Brazo contraído (cm)",
+};
+
+// change: nutrition-submodule fast-follow — same 3 scale-bounded groups as `/signos`'s
+// VitalTrend, so a visit's own chart reads the same way as the global trend view.
+const BODY_COMPOSITION_GROUP: VitalMetric[] = ["weight_kg", "body_fat_pct", "body_fat_kg", "muscle_mass_pct", "muscle_mass_kg"];
+const SKINFOLD_GROUP: VitalMetric[] = [
+  "skinfold_biceps_mm",
+  "skinfold_triceps_mm",
+  "skinfold_subscapular_mm",
+  "skinfold_iliac_crest_mm",
+  "skinfold_supraspinal_mm",
+  "skinfold_abdominal_mm",
 ];
+const CIRCUMFERENCE_GROUP: VitalMetric[] = ["waist_cm", "hip_cm", "thigh_cm", "arm_flexed_cm"];
 
 export type VisitReading = { id: string; metric: VitalMetric; valueNumeric: number; measuredAt: string };
 export type VisitPhoto = { id: string; storagePath: string; signedUrl: string | null };
 
+function toSeries(readings: VisitReading[], metric: VitalMetric): TrendSeries {
+  return {
+    key: metric,
+    label: METRIC_LABELS[metric],
+    points: readings
+      .filter((r) => r.metric === metric)
+      .sort((a, b) => a.measuredAt.localeCompare(b.measuredAt))
+      .map((r) => ({ measuredAt: r.measuredAt, value: r.valueNumeric })),
+  };
+}
+
 /**
- * Visit detail — trend chart of the visit's own linked readings, plus forms to add more metrics
- * or photos and delete existing photos (spec `health-nutrition-visits` "A Visit Is Editable After
- * Creation").
+ * Visit detail — trend charts of the visit's own linked readings, grouped the same way as
+ * `/signos`, plus photo management. The "add metrics" form only appears for a visit with ZERO
+ * readings (a legacy pre-`/nutricion` event being completed, spec `health-nutrition-visits`
+ * "Legacy Pre-Change Nutrition Events Are Visible as Completable Visits") — a visit that already
+ * has metrics never shows it again, since a later measurement is a new visit, not an edit to this
+ * one (live-testing feedback).
  */
 export function VisitDetail({ eventId, readings, photos }: { eventId: string; readings: VisitReading[]; photos: VisitPhoto[] }) {
   const [metricsState, metricsAction, metricsPending] = useActionState(addVisitMetricsAction, INITIAL_STATE);
   const [photosState, photosAction, photosPending] = useActionState(addVisitPhotosAction, INITIAL_STATE);
   const [deletePhotoState, deletePhotoAction, deletePhotoPending] = useActionState(deleteVisitPhotoAction, INITIAL_STATE);
 
-  const series: TrendSeries[] = METRICS.map((m) => ({
-    key: m.value,
-    label: m.label,
-    points: readings
-      .filter((r) => r.metric === m.value)
-      .sort((a, b) => a.measuredAt.localeCompare(b.measuredAt))
-      .map((r) => ({ measuredAt: r.measuredAt, value: r.valueNumeric })),
-  })).filter((s) => s.points.length > 0);
+  const hasAnyReading = readings.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
-      {series.length > 0 ? (
-        series.map((s) => (
-          <div key={s.key} className="flex flex-col gap-1">
-            <span className="text-sm font-medium">{s.label}</span>
-            <MetricTrendChart series={[s]} />
+      {hasAnyReading ? (
+        <>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Composición corporal</span>
+            <MetricTrendChart series={BODY_COMPOSITION_GROUP.map((m) => toSeries(readings, m))} />
           </div>
-        ))
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Pliegues cutáneos</span>
+            <MetricTrendChart series={SKINFOLD_GROUP.map((m) => toSeries(readings, m))} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Circunferencias</span>
+            <MetricTrendChart series={CIRCUMFERENCE_GROUP.map((m) => toSeries(readings, m))} />
+          </div>
+        </>
       ) : (
-        <p className="text-sm text-muted-foreground">Todavía no hay métricas en esta visita.</p>
+        <Card>
+          <CardHeader>
+            <CardTitle>Completar métricas de esta visita</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form action={metricsAction} className="flex flex-col gap-3">
+              <input type="hidden" name="eventId" value={eventId} />
+              <div className="flex flex-col gap-1">
+                <label htmlFor="completeMetricsMeasuredOn" className="text-sm font-medium">
+                  Fecha
+                </label>
+                <DatePicker id="completeMetricsMeasuredOn" name="measuredOn" defaultValue={today()} required />
+              </div>
+              {Object.entries(METRIC_LABELS).map(([metric, label]) => (
+                <div key={metric} className="flex flex-col gap-1">
+                  <label htmlFor={`completeMetric_${metric}`} className="text-xs text-muted-foreground">
+                    {label}
+                  </label>
+                  <Input id={`completeMetric_${metric}`} name={`metric_${metric}`} type="number" step="0.1" />
+                </div>
+              ))}
+              {metricsState.error && <p className="text-sm text-expense">{metricsState.error}</p>}
+              <Button type="submit" disabled={metricsPending}>
+                {metricsPending ? "Guardando…" : "Guardar métricas"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
       {photos.length > 0 && (
@@ -101,35 +160,6 @@ export function VisitDetail({ eventId, readings, photos }: { eventId: string; re
           </CardContent>
         </Card>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Agregar métricas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={metricsAction} className="flex flex-col gap-3">
-            <input type="hidden" name="eventId" value={eventId} />
-            <div className="flex flex-col gap-1">
-              <label htmlFor="addMetricsMeasuredOn" className="text-sm font-medium">
-                Fecha
-              </label>
-              <DatePicker id="addMetricsMeasuredOn" name="measuredOn" defaultValue={today()} required />
-            </div>
-            {METRICS.map((m) => (
-              <div key={m.value} className="flex flex-col gap-1">
-                <label htmlFor={`addMetric_${m.value}`} className="text-xs text-muted-foreground">
-                  {m.label}
-                </label>
-                <Input id={`addMetric_${m.value}`} name={`metric_${m.value}`} type="number" step="0.1" />
-              </div>
-            ))}
-            {metricsState.error && <p className="text-sm text-expense">{metricsState.error}</p>}
-            <Button type="submit" disabled={metricsPending}>
-              {metricsPending ? "Guardando…" : "Agregar métricas"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>

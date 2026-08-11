@@ -43,32 +43,39 @@ const METRIC_LABELS: Record<VitalMetric, string> = {
   arm_flexed_cm: "Brazo contraído (cm)",
 };
 
-/** Groups mixed readings into one chronological (ascending) series per metric — spec
- *  `health-vitals` "Vitals Render as a Trend" (chart, full history, no time-window truncation). */
-function groupByMetric(readings: VitalReading[]): TrendSeries[] {
-  const byMetric = new Map<VitalMetric, VitalReading[]>();
-  for (const reading of readings) {
-    const list = byMetric.get(reading.metric) ?? [];
-    list.push(reading);
-    byMetric.set(reading.metric, list);
-  }
+// change: nutrition-submodule fast-follow — live-testing feedback: mixing kg/mm/cm metrics on one
+// axis looks wrong, but the same UNIT group reads fine combined with color-coded lines. Three
+// bounded groups by comparable scale; the original 4 general vitals (BP/glucose/heart rate) stay
+// one chart each, unchanged, since they weren't part of this feedback.
+const BODY_COMPOSITION_GROUP: VitalMetric[] = ["weight_kg", "body_fat_pct", "body_fat_kg", "muscle_mass_pct", "muscle_mass_kg"];
+const SKINFOLD_GROUP: VitalMetric[] = [
+  "skinfold_biceps_mm",
+  "skinfold_triceps_mm",
+  "skinfold_subscapular_mm",
+  "skinfold_iliac_crest_mm",
+  "skinfold_supraspinal_mm",
+  "skinfold_abdominal_mm",
+];
+const CIRCUMFERENCE_GROUP: VitalMetric[] = ["waist_cm", "hip_cm", "thigh_cm", "arm_flexed_cm"];
+const GROUPED_METRICS = new Set<VitalMetric>([...BODY_COMPOSITION_GROUP, ...SKINFOLD_GROUP, ...CIRCUMFERENCE_GROUP]);
 
-  return Array.from(byMetric.entries()).map(([metric, entries]) => ({
+function toSeries(readings: VitalReading[], metric: VitalMetric): TrendSeries {
+  return {
     key: metric,
     label: METRIC_LABELS[metric],
-    points: [...entries]
+    points: readings
+      .filter((r) => r.metric === metric)
       .sort((a, b) => a.measuredAt.localeCompare(b.measuredAt))
       .map((r) => ({ measuredAt: r.measuredAt, value: r.valueNumeric })),
-  }));
+  };
 }
 
 const INITIAL_STATE: VitalFormState = { error: null };
 
 /**
- * One trend chart per metric with entries (spec `health-vitals` "Vitals Render as a Trend" —
- * change: nutrition-submodule, replaces the prior flat list), full history by default, plus a
- * compact manage/delete list below — deleting an individual reading is still possible, it just
- * isn't the primary view anymore.
+ * Grouped trend charts (spec `health-vitals` "Vitals Render as a Trend" — change:
+ * nutrition-submodule), full history by default, plus a compact manage/delete list below —
+ * deleting an individual reading is still possible, it just isn't the primary view anymore.
  */
 export function VitalTrend({ readings }: { readings: VitalReading[] }) {
   const [deleteState, deleteAction, deletePending] = useActionState(deleteVitalReadingAction, INITIAL_STATE);
@@ -83,14 +90,26 @@ export function VitalTrend({ readings }: { readings: VitalReading[] }) {
     );
   }
 
-  const series = groupByMetric(readings);
+  const otherMetrics = Array.from(new Set(readings.map((r) => r.metric))).filter((m) => !GROUPED_METRICS.has(m));
 
   return (
     <div className="flex flex-col gap-4">
-      {series.map((s) => (
-        <div key={s.key} className="flex flex-col gap-1">
-          <span className="text-sm font-medium">{s.label}</span>
-          <MetricTrendChart series={[s]} />
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Composición corporal</span>
+        <MetricTrendChart series={BODY_COMPOSITION_GROUP.map((m) => toSeries(readings, m))} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Pliegues cutáneos</span>
+        <MetricTrendChart series={SKINFOLD_GROUP.map((m) => toSeries(readings, m))} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Circunferencias</span>
+        <MetricTrendChart series={CIRCUMFERENCE_GROUP.map((m) => toSeries(readings, m))} />
+      </div>
+      {otherMetrics.map((m) => (
+        <div key={m} className="flex flex-col gap-1">
+          <span className="text-sm font-medium">{METRIC_LABELS[m]}</span>
+          <MetricTrendChart series={[toSeries(readings, m)]} />
         </div>
       ))}
 
