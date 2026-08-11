@@ -63,9 +63,11 @@ function CalendarDayCell({
       aria-label={cellAriaLabel(cell)}
       onClick={() => onSelectDate(cell.date)}
       className={cn(
-        "flex h-14 w-full flex-col items-center justify-center gap-0.5 rounded-card text-xs transition-colors duration-200 ease-out",
-        cell.inHorizon ? "hover:bg-accent" : "cursor-not-allowed text-muted-foreground/40",
-        selected && "bg-secondary text-secondary-foreground",
+        "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-xl border text-xs transition-colors duration-200 ease-out",
+        cell.inHorizon
+          ? "border-border bg-muted/60 hover:border-input"
+          : "cursor-not-allowed border-border/60 bg-muted/40 text-muted-foreground/40",
+        selected && "border-primary/50 bg-primary/10 text-secondary-foreground",
         cell.isToday && "font-semibold",
       )}
     >
@@ -97,7 +99,10 @@ export function CalendarGrid({ month, cells, selectedDate, onSelectDate }: Calen
   return (
     <div role="grid" aria-label="Calendario de proyección" className="grid grid-cols-7 gap-1">
       {WEEKDAY_HEADERS.map((label, index) => (
-        <div key={`header-${index}`} className="text-center text-xs font-medium text-muted-foreground">
+        <div
+          key={`header-${index}`}
+          className="rounded-full border border-border bg-muted/60 py-1.5 text-center text-xs font-medium text-muted-foreground"
+        >
           {label}
         </div>
       ))}
