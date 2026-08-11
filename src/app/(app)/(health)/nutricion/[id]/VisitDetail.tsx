@@ -40,9 +40,11 @@ const METRIC_LABELS: Record<VitalMetric, string> = {
   arm_flexed_cm: "Brazo contraído (cm)",
 };
 
-// change: nutrition-submodule fast-follow — same 3 scale-bounded groups as `/signos`'s
-// VitalTrend, so a visit's own chart reads the same way as the global trend view.
-const BODY_COMPOSITION_GROUP: VitalMetric[] = ["weight_kg", "body_fat_pct", "body_fat_kg", "muscle_mass_pct", "muscle_mass_kg"];
+// change: nutrition-submodule fast-follow — same scale-bounded groups as `/signos`'s VitalTrend,
+// so a visit's own chart reads the same way as the global trend view.
+const WEIGHT_GROUP: VitalMetric[] = ["weight_kg"];
+const FAT_GROUP: VitalMetric[] = ["body_fat_pct", "body_fat_kg"];
+const MUSCLE_GROUP: VitalMetric[] = ["muscle_mass_pct", "muscle_mass_kg"];
 const SKINFOLD_GROUP: VitalMetric[] = [
   "skinfold_biceps_mm",
   "skinfold_triceps_mm",
@@ -87,8 +89,16 @@ export function VisitDetail({ eventId, readings, photos }: { eventId: string; re
       {hasAnyReading ? (
         <>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Composición corporal</span>
-            <MetricTrendChart series={BODY_COMPOSITION_GROUP.map((m) => toSeries(readings, m))} />
+            <span className="text-sm font-medium">Peso</span>
+            <MetricTrendChart series={WEIGHT_GROUP.map((m) => toSeries(readings, m))} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Grasa</span>
+            <MetricTrendChart series={FAT_GROUP.map((m) => toSeries(readings, m))} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Músculo</span>
+            <MetricTrendChart series={MUSCLE_GROUP.map((m) => toSeries(readings, m))} />
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Pliegues cutáneos</span>

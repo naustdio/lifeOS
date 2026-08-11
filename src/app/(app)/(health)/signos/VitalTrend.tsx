@@ -43,11 +43,12 @@ const METRIC_LABELS: Record<VitalMetric, string> = {
   arm_flexed_cm: "Brazo contraído (cm)",
 };
 
-// change: nutrition-submodule fast-follow — live-testing feedback: mixing kg/mm/cm metrics on one
-// axis looks wrong, but the same UNIT group reads fine combined with color-coded lines. Three
-// bounded groups by comparable scale; the original 4 general vitals (BP/glucose/heart rate) stay
-// one chart each, unchanged, since they weren't part of this feedback.
-const BODY_COMPOSITION_GROUP: VitalMetric[] = ["weight_kg", "body_fat_pct", "body_fat_kg", "muscle_mass_pct", "muscle_mass_kg"];
+// change: nutrition-submodule fast-follow (2nd round) — live-testing: a 5-line "composición
+// corporal" chart mixed peso (kg, ~80) with grasa/músculo (%, 0-100) — reads better as Peso alone,
+// Grasa (%+kg) alone, Músculo (%+kg) alone. Pliegues/circunferencias were already fine grouped.
+const WEIGHT_GROUP: VitalMetric[] = ["weight_kg"];
+const FAT_GROUP: VitalMetric[] = ["body_fat_pct", "body_fat_kg"];
+const MUSCLE_GROUP: VitalMetric[] = ["muscle_mass_pct", "muscle_mass_kg"];
 const SKINFOLD_GROUP: VitalMetric[] = [
   "skinfold_biceps_mm",
   "skinfold_triceps_mm",
@@ -57,7 +58,13 @@ const SKINFOLD_GROUP: VitalMetric[] = [
   "skinfold_abdominal_mm",
 ];
 const CIRCUMFERENCE_GROUP: VitalMetric[] = ["waist_cm", "hip_cm", "thigh_cm", "arm_flexed_cm"];
-const GROUPED_METRICS = new Set<VitalMetric>([...BODY_COMPOSITION_GROUP, ...SKINFOLD_GROUP, ...CIRCUMFERENCE_GROUP]);
+const GROUPED_METRICS = new Set<VitalMetric>([
+  ...WEIGHT_GROUP,
+  ...FAT_GROUP,
+  ...MUSCLE_GROUP,
+  ...SKINFOLD_GROUP,
+  ...CIRCUMFERENCE_GROUP,
+]);
 
 function toSeries(readings: VitalReading[], metric: VitalMetric): TrendSeries {
   return {
@@ -95,8 +102,16 @@ export function VitalTrend({ readings }: { readings: VitalReading[] }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Composición corporal</span>
-        <MetricTrendChart series={BODY_COMPOSITION_GROUP.map((m) => toSeries(readings, m))} />
+        <span className="text-sm font-medium">Peso</span>
+        <MetricTrendChart series={WEIGHT_GROUP.map((m) => toSeries(readings, m))} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Grasa</span>
+        <MetricTrendChart series={FAT_GROUP.map((m) => toSeries(readings, m))} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Músculo</span>
+        <MetricTrendChart series={MUSCLE_GROUP.map((m) => toSeries(readings, m))} />
       </div>
       <div className="flex flex-col gap-1">
         <span className="text-sm font-medium">Pliegues cutáneos</span>

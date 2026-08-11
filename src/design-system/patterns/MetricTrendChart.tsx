@@ -1,7 +1,8 @@
 "use client";
 
 import { defineChart, lineY } from "@tanstack/charts";
-import { Chart } from "@tanstack/react-charts";
+import { tooltip } from "@tanstack/charts/tooltip";
+import { Chart } from "@tanstack/react-charts/tooltip";
 import { scaleLinear, scaleTime } from "d3-scale";
 import { Card, CardContent } from "@/design-system/ui/card";
 
@@ -19,6 +20,9 @@ import { Card, CardContent } from "@/design-system/ui/card";
  * combined; callers are expected to only group series that share a comparable unit/range). Colors
  * come from a fixed `--chart-series-N` token rotation (`tokens/semantic.css`), not the chart
  * library's automatic categorical assignment, so the manual legend below always matches exactly.
+ *
+ * Hover/focus tooltip via `@tanstack/charts/tooltip`'s extension (second live-testing round) —
+ * shows the exact date + value of the point under the cursor.
  */
 export type TrendPoint = { measuredAt: string; value: number };
 export type TrendSeries = { key: string; label: string; points: TrendPoint[] };
@@ -38,6 +42,8 @@ const SERIES_COLORS = [
   "var(--chart-series-6)",
 ];
 
+const dateTickFormat = (d: Date) => d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+
 export function MetricTrendChart({ series, height = 220, emptyLabel = "Sin datos todavía." }: MetricTrendChartProps) {
   const nonEmptySeries = series.filter((s) => s.points.length > 0);
 
@@ -52,9 +58,13 @@ export function MetricTrendChart({ series, height = 220, emptyLabel = "Sin datos
   }
 
   const definition = defineChart({
+    // `key`/`point.key` on the tooltip's ChartPoint is the library's own internal reconciliation
+    // id, NOT this mark's `key` channel value — so the series identity for the tooltip has to
+    // travel through the DATUM itself (`seriesLabel`), not be looked up from a point key.
     marks: nonEmptySeries.map((s, i) => {
       const color = SERIES_COLORS[i % SERIES_COLORS.length];
-      return lineY(s.points, {
+      const points = s.points.map((p) => ({ ...p, seriesLabel: s.label }));
+      return lineY(points, {
         key: () => s.key,
         stroke: () => color,
         x: (p: TrendPoint) => new Date(p.measuredAt),
@@ -66,14 +76,39 @@ export function MetricTrendChart({ series, height = 220, emptyLabel = "Sin datos
     // materialized mark data; a pre-built instance keeps whatever domain it was constructed with,
     // which for `scaleLinear()`/`scaleTime()` with no `.domain()` call is d3's raw default
     // ([0,1] / [2000-01-01, 2000-01-02]) — the exact empty-looking axes this was producing.
-    x: { scale: scaleTime, nice: true },
-    y: { scale: scaleLinear, nice: true },
+    // A dates-only tick format (no time-of-day) — readings only ever carry a DATE, never a real
+    // time, so an hour-level tick ("06 AM") is a display artifact of a narrow inferred domain,
+    // not real data.
+    x: { scale: scaleTime, nice: true, grid: true, axis: { ticks: { format: dateTickFormat } } },
+    y: { scale: scaleLinear, nice: true, grid: true },
+    tooltip,
   });
 
   return (
     <Card>
       <CardContent className="flex flex-col gap-2 py-4">
-        <Chart definition={definition} ariaLabel={nonEmptySeries.map((s) => s.label).join(", ")} height={height} />
+        <Chart
+          definition={definition}
+          ariaLabel={nonEmptySeries.map((s) => s.label).join(", ")}
+          height={height}
+          renderTooltipBody={({ points, defaultBody }) => {
+            const point = points[0] as { datum: TrendPoint & { seriesLabel: string } } | undefined;
+            if (!point) return defaultBody;
+            const date = new Date(point.datum.measuredAt).toLocaleDateString("es-MX", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+            return (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-medium text-muted-foreground">{date}</span>
+                <span className="text-sm font-medium">
+                  {point.datum.seriesLabel}: {point.datum.value}
+                </span>
+              </div>
+            );
+          }}
+        />
         {nonEmptySeries.length > 1 && (
           <div className="flex flex-wrap gap-x-4 gap-y-1 px-2">
             {nonEmptySeries.map((s, i) => (
