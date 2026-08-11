@@ -17,10 +17,10 @@ export default async function NutricionVisitPage({ params }: { params: Promise<{
   const event = await getEventById(supabase, spaceId, id);
   if (!event || event.eventType !== "nutrition") notFound();
 
-  const [readings, photos] = await Promise.all([
-    listVitalReadings(supabase, spaceId, undefined, { eventId: id }),
-    listVisitPhotos(supabase, id),
-  ]);
+  // Full unfiltered history (not just this visit's own readings) so the visit's own values can
+  // render highlighted against the metric's full trend (nutrition-submodule fast-follow, 3rd
+  // live-testing round) — `VisitDetail` derives which readings are "this visit's" from `eventId`.
+  const [readings, photos] = await Promise.all([listVitalReadings(supabase, spaceId), listVisitPhotos(supabase, id)]);
 
   const photosWithUrls = await Promise.all(
     photos.map(async (photo) => ({

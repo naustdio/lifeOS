@@ -23,8 +23,15 @@ import { Card, CardContent } from "@/design-system/ui/card";
  *
  * Hover/focus tooltip via `@tanstack/charts/tooltip`'s extension (second live-testing round) —
  * shows the exact date + value of the point under the cursor.
+ *
+ * A point may carry `current: true` (third live-testing round, visit-detail-only feature) to
+ * highlight "this visit's own reading" against its metric's full history: when ANY point in a
+ * series is flagged, that series renders as two marks — the full history as a thin muted
+ * reference line, and only the `current` point(s) in the series' real color with a dot. A series
+ * with no flagged points renders exactly as before (single colored line, unchanged for
+ * `/signos`'s global view, which has no "current visit" concept).
  */
-export type TrendPoint = { measuredAt: string; value: number };
+export type TrendPoint = { measuredAt: string; value: number; current?: boolean };
 export type TrendSeries = { key: string; label: string; points: TrendPoint[] };
 
 export type MetricTrendChartProps = {
@@ -61,16 +68,41 @@ export function MetricTrendChart({ series, height = 220, emptyLabel = "Sin datos
     // `key`/`point.key` on the tooltip's ChartPoint is the library's own internal reconciliation
     // id, NOT this mark's `key` channel value — so the series identity for the tooltip has to
     // travel through the DATUM itself (`seriesLabel`), not be looked up from a point key.
-    marks: nonEmptySeries.map((s, i) => {
+    marks: nonEmptySeries.flatMap((s, i) => {
       const color = SERIES_COLORS[i % SERIES_COLORS.length];
       const points = s.points.map((p) => ({ ...p, seriesLabel: s.label }));
-      return lineY(points, {
-        key: () => s.key,
-        stroke: () => color,
-        x: (p: TrendPoint) => new Date(p.measuredAt),
-        y: (p: TrendPoint) => p.value,
-        points: true,
-      });
+      const hasCurrentFlag = points.some((p) => p.current);
+
+      if (!hasCurrentFlag) {
+        return [
+          lineY(points, {
+            key: () => s.key,
+            stroke: () => color,
+            x: (p: TrendPoint) => new Date(p.measuredAt),
+            y: (p: TrendPoint) => p.value,
+            points: true,
+          }),
+        ];
+      }
+
+      const currentPoints = points.filter((p) => p.current);
+      return [
+        lineY(points, {
+          key: () => `${s.key}-history`,
+          stroke: () => "var(--muted-foreground)",
+          strokeWidth: 1,
+          x: (p: TrendPoint) => new Date(p.measuredAt),
+          y: (p: TrendPoint) => p.value,
+        }),
+        lineY(currentPoints, {
+          key: () => `${s.key}-current`,
+          stroke: () => color,
+          strokeWidth: 2.5,
+          x: (p: TrendPoint) => new Date(p.measuredAt),
+          y: (p: TrendPoint) => p.value,
+          points: true,
+        }),
+      ];
     }),
     // Pass the SCALE FACTORY (not a called instance) — a factory infers its domain from the
     // materialized mark data; a pre-built instance keeps whatever domain it was constructed with,

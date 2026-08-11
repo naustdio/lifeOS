@@ -55,34 +55,39 @@ const SKINFOLD_GROUP: VitalMetric[] = [
 ];
 const CIRCUMFERENCE_GROUP: VitalMetric[] = ["waist_cm", "hip_cm", "thigh_cm", "arm_flexed_cm"];
 
-export type VisitReading = { id: string; metric: VitalMetric; valueNumeric: number; measuredAt: string };
+export type VisitReading = { id: string; metric: VitalMetric; valueNumeric: number; measuredAt: string; eventId: string | null };
 export type VisitPhoto = { id: string; storagePath: string; signedUrl: string | null };
 
-function toSeries(readings: VisitReading[], metric: VitalMetric): TrendSeries {
+// change: nutrition-submodule fast-follow (3rd round) — `readings` is now the household's FULL
+// history for every metric, not just this visit's own. Each point flags `current` when it
+// belongs to THIS visit's `eventId`, so `MetricTrendChart` can render it highlighted against the
+// muted full-history line (live-testing ask: "poder comparar los registros pasados... con el
+// color se ve el registro de esa consulta").
+function toSeries(eventId: string, readings: VisitReading[], metric: VitalMetric): TrendSeries {
   return {
     key: metric,
     label: METRIC_LABELS[metric],
     points: readings
       .filter((r) => r.metric === metric)
       .sort((a, b) => a.measuredAt.localeCompare(b.measuredAt))
-      .map((r) => ({ measuredAt: r.measuredAt, value: r.valueNumeric })),
+      .map((r) => ({ measuredAt: r.measuredAt, value: r.valueNumeric, current: r.eventId === eventId })),
   };
 }
 
 /**
- * Visit detail — trend charts of the visit's own linked readings, grouped the same way as
- * `/signos`, plus photo management. The "add metrics" form only appears for a visit with ZERO
- * readings (a legacy pre-`/nutricion` event being completed, spec `health-nutrition-visits`
- * "Legacy Pre-Change Nutrition Events Are Visible as Completable Visits") — a visit that already
- * has metrics never shows it again, since a later measurement is a new visit, not an edit to this
- * one (live-testing feedback).
+ * Visit detail — trend charts of this visit's own readings highlighted against the metric's full
+ * history, grouped the same way as `/signos`, plus photo management. The "add metrics" form only
+ * appears for a visit with ZERO of ITS OWN readings (a legacy pre-`/nutricion` event being
+ * completed, spec `health-nutrition-visits` "Legacy Pre-Change Nutrition Events Are Visible as
+ * Completable Visits") — a visit that already has metrics never shows it again, since a later
+ * measurement is a new visit, not an edit to this one (live-testing feedback).
  */
 export function VisitDetail({ eventId, readings, photos }: { eventId: string; readings: VisitReading[]; photos: VisitPhoto[] }) {
   const [metricsState, metricsAction, metricsPending] = useActionState(addVisitMetricsAction, INITIAL_STATE);
   const [photosState, photosAction, photosPending] = useActionState(addVisitPhotosAction, INITIAL_STATE);
   const [deletePhotoState, deletePhotoAction, deletePhotoPending] = useActionState(deleteVisitPhotoAction, INITIAL_STATE);
 
-  const hasAnyReading = readings.length > 0;
+  const hasAnyReading = readings.some((r) => r.eventId === eventId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,23 +95,23 @@ export function VisitDetail({ eventId, readings, photos }: { eventId: string; re
         <>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Peso</span>
-            <MetricTrendChart series={WEIGHT_GROUP.map((m) => toSeries(readings, m))} />
+            <MetricTrendChart series={WEIGHT_GROUP.map((m) => toSeries(eventId, readings, m))} />
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Grasa</span>
-            <MetricTrendChart series={FAT_GROUP.map((m) => toSeries(readings, m))} />
+            <MetricTrendChart series={FAT_GROUP.map((m) => toSeries(eventId, readings, m))} />
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Músculo</span>
-            <MetricTrendChart series={MUSCLE_GROUP.map((m) => toSeries(readings, m))} />
+            <MetricTrendChart series={MUSCLE_GROUP.map((m) => toSeries(eventId, readings, m))} />
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Pliegues cutáneos</span>
-            <MetricTrendChart series={SKINFOLD_GROUP.map((m) => toSeries(readings, m))} />
+            <MetricTrendChart series={SKINFOLD_GROUP.map((m) => toSeries(eventId, readings, m))} />
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Circunferencias</span>
-            <MetricTrendChart series={CIRCUMFERENCE_GROUP.map((m) => toSeries(readings, m))} />
+            <MetricTrendChart series={CIRCUMFERENCE_GROUP.map((m) => toSeries(eventId, readings, m))} />
           </div>
         </>
       ) : (
