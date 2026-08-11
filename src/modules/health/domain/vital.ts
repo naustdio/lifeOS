@@ -43,7 +43,16 @@ export function isValidVitalMetric(value: string): value is VitalMetric {
   return (VITAL_METRICS as readonly string[]).includes(value);
 }
 
-export type VitalEntry = { metric: VitalMetric; valueNumeric: number; measuredAt: string };
+// change: nutrition-submodule — optional link to the nutrition-visit `health.events` row that
+// captured this reading (migration `20260811090037_health_nutrition_visits.sql`). `undefined`
+// for readings entered standalone via `/signos`, matching this project's forward-only,
+// no-backfill convention for additive schema widenings.
+export type VitalEntry = {
+  metric: VitalMetric;
+  valueNumeric: number;
+  measuredAt: string;
+  eventId?: string;
+};
 
 /** Chronological (ascending) ordering for trend rendering — spec `health-vitals` "Vitals Render
  *  as a Trend": entries must render "in chronological order suitable for trend display", not a

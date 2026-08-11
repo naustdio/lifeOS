@@ -130,6 +130,16 @@ describe("health.vital_readings (mirrors health_schema.sql CHECKs)", () => {
     ];
     expect(sortForTrend(entries).map((e) => e.measuredAt)).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
   });
+
+  it("carries an optional eventId round-trip without disturbing chronological sort (nutrition-submodule)", () => {
+    const entries = [
+      { metric: "weight_kg" as const, valueNumeric: 80, measuredAt: "2026-03-01", eventId: "visit-2" },
+      { metric: "weight_kg" as const, valueNumeric: 78, measuredAt: "2026-01-01" },
+    ];
+    const sorted = sortForTrend(entries);
+    expect(sorted[0].eventId).toBeUndefined();
+    expect(sorted[1].eventId).toBe("visit-2");
+  });
 });
 
 describe("health.profile_facts (mirrors health_schema.sql CHECKs + unique index)", () => {

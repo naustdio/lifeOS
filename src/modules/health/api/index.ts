@@ -40,6 +40,21 @@ export {
   type VitalReadingListItem,
 } from "../data/vital-repository";
 
+// change: nutrition-submodule — photo repository for `health.nutrition_visit_photos` + the
+// private `health-nutrition-photos` bucket. Owner-only, independent of the event's visibility
+// (design.md Decision 1); re-exported here for the same Gate A reason as every other `data/`
+// repository in this barrel.
+export {
+  NUTRITION_PHOTO_BUCKET,
+  buildPhotoPath,
+  listVisitPhotos,
+  insertPhoto,
+  deletePhoto,
+  removeObjects,
+  createPhotoSignedUrl,
+  type NutritionVisitPhoto,
+} from "../data/nutrition-photo-repository";
+
 export {
   listProfileFacts,
   createProfileFact,
