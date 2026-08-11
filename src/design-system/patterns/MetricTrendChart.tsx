@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { defineChart, lineY } from "@tanstack/charts";
 import { tooltip } from "@tanstack/charts/tooltip";
 import { Chart } from "@tanstack/react-charts/tooltip";
@@ -20,6 +21,8 @@ import { Card, CardContent } from "@/design-system/ui/card";
  * combined; callers are expected to only group series that share a comparable unit/range). Colors
  * come from a fixed `--chart-series-N` token rotation (`tokens/semantic.css`), not the chart
  * library's automatic categorical assignment, so the manual legend below always matches exactly.
+ * The legend is CLICKABLE — toggles that series out of the chart (4th live-testing round: a
+ * 6-line chart with close values is hard to read; isolating one line at a time helps).
  *
  * Hover/focus tooltip via `@tanstack/charts/tooltip`'s extension (second live-testing round) —
  * shows the exact date + value of the point under the cursor.
@@ -49,10 +52,15 @@ const SERIES_COLORS = [
   "var(--chart-series-6)",
 ];
 
-const dateTickFormat = (d: Date) => d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+// Includes the year — real household data can span multiple years (e.g. a first consultation
+// long before this feature shipped), and a day+month-only format collapsed every Jan-1 tick
+// across different years into an identical, confusing "01-ene" label (4th live-testing round).
+const dateTickFormat = (d: Date) => d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "2-digit" });
 
 export function MetricTrendChart({ series, height = 220, emptyLabel = "Sin datos todavía." }: MetricTrendChartProps) {
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
   const nonEmptySeries = series.filter((s) => s.points.length > 0);
+  const visibleSeries = nonEmptySeries.filter((s) => !hiddenKeys.has(s.key));
 
   if (nonEmptySeries.length === 0) {
     return (
@@ -64,12 +72,14 @@ export function MetricTrendChart({ series, height = 220, emptyLabel = "Sin datos
     );
   }
 
+  const colorByKey = new Map(nonEmptySeries.map((s, i) => [s.key, SERIES_COLORS[i % SERIES_COLORS.length]]));
+
   const definition = defineChart({
     // `key`/`point.key` on the tooltip's ChartPoint is the library's own internal reconciliation
     // id, NOT this mark's `key` channel value — so the series identity for the tooltip has to
     // travel through the DATUM itself (`seriesLabel`), not be looked up from a point key.
-    marks: nonEmptySeries.flatMap((s, i) => {
-      const color = SERIES_COLORS[i % SERIES_COLORS.length];
+    marks: visibleSeries.flatMap((s) => {
+      const color = colorByKey.get(s.key)!;
       const points = s.points.map((p) => ({ ...p, seriesLabel: s.label }));
       const hasCurrentFlag = points.some((p) => p.current);
 
@@ -119,40 +129,64 @@ export function MetricTrendChart({ series, height = 220, emptyLabel = "Sin datos
   return (
     <Card>
       <CardContent className="flex flex-col gap-2 py-4">
-        <Chart
-          definition={definition}
-          ariaLabel={nonEmptySeries.map((s) => s.label).join(", ")}
-          height={height}
-          renderTooltipBody={({ points, defaultBody }) => {
-            const point = points[0] as { datum: TrendPoint & { seriesLabel: string } } | undefined;
-            if (!point) return defaultBody;
-            const date = new Date(point.datum.measuredAt).toLocaleDateString("es-MX", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            });
-            return (
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium text-muted-foreground">{date}</span>
-                <span className="text-sm font-medium">
-                  {point.datum.seriesLabel}: {point.datum.value}
-                </span>
-              </div>
-            );
-          }}
-        />
+        {visibleSeries.length > 0 ? (
+          <Chart
+            definition={definition}
+            ariaLabel={visibleSeries.map((s) => s.label).join(", ")}
+            height={height}
+            renderTooltipBody={({ points, defaultBody }) => {
+              const point = points[0] as { datum: TrendPoint & { seriesLabel: string } } | undefined;
+              if (!point) return defaultBody;
+              const date = new Date(point.datum.measuredAt).toLocaleDateString("es-MX", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              });
+              return (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs font-medium text-muted-foreground">{date}</span>
+                  <span className="text-sm font-medium">
+                    {point.datum.seriesLabel}: {point.datum.value}
+                  </span>
+                </div>
+              );
+            }}
+          />
+        ) : (
+          <p className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+            Todas las líneas están ocultas.
+          </p>
+        )}
         {nonEmptySeries.length > 1 && (
           <div className="flex flex-wrap gap-x-4 gap-y-1 px-2">
-            {nonEmptySeries.map((s, i) => (
-              <span key={s.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: SERIES_COLORS[i % SERIES_COLORS.length] }}
-                  aria-hidden
-                />
-                {s.label}
-              </span>
-            ))}
+            {nonEmptySeries.map((s) => {
+              const hidden = hiddenKeys.has(s.key);
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() =>
+                    setHiddenKeys((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(s.key)) {
+                        next.delete(s.key);
+                      } else {
+                        next.add(s.key);
+                      }
+                      return next;
+                    })
+                  }
+                  className={`flex items-center gap-1.5 text-xs ${hidden ? "text-muted-foreground/50" : "text-muted-foreground"}`}
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: hidden ? "var(--muted-foreground)" : colorByKey.get(s.key) }}
+                    aria-hidden
+                  />
+                  <span className={hidden ? "line-through" : undefined}>{s.label}</span>
+                </button>
+              );
+            })}
           </div>
         )}
       </CardContent>

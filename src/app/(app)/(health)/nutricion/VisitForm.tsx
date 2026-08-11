@@ -135,7 +135,7 @@ export function VisitForm({ accounts, categories }: { accounts: AccountOption[];
             </div>
           </details>
 
-          <details className={SECTION_CLASS}>
+          <details open className={SECTION_CLASS}>
             <summary className="text-sm font-medium">Fotos de avance</summary>
             <div className="mt-3 flex flex-col gap-1">
               <label htmlFor="visitPhotos" className="text-sm font-medium">

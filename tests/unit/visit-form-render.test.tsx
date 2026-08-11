@@ -41,7 +41,7 @@ describe("VisitForm — smoke render (nutrition-submodule)", () => {
     expect(screen.getByLabelText("Nutriólogo")).toBeInTheDocument();
   });
 
-  it("the metric grid and photo input live inside their own collapsed sections", () => {
+  it("the metric grid lives inside its own collapsed section; photos is open by default", () => {
     render(<VisitForm accounts={ACCOUNTS} categories={CATEGORIES} />);
     fireEvent.click(screen.getByRole("button", { name: "+ Nueva visita" }));
 
@@ -49,7 +49,9 @@ describe("VisitForm — smoke render (nutrition-submodule)", () => {
     expect(screen.getByLabelText("Peso (kg)")).toBeInTheDocument();
     expect(screen.getByLabelText("Grasa (%)")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Fotos de avance"));
+    // change: nutrition-submodule fast-follow (4th round) — "Fotos de avance" opens expanded by
+    // default (live-testing: repeatedly reported as "can't add photos" — the real cause was this
+    // section being collapsed and easy to miss, not a broken upload).
     expect(screen.getByLabelText(/Privadas, máx\. 6/)).toBeInTheDocument();
   });
 
@@ -68,7 +70,6 @@ describe("VisitForm — smoke render (nutrition-submodule)", () => {
   it("surfaces a client-side warning past the 6-file cap", () => {
     render(<VisitForm accounts={ACCOUNTS} categories={CATEGORIES} />);
     fireEvent.click(screen.getByRole("button", { name: "+ Nueva visita" }));
-    fireEvent.click(screen.getByText("Fotos de avance"));
 
     const input = screen.getByLabelText(/Privadas, máx\. 6/) as HTMLInputElement;
     const files = Array.from({ length: 7 }, (_, i) => new File(["x"], `p${i}.jpg`, { type: "image/jpeg" }));
