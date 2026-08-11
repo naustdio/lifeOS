@@ -1,9 +1,10 @@
 "use client";
 
 import { Repeat } from "lucide-react";
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { EmptyState } from "@/design-system/patterns/EmptyState";
 import { RecurringRow } from "@/design-system/patterns/RecurringRow";
+import { RowActionMenu } from "@/design-system/patterns/RowActionMenu";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent } from "@/design-system/ui/card";
 import type { BudgetProgressItem } from "@/modules/finance/api/budget-evaluation";
@@ -169,6 +170,54 @@ function RecurringRowWithActions({
   const isTransfer = definition.type === "transfer";
   const originName = accounts.find((a) => a.id === definition.accountId)?.name ?? "";
   const destinationName = accounts.find((a) => a.id === definition.toAccountId)?.name ?? "";
+  const isInstallment = definition.installmentsRemaining != null;
+
+  const menuItems = [
+    ...(definition.active
+      ? [
+          { label: "Confirmar", onClick: onConfirm },
+          ...(!isInstallment
+            ? [
+                {
+                  label: "Omitir",
+                  disabled: discardPending,
+                  onClick: () => {
+                    const formData = new FormData();
+                    formData.set("recurringId", definition.id);
+                    startTransition(() => discardAction(formData));
+                  },
+                },
+              ]
+            : []),
+        ]
+      : []),
+    {
+      label: definition.active ? "Pausar" : "Reanudar",
+      disabled: activePending,
+      onClick: () => {
+        const formData = new FormData();
+        formData.set("id", definition.id);
+        formData.set("active", String(!definition.active));
+        formData.set("currentNextDueDate", definition.nextDueDate);
+        formData.set("frequency", definition.frequency);
+        startTransition(() => activeAction(formData));
+      },
+    },
+    {
+      label: isInstallment ? "Pagar antes de tiempo" : "Eliminar",
+      destructive: true,
+      disabled: deletePending,
+      onClick: () => {
+        const confirmMessage = isInstallment
+          ? `¿Dar por pagados los ${definition.installmentsRemaining} pagos restantes? No se registrarán más cargos de esta compra a meses; los pagos ya hechos se conservan en el historial.`
+          : "¿Eliminar esta recurrente? Sus transacciones ya registradas se conservan en el historial.";
+        if (!window.confirm(confirmMessage)) return;
+        const formData = new FormData();
+        formData.set("id", definition.id);
+        startTransition(() => deleteAction(formData));
+      },
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-2 py-1">
@@ -178,56 +227,16 @@ function RecurringRowWithActions({
         frequency={definition.frequency}
         daysOverdue={daysOverdue}
         paused={!definition.active}
-        onConfirm={onConfirm}
-        onDiscard={() => {
-          const formData = new FormData();
-          formData.set("recurringId", definition.id);
-          discardAction(formData);
-        }}
-        discardPending={discardPending}
         installmentsRemaining={definition.installmentsRemaining}
         installmentTotal={definition.installmentTotal}
         isSubscription={definition.isSubscription}
+        rowActions={<RowActionMenu items={menuItems} />}
       />
       {isTransfer && (
         <p className="pl-12 text-xs text-muted-foreground">
           {originName} → {destinationName}
         </p>
       )}
-      <div className="flex items-center gap-2 pl-12">
-        <form
-          action={(formData) => {
-            formData.set("id", definition.id);
-            formData.set("active", String(!definition.active));
-            formData.set("currentNextDueDate", definition.nextDueDate);
-            formData.set("frequency", definition.frequency);
-            activeAction(formData);
-          }}
-        >
-          <Button type="submit" variant="ghost" size="sm" disabled={activePending}>
-            {definition.active ? "Pausar" : "Reanudar"}
-          </Button>
-        </form>
-        <form
-          action={(formData) => {
-            formData.set("id", definition.id);
-            deleteAction(formData);
-          }}
-          onSubmit={(event) => {
-            const confirmMessage =
-              definition.installmentsRemaining != null
-                ? `¿Dar por pagados los ${definition.installmentsRemaining} pagos restantes? No se registrarán más cargos de esta compra a meses; los pagos ya hechos se conservan en el historial.`
-                : "¿Eliminar esta recurrente? Sus transacciones ya registradas se conservan en el historial.";
-            if (!window.confirm(confirmMessage)) {
-              event.preventDefault();
-            }
-          }}
-        >
-          <Button type="submit" variant="ghost" size="sm" disabled={deletePending}>
-            {definition.installmentsRemaining != null ? "Pagar antes de tiempo" : "Eliminar"}
-          </Button>
-        </form>
-      </div>
       {discardState.error && <p className="text-xs text-expense">{discardState.error}</p>}
       {activeState.error && <p className="text-xs text-expense">{activeState.error}</p>}
       {deleteState.error && <p className="text-xs text-expense">{deleteState.error}</p>}

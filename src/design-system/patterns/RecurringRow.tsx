@@ -1,6 +1,5 @@
 import { Repeat } from "lucide-react";
 import * as React from "react";
-import { Button } from "../ui/button";
 import { cn } from "../ui/utils";
 
 const FREQUENCY_LABELS: Record<string, string> = {
@@ -17,18 +16,19 @@ export interface RecurringRowProps extends React.HTMLAttributes<HTMLDivElement> 
   /** Whole days overdue. 0 = due today. Ignored when `paused`. */
   daysOverdue: number;
   paused?: boolean;
-  onConfirm?: () => void;
-  onDiscard?: () => void;
-  confirmPending?: boolean;
-  discardPending?: boolean;
   /** Set only for a bounded installment-purchase definition (finance-installment-recurring):
-   *  occurrences left to post / the fixed total. Hides "Omitir" — skipping a scheduled debt
-   *  installment isn't a real option the way skipping a discretionary expense is. */
+   *  occurrences left to post / the fixed total. Drives the meta-line "· Quedan X de Y pagos"
+   *  suffix and the caller's own action-menu wording (this component renders no buttons itself). */
   installmentsRemaining?: number | null;
   installmentTotal?: number | null;
-  /** Plain boolean marker, no provider/logo/catalog (change: finance-subscriptions). Appends
-   *  "· Suscripción" to the meta line — same mechanism `installmentsRemaining` already uses. */
+  /** Plain boolean marker, no provider/logo/catalog (change: finance-subscriptions). Renders as
+   *  its own non-truncating chip under the amount — the meta line already truncates on long
+   *  descriptions, so appending it there risked hiding the one thing this flag exists to show. */
   isSubscription?: boolean;
+  /** Every row action (Confirmar/Omitir/Pausar/Eliminar) collapsed behind a single `RowActionMenu`
+   *  slot — the description/meta text needs the width, so this row renders no inline buttons of
+   *  its own; the caller owns the full action set. */
+  rowActions?: React.ReactNode;
 }
 
 function dueLabel(daysOverdue: number): string {
@@ -42,9 +42,10 @@ function dueLabel(daysOverdue: number): string {
 
 /**
  * Row for a recurring expense definition (design.md §9, change: finance-recurring R-012). Not
- * `TransactionRow`: it renders a due/overdue state, a paused state, a frequency label, and two
- * inline actions (`Confirmar`/`Omitir`) — a shape `TransactionRow` (used by Home and
- * Movimientos) does not have.
+ * `TransactionRow`: it renders a due/overdue state, a paused state, and a frequency label — a
+ * shape `TransactionRow` (used by Home and Movimientos) does not have. All actions live behind
+ * the caller-supplied `rowActions` menu (change: finance-recurring-row-actions) so the
+ * description/meta text column keeps its width instead of competing with inline buttons.
  */
 export const RecurringRow = React.forwardRef<HTMLDivElement, RecurringRowProps>(
   (
@@ -54,13 +55,10 @@ export const RecurringRow = React.forwardRef<HTMLDivElement, RecurringRowProps>(
       frequency,
       daysOverdue,
       paused,
-      onConfirm,
-      onDiscard,
-      confirmPending,
-      discardPending,
       installmentsRemaining,
       installmentTotal,
       isSubscription,
+      rowActions,
       className,
       ...props
     },
@@ -82,22 +80,17 @@ export const RecurringRow = React.forwardRef<HTMLDivElement, RecurringRowProps>(
           <span className={cn("truncate text-xs", !paused && daysOverdue > 0 ? "text-expense" : "text-muted-foreground")}>
             {paused ? "En pausa" : dueLabel(daysOverdue)} · {FREQUENCY_LABELS[frequency] ?? frequency}
             {isInstallment && ` · Quedan ${installmentsRemaining} de ${installmentTotal} pagos`}
-            {isSubscription && " · Suscripción"}
           </span>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="text-sm font-medium">{formattedAmount}</span>
-          {!paused && (
-            <div className="flex gap-1">
-              {!isInstallment && (
-                <Button type="button" size="sm" variant="ghost" onClick={onDiscard} disabled={discardPending}>
-                  Omitir
-                </Button>
-              )}
-              <Button type="button" size="sm" onClick={onConfirm} disabled={confirmPending}>
-                Confirmar
-              </Button>
-            </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{formattedAmount}</span>
+            {rowActions}
+          </div>
+          {isSubscription && (
+            <span className="rounded-pill bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+              Suscripción
+            </span>
           )}
         </div>
       </div>

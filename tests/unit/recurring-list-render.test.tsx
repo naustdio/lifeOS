@@ -127,6 +127,8 @@ describe("RecurringList — smoke render (R-022)", () => {
     expect(screen.getByText(/En pausa/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Confirmar" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Omitir" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Más acciones" }));
     expect(screen.getByRole("button", { name: "Reanudar" })).toBeInTheDocument();
   });
 
@@ -152,6 +154,8 @@ describe("RecurringList — smoke render (R-022)", () => {
     render(<RecurringList definitions={definitions} dueItems={[]} accounts={ACCOUNTS} categories={CATEGORIES} budgets={[]} />);
 
     expect(screen.getByText(/Quedan 2 de 4 pagos/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Más acciones" }));
     expect(screen.queryByRole("button", { name: "Omitir" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Confirmar" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pagar antes de tiempo" })).toBeInTheDocument();
@@ -161,11 +165,12 @@ describe("RecurringList — smoke render (R-022)", () => {
   /**
    * Closes a real spec/test coverage gap flagged by sdd-verify (finance-subscriptions,
    * finding C2): every existing fixture hardcoded `isSubscription: false`, so the
-   * `isSubscription && " · Suscripción"` branch in `RecurringRow` (RecurringRow.tsx:85) was
-   * never exercised by any test. Spec requires `RecurringList` to render a visual indicator
-   * on any definition where the flag is `true`.
+   * `isSubscription` branch in `RecurringRow` (its own non-truncating "Suscripción" chip,
+   * separate from the meta-line text since that line already truncates) was never exercised by
+   * any test. Spec requires `RecurringList` to render a visual indicator on any definition where
+   * the flag is `true`.
    */
-  it("a subscription definition renders the '· Suscripción' badge", () => {
+  it("a subscription definition renders the 'Suscripción' badge", () => {
     const definitions = [
       {
         id: "rec-7",
@@ -186,17 +191,17 @@ describe("RecurringList — smoke render (R-022)", () => {
 
     render(<RecurringList definitions={definitions} dueItems={[]} accounts={ACCOUNTS} categories={CATEGORIES} budgets={[]} />);
 
-    expect(screen.getByText(/· Suscripción/)).toBeInTheDocument();
+    expect(screen.getByText("Suscripción")).toBeInTheDocument();
   });
 
   /**
    * Closes a real spec/test coverage gap flagged by sdd-verify (finance-subscriptions, finding
    * C2 — scenario 2.3 "Unmarked definitions show no indicator"). The positive-branch test above
    * proves the badge renders when `isSubscription: true`; nothing previously asserted its
-   * absence, so deleting the `isSubscription && " · Suscripción"` guard in `RecurringRow.tsx`
-   * (making the badge always render) would still leave the whole suite green.
+   * absence, so deleting the `isSubscription &&` guard in `RecurringRow.tsx` (making the badge
+   * always render) would still leave the whole suite green.
    */
-  it("an unmarked (isSubscription: false) definition renders no '· Suscripción' indicator", () => {
+  it("an unmarked (isSubscription: false) definition renders no 'Suscripción' indicator", () => {
     const definitions = [
       {
         id: "rec-8",
@@ -217,7 +222,7 @@ describe("RecurringList — smoke render (R-022)", () => {
 
     render(<RecurringList definitions={definitions} dueItems={[]} accounts={ACCOUNTS} categories={CATEGORIES} budgets={[]} />);
 
-    expect(screen.queryByText(/· Suscripción/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Suscripción")).not.toBeInTheDocument();
   });
 
   it("clicking Confirmar opens the ConfirmRecurringSheet prefilled with the due item", () => {
@@ -255,6 +260,7 @@ describe("RecurringList — smoke render (R-022)", () => {
       <RecurringList definitions={definitions} dueItems={dueItems} accounts={ACCOUNTS} categories={CATEGORIES} budgets={[]} />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Más acciones" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
 
     expect(screen.getByText("Confirmar recurrente")).toBeInTheDocument();
@@ -311,12 +317,13 @@ describe("RecurringList — smoke render (R-022)", () => {
           budgets={BUDGETS}
         />,
       );
+      fireEvent.click(screen.getByRole("button", { name: "Más acciones" }));
       fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
     }
 
-    // The row's own "Confirmar" button (opens the sheet) stays in the DOM behind the sheet
-    // overlay, and the sheet's submit button is ALSO labeled "Confirmar" — both coexist once
-    // the sheet is open, so submitting must target the last match (the sheet's).
+    // The row's own "Confirmar" menu item closes its `RowActionMenu` on click, so once the sheet
+    // is open only the sheet's own "Confirmar" submit button remains — but keep targeting the
+    // last match for resilience against any future coexistence.
     function submitSheet() {
       const confirmButtons = screen.getAllByRole("button", { name: "Confirmar" });
       fireEvent.click(confirmButtons[confirmButtons.length - 1]);
@@ -405,6 +412,7 @@ describe("RecurringList — smoke render (R-022)", () => {
         <RecurringList definitions={definitions} dueItems={dueItems} accounts={ACCOUNTS} categories={CATEGORIES} budgets={[]} />,
       );
 
+      fireEvent.click(screen.getByRole("button", { name: "Más acciones" }));
       fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
 
       expect(screen.getByText(/Al confirmar se registrará este pago ahora/)).toBeInTheDocument();
