@@ -54,6 +54,9 @@ export async function saveRecurringAction(
     | "biweekly"
     | "yearly";
   const nextDueDate = String(formData.get("nextDueDate") ?? "");
+  // Subscriptions only make sense for expense-type definitions (income/transfer can never be
+  // marked, regardless of what the client posted — change: finance-subscriptions).
+  const isSubscription = type === "expense" && formData.get("isSubscription") === "on";
 
   if (!accountId || !(amountCents > 0) || !nextDueDate) {
     return { error: "Completa cuenta, monto y fecha." };
@@ -83,6 +86,7 @@ export async function saveRecurringAction(
       amountCents,
       description,
       frequency,
+      isSubscription,
     });
     if (error) return { error: "No se pudo guardar la recurrente." };
   } else if (type === "transfer") {
@@ -95,6 +99,7 @@ export async function saveRecurringAction(
       description,
       frequency,
       nextDueDate,
+      isSubscription,
     });
     if (error) return { error: "No se pudo crear la recurrente." };
   } else if (type === "income") {
@@ -107,6 +112,7 @@ export async function saveRecurringAction(
       description,
       frequency,
       nextDueDate,
+      isSubscription,
     });
     if (error) return { error: "No se pudo crear la recurrente." };
   } else {
@@ -119,6 +125,7 @@ export async function saveRecurringAction(
       description,
       frequency,
       nextDueDate,
+      isSubscription,
     });
     if (error) return { error: "No se pudo crear la recurrente." };
   }

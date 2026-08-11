@@ -62,6 +62,7 @@ describe("RecurringList — smoke render (R-022)", () => {
         active: true,
         installmentsRemaining: null,
         installmentTotal: null,
+        isSubscription: false,
       },
       {
         id: "rec-2",
@@ -76,6 +77,7 @@ describe("RecurringList — smoke render (R-022)", () => {
         active: true,
         installmentsRemaining: null,
         installmentTotal: null,
+        isSubscription: false,
       },
     ];
     const dueItems = [
@@ -116,6 +118,7 @@ describe("RecurringList — smoke render (R-022)", () => {
         active: false,
         installmentsRemaining: null,
         installmentTotal: null,
+        isSubscription: false,
       },
     ];
 
@@ -142,6 +145,7 @@ describe("RecurringList — smoke render (R-022)", () => {
         active: true,
         installmentsRemaining: 2,
         installmentTotal: 4,
+        isSubscription: false,
       },
     ];
 
@@ -152,6 +156,68 @@ describe("RecurringList — smoke render (R-022)", () => {
     expect(screen.getByRole("button", { name: "Confirmar" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pagar antes de tiempo" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Eliminar" })).not.toBeInTheDocument();
+  });
+
+  /**
+   * Closes a real spec/test coverage gap flagged by sdd-verify (finance-subscriptions,
+   * finding C2): every existing fixture hardcoded `isSubscription: false`, so the
+   * `isSubscription && " · Suscripción"` branch in `RecurringRow` (RecurringRow.tsx:85) was
+   * never exercised by any test. Spec requires `RecurringList` to render a visual indicator
+   * on any definition where the flag is `true`.
+   */
+  it("a subscription definition renders the '· Suscripción' badge", () => {
+    const definitions = [
+      {
+        id: "rec-7",
+        accountId: "acc-1",
+        type: "expense" as const,
+        toAccountId: null,
+        categoryId: "cat-1",
+        amountCents: 9900,
+        description: "Netflix",
+        frequency: "monthly" as const,
+        nextDueDate: "2026-08-20",
+        active: true,
+        installmentsRemaining: null,
+        installmentTotal: null,
+        isSubscription: true,
+      },
+    ];
+
+    render(<RecurringList definitions={definitions} dueItems={[]} accounts={ACCOUNTS} categories={CATEGORIES} budgets={[]} />);
+
+    expect(screen.getByText(/· Suscripción/)).toBeInTheDocument();
+  });
+
+  /**
+   * Closes a real spec/test coverage gap flagged by sdd-verify (finance-subscriptions, finding
+   * C2 — scenario 2.3 "Unmarked definitions show no indicator"). The positive-branch test above
+   * proves the badge renders when `isSubscription: true`; nothing previously asserted its
+   * absence, so deleting the `isSubscription && " · Suscripción"` guard in `RecurringRow.tsx`
+   * (making the badge always render) would still leave the whole suite green.
+   */
+  it("an unmarked (isSubscription: false) definition renders no '· Suscripción' indicator", () => {
+    const definitions = [
+      {
+        id: "rec-8",
+        accountId: "acc-1",
+        type: "expense" as const,
+        toAccountId: null,
+        categoryId: "cat-1",
+        amountCents: 9900,
+        description: "Netflix",
+        frequency: "monthly" as const,
+        nextDueDate: "2026-08-20",
+        active: true,
+        installmentsRemaining: null,
+        installmentTotal: null,
+        isSubscription: false,
+      },
+    ];
+
+    render(<RecurringList definitions={definitions} dueItems={[]} accounts={ACCOUNTS} categories={CATEGORIES} budgets={[]} />);
+
+    expect(screen.queryByText(/· Suscripción/)).not.toBeInTheDocument();
   });
 
   it("clicking Confirmar opens the ConfirmRecurringSheet prefilled with the due item", () => {
@@ -169,6 +235,7 @@ describe("RecurringList — smoke render (R-022)", () => {
         active: true,
         installmentsRemaining: null,
         installmentTotal: null,
+        isSubscription: false,
       },
     ];
     const dueItems = [
@@ -217,6 +284,7 @@ describe("RecurringList — smoke render (R-022)", () => {
         active: true,
         installmentsRemaining: null,
         installmentTotal: null,
+        isSubscription: false,
       },
     ];
     const dueItems = [
@@ -308,6 +376,7 @@ describe("RecurringList — smoke render (R-022)", () => {
         active: true,
         installmentsRemaining: null,
         installmentTotal: null,
+        isSubscription: false,
       },
     ];
     const dueItems = [

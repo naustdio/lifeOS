@@ -174,6 +174,12 @@ export function RecurringForm({
             </label>
             <Input id="recurringDescription" name="description" maxLength={200} />
           </div>
+          {type === "expense" && (
+            <label htmlFor="recurringIsSubscription" className="flex items-center gap-2 text-sm font-medium">
+              <input id="recurringIsSubscription" name="isSubscription" type="checkbox" />
+              Es una suscripción
+            </label>
+          )}
           {state.error && <p className="text-sm text-expense">{state.error}</p>}
           <Button type="submit" disabled={pending}>
             {pending ? "Guardando…" : "Crear recurrente"}

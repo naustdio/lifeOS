@@ -26,6 +26,9 @@ export interface RecurringRowProps extends React.HTMLAttributes<HTMLDivElement> 
    *  installment isn't a real option the way skipping a discretionary expense is. */
   installmentsRemaining?: number | null;
   installmentTotal?: number | null;
+  /** Plain boolean marker, no provider/logo/catalog (change: finance-subscriptions). Appends
+   *  "· Suscripción" to the meta line — same mechanism `installmentsRemaining` already uses. */
+  isSubscription?: boolean;
 }
 
 function dueLabel(daysOverdue: number): string {
@@ -57,6 +60,7 @@ export const RecurringRow = React.forwardRef<HTMLDivElement, RecurringRowProps>(
       discardPending,
       installmentsRemaining,
       installmentTotal,
+      isSubscription,
       className,
       ...props
     },
@@ -78,6 +82,7 @@ export const RecurringRow = React.forwardRef<HTMLDivElement, RecurringRowProps>(
           <span className={cn("truncate text-xs", !paused && daysOverdue > 0 ? "text-expense" : "text-muted-foreground")}>
             {paused ? "En pausa" : dueLabel(daysOverdue)} · {FREQUENCY_LABELS[frequency] ?? frequency}
             {isInstallment && ` · Quedan ${installmentsRemaining} de ${installmentTotal} pagos`}
+            {isSubscription && " · Suscripción"}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-2">

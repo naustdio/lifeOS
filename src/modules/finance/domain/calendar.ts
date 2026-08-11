@@ -102,6 +102,15 @@ function daysInMonthUTC(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
+/** Whole days from `fromDate` (inclusive) through the last day of `fromDate`'s own month
+ *  (inclusive), e.g. `fromDate = "2026-08-15"` (31-day month) -> 16 (15 through 31 inclusive), so
+ *  `horizonDays = 16` days AFTER `fromDate` lands on the 31st. Reuses `daysInMonthUTC` (change:
+ *  finance-subscriptions) rather than re-deriving month length. */
+function daysUntilMonthEndUTC(fromDate: string): number {
+  const [year, month, day] = fromDate.split("-").map(Number);
+  return daysInMonthUTC(year, month) - day;
+}
+
 /**
  * Bounded multi-occurrence expansion (design.md §2, `finance-recurring/Bounded Multi-Occurrence
  * Projection`). Pure and side-effect-free: no `next_due_date` is ever read-modified-written here.
@@ -176,6 +185,49 @@ export function projectOccurrences(
   });
 
   return occurrences;
+}
+
+export type MonthOutflowProjection = {
+  /** `YYYY-MM` of `fromDate`. */
+  month: string;
+  /** Today (inclusive) — the window anchor; NOT the 1st. */
+  fromDate: string;
+  /** Last day of `month`. */
+  toDate: string;
+  /** POSITIVE magnitude of on-schedule outflow in the window. Excludes inflow and overdue. */
+  totalCents: number;
+  occurrenceCount: number;
+};
+
+/**
+ * Current-month, outflow-only prospected-spend total (design.md "Current-Month Prospected-Spend
+ * Summary", change: finance-subscriptions). Built on `projectOccurrences()`, never a re-derivation
+ * of date/occurrence math. Filters to `kind === "outflow" && !overdue` — the folded backlog
+ * occurrence emitted at `fromDate` (`overdue: true`) is deliberately excluded so a stale/overdue
+ * charge never inflates the "remaining this month" figure. The window is `fromDate` through the
+ * last day of `fromDate`'s own month (not the whole month, since the projection anchors at today).
+ */
+export function projectMonthOutflow(
+  definitions: readonly ProjectableDefinition[],
+  fromDate: string,
+): MonthOutflowProjection {
+  const horizonDays = daysUntilMonthEndUTC(fromDate);
+  const toDate = addDaysISO(fromDate, horizonDays);
+  const month = fromDate.slice(0, 7);
+
+  const occurrences = projectOccurrences(definitions, fromDate, horizonDays).filter(
+    (o) => o.kind === "outflow" && !o.overdue,
+  );
+
+  const totalCents = occurrences.reduce((sum, o) => sum + o.amountCents, 0);
+
+  return {
+    month,
+    fromDate,
+    toDate,
+    totalCents,
+    occurrenceCount: occurrences.length,
+  };
 }
 
 /**

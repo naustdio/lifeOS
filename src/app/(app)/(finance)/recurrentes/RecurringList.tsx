@@ -36,6 +36,7 @@ type RecurringDefinition = {
   active: boolean;
   installmentsRemaining: number | null;
   installmentTotal: number | null;
+  isSubscription: boolean;
 };
 
 type DueItem = {
@@ -186,6 +187,7 @@ function RecurringRowWithActions({
         discardPending={discardPending}
         installmentsRemaining={definition.installmentsRemaining}
         installmentTotal={definition.installmentTotal}
+        isSubscription={definition.isSubscription}
       />
       {isTransfer && (
         <p className="pl-12 text-xs text-muted-foreground">

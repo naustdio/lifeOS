@@ -108,6 +108,7 @@ export { listTransactionsByRecurring } from "../data";
 export {
   projectOccurrences,
   projectBalance,
+  projectMonthOutflow,
   buildMonthCells,
   PROJECTION_HORIZON_DAYS,
   MAX_OCCURRENCES_PER_DEFINITION,
@@ -116,6 +117,7 @@ export {
   type ProjectedOccurrence,
   type ProjectedDay,
   type BalanceProjection,
+  type MonthOutflowProjection,
   type CalendarCell,
 } from "../domain/calendar";
 
