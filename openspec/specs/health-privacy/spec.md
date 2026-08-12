@@ -39,3 +39,22 @@ A costed health event created with `visibility = private` MUST NOT expose health
 - GIVEN household member A logs a private costed health event
 - WHEN household member B, who cannot see the private event, views the Finance transaction list
 - THEN no health-identifying detail from member A's private event is exposed to member B through that transaction or any Finance-side view
+
+### Requirement: Nutrition Visit Photos Are Always Owner-Private
+
+A nutrition visit photo MUST always be private to its uploading household member, regardless of the linked event's own `visibility` value. Even a photo attached to a `household`-visibility nutrition event MUST NOT be visible or downloadable by any other household member.
+
+#### Scenario: A photo on a household-shared visit stays private
+- GIVEN household member A creates a nutrition visit with `visibility = household` and attaches a photo
+- WHEN household member B views that visit
+- THEN B sees the visit's cost and details but cannot view or download A's photo
+
+#### Scenario: A direct signed-URL request for another member's photo is denied
+- GIVEN household member A has a visit photo
+- WHEN household member B attempts to obtain a signed URL for that photo's storage path
+- THEN the request is denied at the storage-policy layer, not only hidden in the UI
+
+#### Scenario: The owner can always view their own photo
+- GIVEN household member A uploaded a visit photo
+- WHEN A requests a signed URL for it
+- THEN A receives a valid, time-limited URL to the photo

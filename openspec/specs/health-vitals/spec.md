@@ -22,13 +22,37 @@ Each vital metric entry MUST be timestamped and stored so that multiple entries 
 - WHEN their weight history is queried
 - THEN all three entries are returned ordered by date
 
-### Requirement: Vitals Render as a Trend
-The system MUST be able to render a metric type's entries as a chronological trend (values over time), not merely a flat list requiring client-side reconstruction.
+### Requirement: A Vital Reading May Carry an Optional Visit Link
 
-#### Scenario: Weight entries render as a trend
+A `health.vital_readings` row MAY carry an optional `event_id` referencing a `health.events` row, linking the reading to the nutrition visit it was captured during. A reading with no visit link MUST behave identically to today: it remains a standalone time-series entry.
+
+#### Scenario: A reading is linked to the visit that captured it
+- GIVEN a household member records a weight reading as part of a `/nutricion` visit
+- WHEN the reading is saved
+- THEN its `event_id` matches that visit's event id
+
+#### Scenario: A standalone reading has no visit link
+- GIVEN a household member logs a weight reading outside any visit (e.g., via `/signos`)
+- WHEN the reading is saved
+- THEN its `event_id` is null and it appears in the metric's time series exactly as before
+
+#### Scenario: Unlinking a reading does not remove it from its time series
+- GIVEN a reading's `event_id` is set to null (e.g., after its source visit is deleted)
+- WHEN that metric's history is queried
+- THEN the reading still appears, ordered correctly among the other entries
+
+### Requirement: Vitals Render as a Trend
+The system MUST render a metric type's entries as a real chart over time, not a flat list. By default the chart MUST render the metric's full history; it MUST NOT truncate to a fixed recent time window.
+
+#### Scenario: Weight entries render as a chart
 - GIVEN a household member has logged weight entries across several months
 - WHEN the vitals view is opened for that metric
-- THEN the entries render in chronological order suitable for trend display
+- THEN the entries render as a chart, not a list
+
+#### Scenario: The chart defaults to full history
+- GIVEN a household member has logged entries for a metric spanning more than a year
+- WHEN the trend chart opens for that metric with no filter applied
+- THEN every logged entry is represented on the chart, none excluded by a default time window
 
 ### Requirement: Vitals Are Not Recurring Financial Events
 A vital metric entry MUST NOT be schedulable through `finance.recurring_transactions` or any Finance recurrence mechanism; recurrence, where offered for vitals reminders, MUST remain entirely outside the Finance recurring engine.
