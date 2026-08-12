@@ -125,13 +125,14 @@ Signed URLs are minted only in `data/nutrition-photo-repository.ts` (`createPhot
 | `src/app/(app)/(health)/salud/EventForm.tsx` | Modify | Remove the `Nutrición` option |
 | `src/app/(app)/(health)/signos/VitalTrend.tsx` | Modify | List → `MetricTrendChart` |
 | `src/design-system/patterns/MetricTrendChart.tsx` | Create | `@tanstack/react-charts` wrapper |
-| `package.json` | Modify | `"@tanstack/charts": "0.11.0"`, `"@tanstack/react-charts": "0.11.0"` (exact, no caret) |
+| `src/design-system/patterns/PhotoPickerGrid.tsx` | Create | Fast-follow (5th live-testing round) — thumbnail-preview file picker, replaces the raw `<input type="file">` |
+| `package.json` | Modify | `"@tanstack/charts": "0.11.0"`, `"@tanstack/react-charts": "0.11.0"` (exact, no caret); fast-follow also added `"d3-scale": "4.0.2"` + `"@types/d3-scale": "4.0.9"` (direct deps — needed for the `scaleLinear`/`scaleTime` factories passed to `defineChart`, not re-exported by `@tanstack/charts` itself) |
 
 ## Interfaces / Contracts
 
 ```ts
 // src/design-system/patterns/MetricTrendChart.tsx — no module imports (Decision 5)
-export type TrendPoint = { measuredAt: string; value: number };
+export type TrendPoint = { measuredAt: string; value: number; current?: boolean }; // `current` added 3rd live-testing round (highlight-vs-history)
 export type TrendSeries = { key: string; label: string; points: TrendPoint[] };
 export type MetricTrendChartProps = {
   series: TrendSeries[];       // full history by default; caller windows, component never does
@@ -189,4 +190,4 @@ Each slice is independently deployable: slice 1 ships dormant schema, slice 2 wo
 ## Open Questions
 
 - [x] Photo limits — SETTLED (proposal.md, "Proposal question round" §4): max 6 photos/visit, `image/jpeg|png|webp`, **10 MB each** (this design's earlier 5 MiB figure was the design agent's own placeholder assumption, made without the proposal file on disk in its isolated worktree — corrected here to match the settled decision). A mid-save upload failure still saves the visit and surfaces a per-photo error, with retry available from the detail view (safe because post-visit editing is settled as allowed).
-- [ ] `@tanstack/react-charts` v0.11.0 is pre-1.0 and React 19 peer support is unverified — slice 3 must install and smoke-test before writing the wrapper.
+- [x] `@tanstack/react-charts` v0.11.0 is pre-1.0 — React 19 peer support confirmed: `package.json`'s own `peerDependencies` declare `"react": "^19.0.0"`, and a real render (`tests/unit/metric-trend-chart-render.test.tsx`) plots correctly under React 19.1.0.

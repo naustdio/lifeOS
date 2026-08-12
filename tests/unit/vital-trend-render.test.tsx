@@ -53,7 +53,15 @@ describe("VitalTrend — smoke render (nutrition-submodule)", () => {
       visibility: "shared" as const,
     }));
 
-    render(<VitalTrend readings={readings} />);
+    const { container } = render(<VitalTrend readings={readings} />);
+
+    // sdd-verify WARNING (nutrition-submodule): counting delete-list rows below the chart proves
+    // the LIST wasn't truncated, not that the CHART itself plots every point. Assert on the
+    // chart's own rendered path instead — 20 points on the "Peso" line's `<path>` means the chart
+    // truly plots all 20, independent of the manage/delete list underneath it.
     expect(screen.getAllByRole("button", { name: "Eliminar" })).toHaveLength(20);
+    const paths = Array.from(container.querySelectorAll("svg path"));
+    const weightPath = paths.find((p) => (p.getAttribute("d") ?? "").split(/[ML]/).filter(Boolean).length === 20);
+    expect(weightPath).toBeTruthy();
   });
 });
