@@ -16,6 +16,11 @@ export async function getCurrentHouseholdId(
   } = await supabase.auth.getUser();
 
   if (!user) {
+    // Temporary diagnostic (see finance-subscriptions session incident, 2026-08-12): every
+    // caller collapses this into the same "No tienes acceso a este espacio." copy, so without
+    // this the two genuinely different failure modes (no session vs. no membership row) were
+    // indistinguishable from Vercel logs alone.
+    console.error("getCurrentHouseholdId: auth.getUser() returned no user");
     return null;
   }
 
@@ -28,6 +33,11 @@ export async function getCurrentHouseholdId(
     .maybeSingle();
 
   if (error || !data) {
+    console.error("getCurrentHouseholdId: no household_members row for authenticated user", {
+      userId: user.id,
+      errorMessage: error?.message,
+      errorCode: error?.code,
+    });
     return null;
   }
 
