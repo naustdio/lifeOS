@@ -79,3 +79,16 @@
     font-family: var(--font-sans);
   }
 }
+
+@layer utilities {
+  /* Hides the scrollbar on horizontally-scrollable pill/tab rows while keeping the
+     element scrollable (touch/wheel/keyboard) — cross-browser, no plugin. */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}

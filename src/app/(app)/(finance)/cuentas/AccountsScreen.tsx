@@ -189,7 +189,11 @@ export function AccountsScreen({
         </Button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filtro por tipo de cuenta">
+      <div
+        className="flex gap-2 overflow-x-auto pb-1 scrollbar-none"
+        role="tablist"
+        aria-label="Filtro por tipo de cuenta"
+      >
         {TABS.map((tab) => (
           <button
             key={tab.key}

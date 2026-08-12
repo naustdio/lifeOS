@@ -101,7 +101,7 @@ export function TransactionForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2 overflow-x-auto">
+      <div className="flex gap-2 overflow-x-auto scrollbar-none">
         {(["expense", "income", "transfer", "installment"] as const).map((option) => (
           <button
             key={option}
