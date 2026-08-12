@@ -53,8 +53,13 @@ export async function devSignIn() {
   }
 
   // Same bootstrap the real OAuth callback runs (src/app/auth/callback/route.ts) — ensures a
-  // personal space exists for this user before landing on the app shell.
-  await supabase.schema("app").rpc("bootstrap_user");
+  // personal space exists for this user before landing on the app shell. Checked, not fired-and-
+  // forgotten: a silent failure here would land on "/" signed in with no space, surfacing later
+  // as the unrelated-looking "No tienes acceso a este espacio." on the first write attempt.
+  const { error: bootstrapError } = await supabase.schema("app").rpc("bootstrap_user");
+  if (bootstrapError) {
+    throw new Error(`devSignIn: bootstrap_user failed: ${bootstrapError.message}`);
+  }
 
   redirect("/");
 }
