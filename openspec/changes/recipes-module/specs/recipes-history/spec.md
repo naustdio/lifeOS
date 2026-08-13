@@ -66,6 +66,16 @@ Permanent hard-delete of a recipe MUST be restricted to household members whose 
 - WHEN they look for delete options
 - THEN only soft-delete is offered; hard-delete is not presented
 
+### Requirement: Hard-Delete Audit Trail Survives as a Title-Stamped Orphan
+
+A hard delete MUST permanently remove the recipe row and its ingredient/step children, while the `recipe_changes` rows for that recipe MUST survive with `recipe_id` set to null, retaining their denormalized `household_id` and a `recipe_title` snapshot, including the mandatory reason given for the hard delete itself. Content is destroyed; accountability is not.
+
+#### Scenario: Recipe history survives its own recipe's hard delete
+
+- GIVEN a recipe with prior history is hard-deleted by its household's owner with a stated reason
+- WHEN the household's change history is queried afterward
+- THEN the recipe's `recipe_changes` rows (including the `hard_deleted` entry and its reason) are still present, with `recipe_id` null and the original `recipe_title` intact
+
 ### Requirement: Collapsed History View with Actor, Timestamp, and Reason
 
 The recipe detail page MUST render a "Historial de cambios" section, collapsed by default, listing each `recipe_changes` entry with its actor, timestamp, and stated reason. Field-level diffs MUST NOT be shown.

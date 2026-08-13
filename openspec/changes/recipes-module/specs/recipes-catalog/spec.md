@@ -40,7 +40,7 @@ Each recipe MUST have zero or more ingredient rows (`name`, `quantity`, `unit`, 
 
 ### Requirement: Ordered Numbered Steps as Relational Children
 
-Each recipe MUST have zero or more step rows (`position`, `text`) linked by recipe ID, rendered as a numbered sequence.
+Each recipe MUST have zero or more step rows (`position`, `instruction`) linked by recipe ID, rendered as a numbered sequence.
 
 #### Scenario: Steps render in numeric sequence
 
