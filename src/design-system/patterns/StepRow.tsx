@@ -40,14 +40,37 @@ export function StepRow({
         required
         className="flex-1"
       />
-      <div className="flex shrink-0 items-center gap-1">
-        <Button type="button" variant="ghost" size="sm" onClick={onMoveUp} disabled={isFirst} aria-label={`Subir paso ${index + 1}`}>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className="h-9 w-9 shrink-0 rounded-full"
+          onClick={onMoveUp}
+          disabled={isFirst}
+          aria-label={`Subir paso ${index + 1}`}
+        >
           <ChevronUp className="h-4 w-4" aria-hidden />
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={onMoveDown} disabled={isLast} aria-label={`Bajar paso ${index + 1}`}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className="h-9 w-9 shrink-0 rounded-full"
+          onClick={onMoveDown}
+          disabled={isLast}
+          aria-label={`Bajar paso ${index + 1}`}
+        >
           <ChevronDown className="h-4 w-4" aria-hidden />
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={onRemove} aria-label={`Quitar paso ${index + 1}`}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className="h-9 w-9 shrink-0 rounded-full"
+          onClick={onRemove}
+          aria-label={`Quitar paso ${index + 1}`}
+        >
           <X className="h-4 w-4" aria-hidden />
         </Button>
       </div>

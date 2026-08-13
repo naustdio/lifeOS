@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
@@ -138,10 +139,11 @@ export function RecipeForm({ mode, units, initial }: { mode: "create" | "edit"; 
             ))}
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
+              variant="secondary"
+              className="w-full justify-center gap-2"
               onClick={() => setIngredients((prev) => [...prev, { name: "", quantity: "", unit: units[0]?.value ?? "" }])}
             >
+              <Plus className="h-4 w-4" aria-hidden />
               Agregar ingrediente
             </Button>
           </fieldset>
@@ -175,7 +177,13 @@ export function RecipeForm({ mode, units, initial }: { mode: "create" | "edit"; 
                 }
               />
             ))}
-            <Button type="button" variant="ghost" size="sm" onClick={() => setSteps((prev) => [...prev, { instruction: "" }])}>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full justify-center gap-2"
+              onClick={() => setSteps((prev) => [...prev, { instruction: "" }])}
+            >
+              <Plus className="h-4 w-4" aria-hidden />
               Agregar paso
             </Button>
           </fieldset>
