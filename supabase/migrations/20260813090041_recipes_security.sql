@@ -1,10 +1,10 @@
 -- `recipes` RLS + grants — design.md RLS section. Every policy is `to authenticated` and
 -- `core.is_member(...)`, with NO visibility branch (settled: recipes have no sensitivity
 -- dimension). Children scope through an `exists` on the parent. DML is revoked on `recipes.recipes`
--- (Decision 1) — the seam functions from the prior migration are the only write path; the DELETE
--- policy below is defence-in-depth for `hard_delete_recipe`'s own `core.is_owner` check
--- (Decision 3), since `security definer` bypasses RLS but this policy still gates any future
--- direct-DELETE path.
+-- (Decision 1) — the seam functions from the prior migration are the only write path. The DELETE
+-- policy below stays defined (harmless with no matching grant) as cheap insurance should a
+-- direct-DELETE path ever be legitimately granted later, but no such grant exists today —
+-- `hard_delete_recipe` (Decision 3) is `security definer` and never needed one.
 
 alter table recipes.recipes            enable row level security;
 alter table recipes.recipe_ingredients enable row level security;
@@ -53,11 +53,11 @@ alter default privileges in schema recipes revoke all on functions from anon, au
 grant usage on schema recipes to authenticated;
 grant select on recipes.recipes, recipes.recipe_ingredients, recipes.recipe_steps,
                 recipes.recipe_changes, recipes.custom_units to authenticated;
--- `recipes.recipes`/`recipe_ingredients`/`recipe_steps`/`custom_units` get select-only above;
--- `delete` on `recipes.recipes` is granted separately since it's guarded by its own RLS policy
--- and is a real, if defence-in-depth, direct-DELETE path (`hard_delete_recipe` itself runs as
--- the function owner and does not need this grant).
-grant delete on recipes.recipes to authenticated;
+-- Every table is select-only for `authenticated` — no direct DELETE grant. `hard_delete_recipe`
+-- is `security definer` and performs its own delete as the function owner, so it needs none of
+-- this; a DELETE grant here would only open an unaudited bypass of the seam (see
+-- 20260813090042_recipes_revoke_delete_grant.sql, which fixes exactly this after it briefly
+-- existed here).
 
 grant execute on function recipes.create_recipe(uuid, text, text, int, text, jsonb, jsonb, text) to authenticated;
 grant execute on function recipes.update_recipe(uuid, text, text, int, text, jsonb, jsonb, text) to authenticated;

@@ -1,0 +1,16 @@
+-- Fixes a real audit-trail gap found by sdd-verify during recipes-module's Phase 6 closeout.
+--
+-- `20260813090041_recipes_security.sql` granted `delete on recipes.recipes to authenticated`,
+-- reasoning it made the `recipes_delete` RLS policy "reachable" as defence-in-depth for
+-- `hard_delete_recipe`'s own `core.is_owner` check (Decision 3). That reasoning was wrong:
+-- `hard_delete_recipe` is `security definer` and performs its own `delete` as the function owner
+-- — it never needed this grant. The grant's only real effect was to let a household owner issue a
+-- raw `delete from recipes.recipes` directly, which the RLS policy allows (they ARE the owner),
+-- bypassing the seam function entirely. That path destroys the recipe with NO corresponding
+-- `recipe_changes` row — the exact "audit trail survives" guarantee Decision 2 exists to
+-- protect ("content is destroyed, accountability is not").
+--
+-- The `recipes_delete` RLS policy itself is left in place (harmless without a grant, and cheap
+-- insurance if this schema ever legitimately needs a direct-DELETE path later) — only the grant
+-- that made it reachable is revoked here.
+revoke delete on recipes.recipes from authenticated;

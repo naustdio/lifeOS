@@ -16,7 +16,7 @@
 -- (Decision 2 — "content is destroyed, accountability is not").
 
 begin;
-select plan(10);
+select plan(11);
 
 -- ---------------------------------------------------------------------------
 -- Fixtures — household A (owner A1, non-owner member A2), household B (owner B1, unrelated).
@@ -163,6 +163,31 @@ select is(
       and household_id = '00000000-0000-0000-0000-0000001500aa'),
   1::bigint,
   'the hard-delete change row survives with recipe_id null, title snapshot, and correct household_id'
+);
+
+reset role;
+reset request.jwt.claims;
+
+-- ---------------------------------------------------------------------------
+-- (f) Owner A1 cannot hard-delete via a raw DELETE bypassing the seam — closes the gap found by
+-- sdd-verify: `hard_delete_recipe` is `security definer` and does not need a DELETE grant on
+-- `recipes.recipes` to do its own delete, so granting `delete` to `authenticated` only opened an
+-- unaudited bypass (an owner's raw DELETE would satisfy the RLS policy yet write no
+-- `recipe_changes` row, defeating Decision 2's "content destroyed, accountability not").
+-- ---------------------------------------------------------------------------
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000001500a1","role":"authenticated"}';
+
+select recipes.create_recipe(
+  '00000000-0000-0000-0000-0000001500aa'::uuid, 'Sopa de fideo', 'comida', 2, null,
+  '[]'::jsonb, '[]'::jsonb, 'carga para probar el bypass'
+) as v_bypass_recipe_id \gset
+
+select throws_ok(
+  format($$ delete from recipes.recipes where id = %L::uuid $$, :'v_bypass_recipe_id'),
+  '42501', null,
+  'an owner''s raw DELETE bypassing the seam is denied — hard delete must go through hard_delete_recipe'
 );
 
 reset role;
