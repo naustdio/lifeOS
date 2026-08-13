@@ -1,4 +1,4 @@
-import { HeartPulse, Wallet } from "lucide-react";
+import { BookOpen, HeartPulse, Wallet } from "lucide-react";
 import type { ModuleItem } from "@/design-system/patterns/ModuleGrid";
 import { ModuleGrid } from "@/design-system/patterns/ModuleGrid";
 
@@ -13,6 +13,7 @@ import { ModuleGrid } from "@/design-system/patterns/ModuleGrid";
 const MODULES: ModuleItem[] = [
   { label: "Finanzas", icon: Wallet, href: "/finance" },
   { label: "Salud", icon: HeartPulse, href: "/salud" },
+  { label: "Recetas", icon: BookOpen, href: "/recetas" },
 ];
 
 export default function HubPage() {
