@@ -20,7 +20,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+let searchParams = new URLSearchParams();
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(),
+  useSearchParams: () => searchParams,
+}));
 vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
 
 const { AccountForm } = await import("@/app/(app)/(finance)/cuentas/AccountForm");
@@ -28,6 +32,7 @@ const { AccountForm } = await import("@/app/(app)/(finance)/cuentas/AccountForm"
 describe("AccountForm — smoke render (T-036 / C-1)", () => {
   afterEach(() => {
     cleanup();
+    searchParams = new URLSearchParams();
   });
 
   it("renders without throwing for the default (cash) type", () => {
@@ -124,5 +129,61 @@ describe("AccountForm — smoke render (T-036 / C-1)", () => {
   it("hides the card-terms fieldset for the default (cash) type", () => {
     render(<AccountForm />);
     expect(screen.queryByText("Términos de la tarjeta (opcional)")).not.toBeInTheDocument();
+  });
+
+  // Preselects the type from `?type=` (change: account-create-ux) — set by /cuentas's per-tab
+  // "Nueva cuenta" links so a tab scoped to one type doesn't force a redundant manual pick.
+  it("preselects the type from a `?type=` query param", () => {
+    searchParams = new URLSearchParams("type=investment");
+    render(<AccountForm />);
+
+    expect(screen.getByText("Inversión", { selector: "legend" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Tipo de cuenta")).toHaveTextContent("Inversiones");
+  });
+
+  it("ignores an unrecognized `?type=` value and falls back to the default", () => {
+    searchParams = new URLSearchParams("type=not-a-real-type");
+    render(<AccountForm />);
+
+    expect(screen.getByLabelText("Tipo de cuenta")).toHaveTextContent("Efectivo");
+  });
+
+  // A debt account's balance was previously entered pre-negated (type the debt as a negative
+  // number) — confusing, since "I owe $9000" reads as a positive amount. The visible field now
+  // takes a plain positive magnitude and a hidden field carries the sign flip the server expects.
+  it("negates a plain positive debt amount into the hidden field for credit_card", () => {
+    const { container } = render(<AccountForm />);
+
+    fireEvent.click(screen.getByLabelText("Tipo de cuenta"));
+    fireEvent.click(screen.getByRole("option", { name: "Tarjeta de crédito" }));
+
+    const visibleInput = screen.getByLabelText("¿Cuánto debes actualmente? (MXN)");
+    fireEvent.change(visibleInput, { target: { value: "9000" } });
+
+    const hiddenInput = container.querySelector('input[type="hidden"][name="openingBalance"]');
+    expect(hiddenInput).toHaveValue("-9000");
+  });
+
+  it("negates a plain positive debt amount into the hidden field for liability", () => {
+    const { container } = render(<AccountForm />);
+
+    fireEvent.click(screen.getByLabelText("Tipo de cuenta"));
+    fireEvent.click(screen.getByRole("option", { name: "Préstamo / deuda" }));
+
+    const visibleInput = screen.getByLabelText("¿Cuánto debes actualmente? (MXN)");
+    fireEvent.change(visibleInput, { target: { value: "1500" } });
+
+    const hiddenInput = container.querySelector('input[type="hidden"][name="openingBalance"]');
+    expect(hiddenInput).toHaveValue("-1500");
+  });
+
+  it("leaves a non-debt type's balance unsigned in the hidden field", () => {
+    const { container } = render(<AccountForm />);
+
+    const visibleInput = screen.getByLabelText("Saldo inicial (MXN)");
+    fireEvent.change(visibleInput, { target: { value: "300" } });
+
+    const hiddenInput = container.querySelector('input[type="hidden"][name="openingBalance"]');
+    expect(hiddenInput).toHaveValue("300");
   });
 });

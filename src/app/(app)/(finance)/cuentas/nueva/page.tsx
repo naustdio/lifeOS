@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { AccountForm } from "../AccountForm";
 
 export default function NewAccountPage() {
@@ -10,7 +11,11 @@ export default function NewAccountPage() {
           Cancelar
         </Link>
       </div>
-      <AccountForm />
+      {/* AccountForm reads `?type=` (change: account-create-ux) via useSearchParams, which
+          requires a Suspense boundary to keep this route eligible for static rendering. */}
+      <Suspense fallback={null}>
+        <AccountForm />
+      </Suspense>
     </main>
   );
 }

@@ -41,7 +41,7 @@ export type CardStatusItem = {
 
 const TYPE_LABELS: Record<AccountType, string> = {
   cash: "Efectivo",
-  checking: "Cuenta de cheques",
+  checking: "Tarjeta de débito",
   savings: "Ahorros",
   credit_card: "Tarjeta de crédito",
   liability: "Préstamo / deuda",
@@ -52,14 +52,22 @@ const TYPE_LABELS: Record<AccountType, string> = {
 
 type TabKey = "todo" | "debito" | "ahorros" | "inversiones" | "tarjetas" | "prestamos" | "prestado";
 
-const TABS: { key: TabKey; label: string; types: AccountType[] | null; heroLabel: string }[] = [
+const TABS: {
+  key: TabKey;
+  label: string;
+  types: AccountType[] | null;
+  heroLabel: string;
+  /** Type preselected on "Nueva cuenta" from this tab. `undefined` (the "Todo" tab, and any tab
+   *  whose grouped types have no single obvious default) leaves the create form's own default. */
+  defaultType?: AccountType;
+}[] = [
   { key: "todo", label: "Todo", types: null, heroLabel: "Disponible" },
-  { key: "debito", label: "Débito", types: ["cash", "checking"], heroLabel: "Débito" },
-  { key: "ahorros", label: "Ahorros", types: ["savings", "savings_goal"], heroLabel: "Ahorros" },
-  { key: "inversiones", label: "Inversiones", types: ["investment"], heroLabel: "Inversiones" },
-  { key: "tarjetas", label: "Tarjetas de crédito", types: ["credit_card"], heroLabel: "Saldo de crédito" },
-  { key: "prestamos", label: "Préstamos", types: ["liability"], heroLabel: "Total adeudado" },
-  { key: "prestado", label: "Prestado", types: ["loaned"], heroLabel: "Te deben" },
+  { key: "debito", label: "Débito", types: ["cash", "checking"], heroLabel: "Débito", defaultType: "checking" },
+  { key: "ahorros", label: "Ahorros", types: ["savings", "savings_goal"], heroLabel: "Ahorros", defaultType: "savings" },
+  { key: "inversiones", label: "Inversiones", types: ["investment"], heroLabel: "Inversiones", defaultType: "investment" },
+  { key: "tarjetas", label: "Tarjetas de crédito", types: ["credit_card"], heroLabel: "Saldo de crédito", defaultType: "credit_card" },
+  { key: "prestamos", label: "Préstamos", types: ["liability"], heroLabel: "Total adeudado", defaultType: "liability" },
+  { key: "prestado", label: "Prestado", types: ["loaned"], heroLabel: "Te deben", defaultType: "loaned" },
 ];
 
 /** "Vence en N días" / "Vencido hace N días" — `null` propagates to no label. */
@@ -214,6 +222,9 @@ export function AccountsScreen({
   const visibleAccounts = activeTabDef.types
     ? accounts.filter((a) => activeTabDef.types!.includes(a.type))
     : accounts;
+  const newAccountHref = activeTabDef.defaultType
+    ? `/cuentas/nueva?type=${activeTabDef.defaultType}`
+    : "/cuentas/nueva";
 
   const heroCents =
     activeTab === "todo"
@@ -229,7 +240,7 @@ export function AccountsScreen({
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Cuentas</h2>
         <Button asChild size="sm">
-          <Link href="/cuentas/nueva">Nueva cuenta</Link>
+          <Link href={newAccountHref}>Nueva cuenta</Link>
         </Button>
       </div>
 
@@ -273,7 +284,7 @@ export function AccountsScreen({
           }
           action={
             <Button asChild size="sm">
-              <Link href="/cuentas/nueva">Nueva cuenta</Link>
+              <Link href={newAccountHref}>Nueva cuenta</Link>
             </Button>
           }
         />

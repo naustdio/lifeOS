@@ -23,7 +23,7 @@ import { AccountTypeFields } from "../../AccountTypeFields";
 
 const TYPE_LABELS: Record<string, string> = {
   cash: "Efectivo",
-  checking: "Cuenta de cheques",
+  checking: "Tarjeta de débito",
   savings: "Ahorros",
   credit_card: "Tarjeta de crédito",
   liability: "Préstamo / deuda",

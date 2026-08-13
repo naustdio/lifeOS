@@ -97,7 +97,7 @@ describe("EditAccountForm — retype with/without detail loss (T4.7)", () => {
   it("shows no detail-loss warning for a transition with no detail fields on either side", () => {
     render(<EditAccountForm account={baseAccount} />);
     fireEvent.click(screen.getByLabelText("Tipo de cuenta"));
-    fireEvent.click(screen.getByRole("option", { name: "Cuenta de cheques" }));
+    fireEvent.click(screen.getByRole("option", { name: "Tarjeta de débito" }));
     expect(screen.queryByText(/Al cambiar el tipo se van a borrar/)).not.toBeInTheDocument();
   });
 
@@ -160,7 +160,7 @@ describe("EditAccountForm — class-flip confirmation (T4.8)", () => {
   it("shows no class-flip confirmation for a non-flipping retype (cash -> checking)", () => {
     render(<EditAccountForm account={baseAccount} />);
     fireEvent.click(screen.getByLabelText("Tipo de cuenta"));
-    fireEvent.click(screen.getByRole("option", { name: "Cuenta de cheques" }));
+    fireEvent.click(screen.getByRole("option", { name: "Tarjeta de débito" }));
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
     expect(screen.queryByText("Confirmar cambio de tipo")).not.toBeInTheDocument();
   });

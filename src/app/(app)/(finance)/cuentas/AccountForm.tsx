@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useActionState, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
@@ -16,7 +17,7 @@ import { AccountTypeFields } from "./AccountTypeFields";
 
 const TYPE_LABELS: Record<string, string> = {
   cash: "Efectivo",
-  checking: "Cuenta de cheques",
+  checking: "Tarjeta de débito",
   savings: "Ahorros",
   credit_card: "Tarjeta de crédito",
   liability: "Préstamo / deuda",
@@ -27,30 +28,41 @@ const TYPE_LABELS: Record<string, string> = {
 
 const INITIAL_STATE: AccountFormState = { error: null };
 
-/** Opening-balance sign constraint per type (design.md §6): debt types
- * (`credit_card`/`liability`) cap at zero-or-negative; `loaned` is the
- * inverse (zero-or-positive, a receivable); every other type is
- * unconstrained. */
-function signHintFor(type: string): { max?: number; min?: number; hint: string | null } {
-  if (type === "credit_card" || type === "liability") {
-    return { max: 0, hint: "Para deuda, el saldo inicial debe ser cero o negativo." };
+/** Opening-balance sign convention per type (design.md §6): debt types (`credit_card`/
+ * `liability`) are stored zero-or-negative internally, `loaned` zero-or-positive, every other
+ * type unconstrained. Debt types ask the user for a plain positive "how much do you owe"
+ * amount instead — negating it themselves felt backwards (T-036 fast-follow) — and the form
+ * negates it before submit so the stored/displayed convention is unchanged everywhere else. */
+function isDebtType(type: string): boolean {
+  return type === "credit_card" || type === "liability";
+}
+
+function balanceFieldCopy(type: string): { label: string; hint: string | null; min?: number } {
+  if (isDebtType(type)) {
+    return { label: "¿Cuánto debes actualmente? (MXN)", hint: "Se registra como deuda.", min: 0 };
   }
   if (type === "loaned") {
     return {
-      min: 0,
+      label: "Saldo inicial (MXN)",
       hint: "Para dinero prestado, el saldo inicial debe ser cero o positivo.",
+      min: 0,
     };
   }
-  return { hint: null };
+  return { label: "Saldo inicial (MXN)", hint: null };
 }
 
 /** Account-creation form (T-036). Conditional fields per `CreateAccountInput`'s
  * discriminated union: `liability` detail block only for `type=liability`,
  * `goal` detail block only for `type=savings_goal`. */
 export function AccountForm() {
+  const searchParams = useSearchParams();
+  const requestedType = searchParams.get("type");
   const [state, formAction, pending] = useActionState(createAccountAction, INITIAL_STATE);
-  const [type, setType] = useState("cash");
-  const signHint = signHintFor(type);
+  const [type, setType] = useState(requestedType && requestedType in TYPE_LABELS ? requestedType : "cash");
+  const [balanceInput, setBalanceInput] = useState("0");
+  const balanceCopy = balanceFieldCopy(type);
+  const enteredBalance = Number(balanceInput) || 0;
+  const signedBalance = isDebtType(type) ? -Math.abs(enteredBalance) : enteredBalance;
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -81,18 +93,21 @@ export function AccountForm() {
 
       <div className="flex flex-col gap-1">
         <label htmlFor="openingBalance" className="text-sm font-medium">
-          Saldo inicial (MXN)
+          {balanceCopy.label}
         </label>
         <Input
           id="openingBalance"
-          name="openingBalance"
           type="number"
           step="0.01"
-          defaultValue="0"
-          max={signHint.max}
-          min={signHint.min}
+          min={balanceCopy.min}
+          value={balanceInput}
+          onChange={(event) => setBalanceInput(event.target.value)}
         />
-        {signHint.hint && <p className="text-xs text-muted-foreground">{signHint.hint}</p>}
+        {/* The visible input above always takes a plain, unsigned magnitude — this hidden
+            field carries the actual signed value `createAccountAction` reads (design.md §6's
+            stored convention: debt types are zero-or-negative). */}
+        <input type="hidden" name="openingBalance" value={signedBalance} />
+        {balanceCopy.hint && <p className="text-xs text-muted-foreground">{balanceCopy.hint}</p>}
       </div>
 
       <AccountTypeFields type={type as AccountType} />
