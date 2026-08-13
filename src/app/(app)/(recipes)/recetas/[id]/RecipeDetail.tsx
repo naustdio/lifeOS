@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
 import { Input } from "@/design-system/ui/input";
+import { VideoEmbed } from "@/design-system/patterns/VideoEmbed";
 import { hardDeleteRecipeAction, softDeleteRecipeAction, type RecipeFormState } from "../actions";
 
 const INITIAL_STATE: RecipeFormState = { error: null };
@@ -71,6 +72,8 @@ export function RecipeDetail({ recipe, history, isOwner }: { recipe: RecipeDetai
           <p className="text-sm text-muted-foreground">
             {CATEGORY_LABELS[recipe.category] ?? recipe.category} · {recipe.portions} porciones
           </p>
+
+          {recipe.videoUrl && <VideoEmbed url={recipe.videoUrl} title={recipe.title} />}
 
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-medium">Ingredientes</h3>
