@@ -21,10 +21,12 @@ vi.mock("@/modules/core/api", () => ({
 }));
 
 const listActiveAccounts = vi.fn();
+const listArchivedAccounts = vi.fn();
 const listCreditCardStatus = vi.fn();
 const getHouseholdSummary = vi.fn();
 vi.mock("@/modules/finance/api", () => ({
   listActiveAccounts: (...args: unknown[]) => listActiveAccounts(...args),
+  listArchivedAccounts: (...args: unknown[]) => listArchivedAccounts(...args),
   listCreditCardStatus: (...args: unknown[]) => listCreditCardStatus(...args),
   getHouseholdSummary: (...args: unknown[]) => getHouseholdSummary(...args),
 }));
@@ -33,6 +35,7 @@ const { default: AccountsPage } = await import("@/app/(app)/(finance)/cuentas/pa
 
 describe("AccountsPage — smoke render (finance-ui-polish P-020)", () => {
   beforeEach(() => {
+    listArchivedAccounts.mockResolvedValue([]);
     listCreditCardStatus.mockResolvedValue([]);
     getHouseholdSummary.mockResolvedValue({ availableCents: 0, debtCents: 0 });
   });
@@ -41,6 +44,7 @@ describe("AccountsPage — smoke render (finance-ui-polish P-020)", () => {
     cleanup();
     getCurrentHouseholdId.mockReset();
     listActiveAccounts.mockReset();
+    listArchivedAccounts.mockReset();
     listCreditCardStatus.mockReset();
     getHouseholdSummary.mockReset();
   });

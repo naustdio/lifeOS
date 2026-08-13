@@ -24,6 +24,9 @@ import { type AccountType, deriveAccountClass } from "../domain/account";
 export {
   listActiveAccounts,
   type AccountListItem,
+  listArchivedAccounts,
+  getAccountById,
+  type AccountDetail,
   listActiveCategories,
   type CategoryListItem,
   listCategoryTree,
@@ -352,6 +355,9 @@ function mapPgError(
     }
     return { code: "NOT_A_MEMBER", message: "You are not a member of that space.", cause: e };
   }
+  if (code === "2BP01") {
+    return { code: "ACCOUNT_HAS_HISTORY", message: "This account has transaction history and cannot be deleted.", cause: e };
+  }
   if (code === "22023") {
     if (context === "create_account") {
       return { code: "ACCOUNT_DETAIL_REQUIRED", message: "That account type requires matching detail fields.", cause: e };
@@ -429,6 +435,168 @@ export async function createAccount(input: CreateAccountInput): Promise<Result<A
   }
 
   return ok({ id: data as string, householdId: i.householdId, type: i.type, class: deriveAccountClass(i.type) });
+}
+
+/**
+ * `UpdateAccountInput` — mirrors `CreateAccountInputSchema`'s discriminated union exactly, plus
+ * `accountId` (change: finance-account-edit design.md §"File Changes"). `openingBalanceCents`
+ * is deliberately absent: balance editing is out of scope for this change (proposal §"Out of
+ * Scope").
+ */
+const BaseUpdateAccountFields = {
+  accountId: z.string().uuid(),
+  householdId: z.string().uuid(),
+  name: z.string().trim().min(1).max(60),
+};
+
+export const UpdateAccountInputSchema = z.discriminatedUnion("type", [
+  z.object({ ...BaseUpdateAccountFields, type: z.literal("cash") }),
+  z.object({ ...BaseUpdateAccountFields, type: z.literal("checking") }),
+  z.object({ ...BaseUpdateAccountFields, type: z.literal("savings") }),
+  z.object({ ...BaseUpdateAccountFields, type: z.literal("credit_card") }),
+  z.object({
+    ...BaseUpdateAccountFields,
+    type: z.literal("liability"),
+    liability: z.object({
+      originalAmountCents: z.number().int().positive(),
+      interestRateBp: z.number().int().min(0),
+      termMonths: z.number().int().positive(),
+      monthlyPaymentCents: z.number().int().positive(),
+      startDate: z.string(),
+    }),
+  }),
+  z.object({
+    ...BaseUpdateAccountFields,
+    type: z.literal("savings_goal"),
+    goal: z.object({
+      targetAmountCents: z.number().int().positive(),
+      targetDate: z.string().optional(),
+    }),
+  }),
+  z.object({
+    ...BaseUpdateAccountFields,
+    type: z.literal("investment"),
+    investment: z.object({
+      costBasisCents: z.number().int().nonnegative(),
+      currentValueCents: z.number().int().nonnegative().optional(),
+      valuedOn: z.string().optional(),
+    }),
+  }),
+  z.object({
+    ...BaseUpdateAccountFields,
+    type: z.literal("loaned"),
+    loaned: z.object({
+      counterpartyName: z.string().trim().min(1).max(60),
+      originalAmountCents: z.number().int().positive(),
+      termMonths: z.number().int().positive().optional(),
+      expectedReturnDate: z.string().optional(),
+    }),
+  }),
+]);
+/** `z.input`, same reasoning as `CreateAccountInput` (fields with `.default()`/`.optional()`
+ *  should stay omittable at call sites). */
+export type UpdateAccountInput = z.input<typeof UpdateAccountInputSchema>;
+
+/** The ONLY write path for renaming/retyping an existing account (change: finance-account-edit
+ *  T2.5). Calls `finance.update_account()` — see design.md Decision 1. */
+export async function updateAccount(input: UpdateAccountInput): Promise<Result<AccountRef>> {
+  const parsed = UpdateAccountInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return err({ code: "VALIDATION_ERROR", message: parsed.error.message, cause: parsed.error });
+  }
+  const i = parsed.data;
+  const supabase = await client();
+
+  const liability = i.type === "liability" ? i.liability : undefined;
+  const goal = i.type === "savings_goal" ? i.goal : undefined;
+  const investment = i.type === "investment" ? i.investment : undefined;
+  const loaned = i.type === "loaned" ? i.loaned : undefined;
+
+  const { error } = await supabase.schema("finance").rpc("update_account", {
+    p_account_id: i.accountId,
+    p_household_id: i.householdId,
+    p_name: i.name,
+    p_type: i.type,
+    p_original_amount_cents: liability?.originalAmountCents ?? null,
+    p_interest_rate_bp: liability?.interestRateBp ?? null,
+    p_term_months: liability?.termMonths ?? null,
+    p_monthly_payment_cents: liability?.monthlyPaymentCents ?? null,
+    p_start_date: liability?.startDate ?? null,
+    p_target_amount_cents: goal?.targetAmountCents ?? null,
+    p_target_date: goal?.targetDate ?? null,
+    p_cost_basis_cents: investment?.costBasisCents ?? null,
+    p_current_value_cents: investment?.currentValueCents ?? null,
+    p_valued_on: investment?.valuedOn ?? null,
+    p_counterparty_name: loaned?.counterpartyName ?? null,
+    p_loaned_amount_cents: loaned?.originalAmountCents ?? null,
+    p_loaned_term_months: loaned?.termMonths ?? null,
+    p_expected_return_date: loaned?.expectedReturnDate ?? null,
+  });
+
+  if (error) {
+    return err(mapPgError(error, "create_account"));
+  }
+
+  return ok({ id: i.accountId, householdId: i.householdId, type: i.type, class: deriveAccountClass(i.type) });
+}
+
+export const SetAccountArchivedInputSchema = z.object({
+  accountId: z.string().uuid(),
+  householdId: z.string().uuid(),
+  archived: z.boolean(),
+});
+export type SetAccountArchivedInput = z.infer<typeof SetAccountArchivedInputSchema>;
+
+/** Pause (`archived: true`) or reactivate (`archived: false`) an account — reversible, calls
+ *  `finance.set_account_archived()` (change: finance-account-edit T2.5). */
+export async function setAccountArchived(input: SetAccountArchivedInput): Promise<Result<void>> {
+  const parsed = SetAccountArchivedInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return err({ code: "VALIDATION_ERROR", message: parsed.error.message, cause: parsed.error });
+  }
+  const i = parsed.data;
+  const supabase = await client();
+
+  const { error } = await supabase.schema("finance").rpc("set_account_archived", {
+    p_account_id: i.accountId,
+    p_household_id: i.householdId,
+    p_archived: i.archived,
+  });
+
+  if (error) {
+    return err(mapPgError(error, "generic"));
+  }
+
+  return ok(undefined as unknown as void);
+}
+
+export const DeleteAccountInputSchema = z.object({
+  accountId: z.string().uuid(),
+  householdId: z.string().uuid(),
+});
+export type DeleteAccountInput = z.infer<typeof DeleteAccountInputSchema>;
+
+/** Hard delete — refused server-side (errcode `2BP01` -> `ACCOUNT_HAS_HISTORY`) when the
+ *  account has any transaction or recurring/installment history (change: finance-account-edit
+ *  T2.5, design.md Decision 5). */
+export async function deleteAccount(input: DeleteAccountInput): Promise<Result<void>> {
+  const parsed = DeleteAccountInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return err({ code: "VALIDATION_ERROR", message: parsed.error.message, cause: parsed.error });
+  }
+  const i = parsed.data;
+  const supabase = await client();
+
+  const { error } = await supabase.schema("finance").rpc("delete_account", {
+    p_account_id: i.accountId,
+    p_household_id: i.householdId,
+  });
+
+  if (error) {
+    return err(mapPgError(error, "generic"));
+  }
+
+  return ok(undefined as unknown as void);
 }
 
 export const UpdateInvestmentValueInputSchema = z.object({

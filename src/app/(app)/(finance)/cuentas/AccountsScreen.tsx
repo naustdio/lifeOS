@@ -97,12 +97,18 @@ function CardStatusBlock({ status }: { status: CardStatusItem }) {
 function AccountCard({ account, cardStatus }: { account: AccountItem; cardStatus: CardStatusItem | undefined }) {
   return (
     <div className="flex flex-col gap-2 py-1">
-      <TransactionRow
-        title={account.name}
-        subtitle={TYPE_LABELS[account.type] ?? account.type}
-        formattedAmount={formatCentsAsMXN(account.balanceCents)}
-        kind={account.class === "asset" ? "income" : "expense"}
-      />
+      {/* Wrapped in the edit-route Link, not the whole card (change: finance-account-edit
+          T5.1) — the card-terms block below renders its OWN nested `Link` to `/cuentas/nueva`
+          when a credit_card account has no terms yet; nesting two <a> tags is invalid HTML, so
+          only the row itself (name/type/balance) is the clickable target. */}
+      <Link href={`/cuentas/${account.id}/editar`}>
+        <TransactionRow
+          title={account.name}
+          subtitle={TYPE_LABELS[account.type] ?? account.type}
+          formattedAmount={formatCentsAsMXN(account.balanceCents)}
+          kind={account.class === "asset" ? "income" : "expense"}
+        />
+      </Link>
       {account.liability && (
         <div className="flex flex-col gap-1 px-2 text-xs text-muted-foreground">
           <p>Tasa: {(account.liability.interestRateBp / 100).toFixed(2)}%</p>
@@ -148,6 +154,39 @@ function AccountCard({ account, cardStatus }: { account: AccountItem; cardStatus
 }
 
 /**
+ * Collapsed-by-default "Pausadas" section (change: finance-account-edit T5.3, spec: "Pausadas
+ * section is collapsed by default"). Only rendered on the "Todo" tab (design.md's own open-
+ * question recommendation) to keep per-type hero totals unambiguous. Each row reuses
+ * `AccountCard` (same Link-to-edit target — reactivating happens on the edit screen, not here)
+ * so paused accounts get the exact same visual treatment as active ones, just segregated.
+ */
+function PausedAccountsSection({ accounts }: { accounts: AccountItem[] }) {
+  const [expanded, setExpanded] = React.useState(false);
+  if (accounts.length === 0) return null;
+
+  return (
+    <Card>
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground"
+      >
+        <span>Pausadas ({accounts.length})</span>
+        <span aria-hidden="true">{expanded ? "▲" : "▼"}</span>
+      </button>
+      {expanded && (
+        <CardContent className="divide-y divide-border/60 py-2">
+          {accounts.map((account) => (
+            <AccountCard key={account.id} account={account} cardStatus={undefined} />
+          ))}
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+/**
  * Tabbed `/cuentas` screen: filters one account list by type group (Todo/Débito/Ahorros/
  * Inversiones/Tarjetas de crédito/Préstamos/Prestado) instead of showing every type mixed
  * together, with a hero total scoped to the active tab. `availableCents` (assets only, matching
@@ -158,10 +197,15 @@ export function AccountsScreen({
   accounts,
   cardStatuses,
   availableCents,
+  archivedAccounts = [],
 }: {
   accounts: AccountItem[];
   cardStatuses: CardStatusItem[];
   availableCents: number;
+  /** change: finance-account-edit T5.3 — paused accounts, shown in a collapsed section on the
+   *  "Todo" tab only. Optional/defaulted so every pre-existing call site (and test) keeps
+   *  compiling unchanged. */
+  archivedAccounts?: AccountItem[];
 }) {
   const [activeTab, setActiveTab] = React.useState<TabKey>("todo");
   const cardStatusByAccount = new Map(cardStatuses.map((s) => [s.accountId, s]));
@@ -242,6 +286,8 @@ export function AccountsScreen({
           </CardContent>
         </Card>
       )}
+
+      {activeTab === "todo" && <PausedAccountsSection accounts={archivedAccounts} />}
     </main>
   );
 }

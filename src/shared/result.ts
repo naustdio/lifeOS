@@ -15,6 +15,7 @@ export type AppErrorCode =
   | "CATEGORY_NAME_TAKEN"
   | "RECURRING_INVALID_STATE"
   | "INSTALLMENT_INVALID_INPUT"
+  | "ACCOUNT_HAS_HISTORY"
   | "UNKNOWN_ERROR";
 
 export type AppError = {

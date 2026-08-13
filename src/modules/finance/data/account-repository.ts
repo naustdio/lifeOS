@@ -3,9 +3,14 @@ import type { AccountType } from "../domain/account";
 
 /**
  * Repositories for `finance.accounts` + its derived-balance view + detail
- * tables (T-036, T-039). Reads only — writes go exclusively through
- * `finance/api`'s `createAccount()` seam (design.md §5.6), never through
- * these repositories.
+ * tables (T-036, T-039). Mostly reads — every write to `finance.accounts`
+ * itself still goes exclusively through `finance/api`'s seam functions
+ * (`createAccount`, `updateAccount`, `setAccountArchived`, `deleteAccount`),
+ * which call SECURITY DEFINER RPCs (design.md §5.6); this file never writes
+ * to `finance.accounts` directly. `upsertCardDetails`/`removeCardDetails`
+ * below are the one documented exception (design.md Decision 2): plain
+ * RLS-guarded writes to the optional `account_credit_card_details` table,
+ * which guards no account-level invariant.
  */
 export type AccountListItem = {
   id: string;
@@ -54,6 +59,41 @@ export async function listActiveAccounts(
     return [];
   }
 
+  return hydrateAccountListItems(supabase, accounts as RawAccountRow[]);
+}
+
+/**
+ * Archived (paused) accounts for the "Pausadas" section (change: finance-account-edit T2.2).
+ * Sibling to `listActiveAccounts` — same read shape, `archived_at is not null` instead of
+ * `is null`. Symmetric and easy to reason about next to the active-list function it mirrors.
+ */
+export async function listArchivedAccounts(
+  supabase: SupabaseClient,
+  householdId: string,
+): Promise<AccountListItem[]> {
+  const { data: accounts, error } = await supabase
+    .schema("finance")
+    .from("accounts")
+    .select("id, name, type, class, visibility, archived_at")
+    .eq("household_id", householdId)
+    .not("archived_at", "is", null)
+    .order("sort_order", { ascending: true });
+
+  if (error || !accounts || accounts.length === 0) {
+    return [];
+  }
+
+  return hydrateAccountListItems(supabase, accounts as RawAccountRow[]);
+}
+
+type RawAccountRow = { id: unknown; name: unknown; type: unknown; class: unknown; visibility: unknown };
+
+/** Shared detail-row hydration for `listActiveAccounts`/`listArchivedAccounts` — extracted so
+ *  the two lists cannot silently drift on which detail tables they join. */
+async function hydrateAccountListItems(
+  supabase: SupabaseClient,
+  accounts: RawAccountRow[],
+): Promise<AccountListItem[]> {
   const ids = accounts.map((a) => a.id as string);
 
   const [{ data: balances }, { data: liabilities }, { data: goals }, { data: investments }, { data: loans }] =
@@ -130,6 +170,68 @@ export async function listActiveAccounts(
         : undefined,
     };
   });
+}
+
+export type AccountDetail = AccountListItem & {
+  archivedAt: string | null;
+  /** Existing card terms, present only for a `credit_card` account that already has a saved
+   *  `account_credit_card_details` row (fix for sdd-verify CRITICAL-1, change:
+   *  finance-account-edit). Without this, the edit route had no way to prefill
+   *  `AccountTypeFields`'s card fieldset, so it always rendered blank — and submitting even ONE
+   *  card field then silently NULLed the other three via `upsertCardDetails`'s full-row upsert. */
+  card?: {
+    creditLimitCents: number | null;
+    statementDay: number | null;
+    dueDay: number | null;
+    minPaymentCents: number | null;
+  };
+};
+
+/**
+ * A single account by id, for the edit route (change: finance-account-edit T2.1). Deliberately
+ * WITHOUT `.is("archived_at", null)` filtering — a paused account must still be openable for
+ * editing/reactivation (design.md's whole point of the "Pausadas" section). Returns `null` for
+ * a missing id or one belonging to another household, letting the route call `notFound()`.
+ */
+export async function getAccountById(
+  supabase: SupabaseClient,
+  householdId: string,
+  id: string,
+): Promise<AccountDetail | null> {
+  const { data: account, error } = await supabase
+    .schema("finance")
+    .from("accounts")
+    .select("id, name, type, class, visibility, archived_at")
+    .eq("household_id", householdId)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !account) {
+    return null;
+  }
+
+  const [item] = await hydrateAccountListItems(supabase, [account as RawAccountRow]);
+  const detail: AccountDetail = { ...item, archivedAt: (account.archived_at as string | null) ?? null };
+
+  if ((account.type as AccountType) === "credit_card") {
+    const { data: card } = await supabase
+      .schema("finance")
+      .from("account_credit_card_details")
+      .select("credit_limit_cents, statement_day, due_day, min_payment_cents")
+      .eq("account_id", id)
+      .maybeSingle();
+
+    if (card) {
+      detail.card = {
+        creditLimitCents: card.credit_limit_cents === null ? null : Number(card.credit_limit_cents),
+        statementDay: card.statement_day === null ? null : Number(card.statement_day),
+        dueDay: card.due_day === null ? null : Number(card.due_day),
+        minPaymentCents: card.min_payment_cents === null ? null : Number(card.min_payment_cents),
+      };
+    }
+  }
+
+  return detail;
 }
 
 /**
