@@ -11,6 +11,7 @@ export {
   updateRecipe,
   softDeleteRecipe,
   hardDeleteRecipe,
+  setRecipePhoto,
   type RecipeListItem,
   type RecipeDetail,
   type RecipeIngredient,
@@ -18,6 +19,13 @@ export {
   type IngredientInput,
   type StepInput,
 } from "../data/recipe-repository";
+
+export {
+  uploadRecipePhoto,
+  signRecipePhotoUrls,
+  buildRecipePhotoPath,
+  RECIPE_PHOTO_BUCKET,
+} from "../data/recipe-photo-repository";
 
 export { listRecipeChanges, type RecipeChange } from "../data/recipe-history-repository";
 

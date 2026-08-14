@@ -31,6 +31,8 @@ export type RecipeDetailRecipe = {
   category: string;
   portions: number;
   videoUrl: string | null;
+  prepMinutes: number | null;
+  photoUrl: string | null;
   ingredients: { id: string; position: number; name: string; quantity: number | null; unit: string }[];
   steps: { id: string; position: number; instruction: string }[];
 };
@@ -69,8 +71,14 @@ export function RecipeDetail({ recipe, history, isOwner }: { recipe: RecipeDetai
           <CardTitle>{recipe.title}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {recipe.photoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- signed private-bucket URL
+            <img src={recipe.photoUrl} alt="" className="aspect-video w-full rounded-card object-cover" />
+          )}
+
           <p className="text-sm text-muted-foreground">
             {CATEGORY_LABELS[recipe.category] ?? recipe.category} · {recipe.portions} porciones
+            {recipe.prepMinutes !== null && ` · ${recipe.prepMinutes} min`}
           </p>
 
           {recipe.videoUrl && <VideoEmbed url={recipe.videoUrl} title={recipe.title} />}

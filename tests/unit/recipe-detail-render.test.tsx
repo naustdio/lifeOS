@@ -23,6 +23,8 @@ const RECIPE = {
   category: "comida" as const,
   portions: 4,
   videoUrl: null,
+  prepMinutes: null,
+  photoUrl: null,
   ingredients: [{ id: "i1", position: 0, name: "Tortilla", quantity: 8, unit: "pieza" }],
   steps: [{ id: "s1", position: 0, instruction: "Calentar la tortilla" }],
 };

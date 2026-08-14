@@ -8,6 +8,9 @@ import { createClient } from "@/shared/supabase/server";
 
 export type RecipeFormState = {
   error: string | null;
+  /** Set on a successful create so the client can chain a staged photo upload — the recipe
+   *  doesn't exist (no id to point the photo at) until this action returns. */
+  id?: string;
 };
 
 const ERROR_COPY: Record<string, string> = {
@@ -52,6 +55,8 @@ export async function createRecipeAction(_prevState: RecipeFormState, formData: 
   const category = String(formData.get("category") ?? "");
   const portions = Number(formData.get("portions") ?? 1);
   const videoUrl = String(formData.get("videoUrl") ?? "").trim() || null;
+  const prepMinutesRaw = String(formData.get("prepMinutes") ?? "").trim();
+  const prepMinutes = prepMinutesRaw ? Number(prepMinutesRaw) : null;
   const reason = String(formData.get("reason") ?? "").trim();
 
   if (!title) return { error: "Completa el título." };
@@ -64,6 +69,7 @@ export async function createRecipeAction(_prevState: RecipeFormState, formData: 
     category,
     portions,
     videoUrl,
+    prepMinutes,
     ingredients: parseIngredients(formData),
     steps: parseSteps(formData),
     reason,
@@ -73,7 +79,7 @@ export async function createRecipeAction(_prevState: RecipeFormState, formData: 
   }
 
   revalidatePath("/recetas");
-  return { error: null };
+  return { error: null, id };
 }
 
 /** Updates a recipe via the write seam. Same reason re-validation as create. */
@@ -87,6 +93,8 @@ export async function updateRecipeAction(_prevState: RecipeFormState, formData: 
   const category = String(formData.get("category") ?? "");
   const portions = Number(formData.get("portions") ?? 1);
   const videoUrl = String(formData.get("videoUrl") ?? "").trim() || null;
+  const prepMinutesRaw = String(formData.get("prepMinutes") ?? "").trim();
+  const prepMinutes = prepMinutesRaw ? Number(prepMinutesRaw) : null;
   const reason = String(formData.get("reason") ?? "").trim();
 
   if (!id) return { error: "Receta no encontrada." };
@@ -100,6 +108,7 @@ export async function updateRecipeAction(_prevState: RecipeFormState, formData: 
     category,
     portions,
     videoUrl,
+    prepMinutes,
     ingredients: parseIngredients(formData),
     steps: parseSteps(formData),
     reason,
@@ -110,7 +119,7 @@ export async function updateRecipeAction(_prevState: RecipeFormState, formData: 
 
   revalidatePath("/recetas");
   revalidatePath(`/recetas/${id}`);
-  return { error: null };
+  return { error: null, id };
 }
 
 /** Soft-deletes a recipe — any household member, mandatory reason (spec `recipes-history`). */
@@ -176,5 +185,19 @@ export async function setIngredientIconAction(name: string, icon: string): Promi
   if (!spaceId) return { error: ERROR_COPY.NOT_A_MEMBER };
 
   const { error } = await recipesApi.upsertIngredientCatalogEntry(supabase, { householdId: spaceId, name, icon });
+  return { error };
+}
+
+/** Uploads a recipe's own photo (distinct from ingredient photos) — called directly from
+ *  `RecipeForm` once a real `recipeId` exists (immediately in edit mode; only after a successful
+ *  create in create mode, since the recipe doesn't exist beforehand). */
+export async function uploadRecipePhotoAction(recipeId: string, file: File): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const spaceId = await getCurrentHouseholdId(supabase);
+  if (!spaceId) return { error: ERROR_COPY.NOT_A_MEMBER };
+
+  const ext = file.name.split(".").pop() || "jpg";
+  const { error } = await recipesApi.uploadRecipePhoto(supabase, { householdId: spaceId, recipeId, file, ext });
+  if (!error) revalidatePath("/recetas");
   return { error };
 }

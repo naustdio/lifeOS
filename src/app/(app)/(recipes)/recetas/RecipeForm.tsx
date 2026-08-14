@@ -1,15 +1,22 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Camera, Plus } from "lucide-react";
 import { Reorder } from "motion/react";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
 import { IngredientRow, type IngredientCatalogOption, type IngredientRowUnitOption } from "@/design-system/patterns/IngredientRow";
 import { StepRow, type StepDraft } from "@/design-system/patterns/StepRow";
 import { Input } from "@/design-system/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/design-system/ui/select";
-import { attachIngredientPhotoAction, createRecipeAction, setIngredientIconAction, updateRecipeAction, type RecipeFormState } from "./actions";
+import {
+  attachIngredientPhotoAction,
+  createRecipeAction,
+  setIngredientIconAction,
+  updateRecipeAction,
+  uploadRecipePhotoAction,
+  type RecipeFormState,
+} from "./actions";
 
 const INITIAL_STATE: RecipeFormState = { error: null };
 
@@ -29,6 +36,8 @@ export type RecipeFormInitial = {
   category: string;
   portions: number;
   videoUrl: string | null;
+  prepMinutes: number | null;
+  photoUrl: string | null;
   ingredients: { name: string; quantity: number | null; unit: string }[];
   steps: { instruction: string }[];
 };
@@ -62,6 +71,9 @@ export function RecipeForm({
     initial?.steps.map((s) => ({ id: crypto.randomUUID(), instruction: s.instruction })) ?? [],
   );
   const [reasonError, setReasonError] = useState<string | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(initial?.photoUrl ?? null);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Tracked separately from the server-fetched `catalog` prop so a photo/icon attached to a
   // brand-new ingredient name becomes available to THIS form's own autocomplete immediately —
@@ -82,6 +94,29 @@ export function RecipeForm({
       next[idx] = { ...next[idx], ...patch };
       return next;
     });
+  }
+
+  // The recipe doesn't exist (no id to point a photo at) until `createRecipeAction` returns — a
+  // photo picked in create mode is staged locally and only actually uploaded once `state.id`
+  // shows up here. In edit mode the recipe already exists, so `handlePhotoSelected` uploads
+  // immediately instead of staging.
+  useEffect(() => {
+    if (mode === "create" && state.id && pendingPhotoFile) {
+      const file = pendingPhotoFile;
+      setPendingPhotoFile(null);
+      void uploadRecipePhotoAction(state.id, file);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to a fresh id appearing
+  }, [state.id]);
+
+  async function handlePhotoSelected(file: File | undefined) {
+    if (!file) return;
+    setPhotoPreviewUrl(URL.createObjectURL(file));
+    if (mode === "edit" && initial) {
+      await uploadRecipePhotoAction(initial.id, file);
+    } else {
+      setPendingPhotoFile(file);
+    }
   }
 
   function handleSubmit(formData: FormData) {
@@ -112,6 +147,33 @@ export function RecipeForm({
       <CardContent>
         <form action={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Foto (opcional)</span>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => handlePhotoSelected(e.target.files?.[0])}
+              aria-label="Foto de la receta"
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-card border-2 border-dashed border-border bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/50 hover:bg-accent/50"
+            >
+              {photoPreviewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- local/signed object URL preview
+                <img src={photoPreviewUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              ) : (
+                <span className="flex flex-col items-center gap-1 text-xs">
+                  <Camera className="h-5 w-5" aria-hidden />
+                  Agregar foto
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-1">
             <label htmlFor="recipeTitle" className="text-sm font-medium">
               Título
             </label>
@@ -141,6 +203,21 @@ export function RecipeForm({
               Porciones
             </label>
             <Input id="recipePortions" name="portions" type="number" min="1" max="99" defaultValue={initial?.portions ?? 4} required />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="recipePrepMinutes" className="text-sm font-medium">
+              Duración de preparación en minutos (opcional)
+            </label>
+            <Input
+              id="recipePrepMinutes"
+              name="prepMinutes"
+              type="number"
+              min="1"
+              max="1440"
+              placeholder="Ej. 25"
+              defaultValue={initial?.prepMinutes ?? ""}
+            />
           </div>
 
           <div className="flex flex-col gap-1">

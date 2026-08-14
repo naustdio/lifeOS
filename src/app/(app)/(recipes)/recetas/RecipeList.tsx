@@ -1,14 +1,20 @@
 "use client";
 
 import { Apple, BookOpen, CakeSlice, Moon, Sunrise, Utensils } from "lucide-react";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AnimatedFilterTab } from "@/design-system/patterns/AnimatedFilterTab";
 import { EmptyState } from "@/design-system/patterns/EmptyState";
-import { Card, CardContent } from "@/design-system/ui/card";
+import { RecipeCard } from "@/design-system/patterns/RecipeCard";
 import { Input } from "@/design-system/ui/input";
 
-export type RecipeListEntry = { id: string; title: string; category: string; portions: number };
+export type RecipeListEntry = {
+  id: string;
+  title: string;
+  category: string;
+  portions: number;
+  photoUrl: string | null;
+  prepMinutes: number | null;
+};
 
 const CATEGORY_LABELS: Record<string, string> = {
   desayuno: "Desayuno",
@@ -77,23 +83,18 @@ export function RecipeList({
       {filtered.length === 0 ? (
         <EmptyState icon={BookOpen} heading="No hay recetas" description="Prueba con otra búsqueda o categoría." />
       ) : (
-        <Card>
-          <CardContent className="divide-y divide-border/60 py-2">
-            {filtered.map((r) => (
-              <Link key={r.id} href={`/recetas/${r.id}`} className="flex items-center gap-3 py-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-pill bg-secondary text-secondary-foreground">
-                  <BookOpen className="h-4 w-4" aria-hidden />
-                </span>
-                <div className="min-w-0 flex-1 flex flex-col">
-                  <span className="truncate text-sm font-medium">{r.title}</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {CATEGORY_LABELS[r.category] ?? r.category} · {r.portions} porciones
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {filtered.map((r) => (
+            <RecipeCard
+              key={r.id}
+              href={`/recetas/${r.id}`}
+              title={r.title}
+              categoryLabel={CATEGORY_LABELS[r.category] ?? r.category}
+              photoUrl={r.photoUrl}
+              prepMinutes={r.prepMinutes}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

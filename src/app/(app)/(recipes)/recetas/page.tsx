@@ -7,6 +7,7 @@ import {
   isValidCategory,
   mergeUnitOptions,
   signIngredientPhotoUrls,
+  signRecipePhotoUrls,
 } from "@/modules/recipes/api";
 import type { IngredientCatalogOption } from "@/design-system/patterns/IngredientRow";
 import { createClient } from "@/shared/supabase/server";
@@ -41,12 +42,22 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
     icon: c.icon,
   }));
 
+  const recipePhotoPaths = recipes.map((r) => r.photoPath).filter((p): p is string => Boolean(p));
+  const recipeSignedUrls = spaceId ? await signRecipePhotoUrls(supabase, recipePhotoPaths) : {};
+
   return (
     <main className="flex flex-col gap-6">
       <h2 className="text-lg font-semibold">Recetas</h2>
 
       <RecipeList
-        recipes={recipes.map((r) => ({ id: r.id, title: r.title, category: r.category, portions: r.portions }))}
+        recipes={recipes.map((r) => ({
+          id: r.id,
+          title: r.title,
+          category: r.category,
+          portions: r.portions,
+          photoUrl: r.photoPath ? (recipeSignedUrls[r.photoPath] ?? null) : null,
+          prepMinutes: r.prepMinutes,
+        }))}
         initialQuery={q ?? ""}
         initialCategory={category ?? null}
       />

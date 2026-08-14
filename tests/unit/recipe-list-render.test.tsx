@@ -9,9 +9,9 @@ import { afterEach, describe, expect, it } from "vitest";
 const { RecipeList } = await import("@/app/(app)/(recipes)/recetas/RecipeList");
 
 const RECIPES = [
-  { id: "1", title: "Tacos al pastor", category: "comida", portions: 4 },
-  { id: "2", title: "Pastel de chocolate", category: "postre", portions: 8 },
-  { id: "3", title: "Tacos de pescado", category: "comida", portions: 4 },
+  { id: "1", title: "Tacos al pastor", category: "comida", portions: 4, photoUrl: null, prepMinutes: null },
+  { id: "2", title: "Pastel de chocolate", category: "postre", portions: 8, photoUrl: null, prepMinutes: 45 },
+  { id: "3", title: "Tacos de pescado", category: "comida", portions: 4, photoUrl: null, prepMinutes: null },
 ];
 
 describe("RecipeList — smoke render (recipes-module)", () => {

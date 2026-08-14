@@ -17,6 +17,8 @@ export type RecipeListItem = {
   category: RecipeCategory;
   portions: number;
   videoUrl: string | null;
+  prepMinutes: number | null;
+  photoPath: string | null;
   createdAt: string;
 };
 
@@ -24,7 +26,8 @@ export type RecipeIngredient = { id: string; position: number; name: string; qua
 export type RecipeStep = { id: string; position: number; instruction: string };
 export type RecipeDetail = RecipeListItem & { ingredients: RecipeIngredient[]; steps: RecipeStep[] };
 
-const RECIPE_COLUMNS = "id, household_id, owner_user_id, title, category, portions, video_url, created_at";
+const RECIPE_COLUMNS =
+  "id, household_id, owner_user_id, title, category, portions, video_url, prep_minutes, photo_path, created_at";
 
 function mapRecipeRow(r: Record<string, unknown>): RecipeListItem {
   return {
@@ -35,6 +38,8 @@ function mapRecipeRow(r: Record<string, unknown>): RecipeListItem {
     category: r.category as RecipeCategory,
     portions: Number(r.portions),
     videoUrl: (r.video_url as string | null) ?? null,
+    prepMinutes: r.prep_minutes === null || r.prep_minutes === undefined ? null : Number(r.prep_minutes),
+    photoPath: (r.photo_path as string | null) ?? null,
     createdAt: r.created_at as string,
   };
 }
@@ -111,6 +116,7 @@ export async function createRecipe(
     category: RecipeCategory;
     portions: number;
     videoUrl: string | null;
+    prepMinutes: number | null;
     ingredients: IngredientInput[];
     steps: StepInput[];
     reason: string;
@@ -125,6 +131,7 @@ export async function createRecipe(
     p_ingredients: input.ingredients,
     p_steps: input.steps,
     p_reason: input.reason,
+    p_prep_minutes: input.prepMinutes,
   });
   if (error || !data) {
     return { id: null, error: error?.message ?? "create failed" };
@@ -141,6 +148,7 @@ export async function updateRecipe(
     category: RecipeCategory;
     portions: number;
     videoUrl: string | null;
+    prepMinutes: number | null;
     ingredients: IngredientInput[];
     steps: StepInput[];
     reason: string;
@@ -155,7 +163,15 @@ export async function updateRecipe(
     p_ingredients: input.ingredients,
     p_steps: input.steps,
     p_reason: input.reason,
+    p_prep_minutes: input.prepMinutes,
   });
+  return { error: error?.message ?? null };
+}
+
+/** RPC wrapper for `recipes.set_recipe_photo` — attaches/clears the recipe's own photo, outside
+ *  the write seam (no mandatory-reason audit needed, same reasoning as `ingredient_catalog`). */
+export async function setRecipePhoto(supabase: SupabaseClient, recipeId: string, photoPath: string | null): Promise<{ error: string | null }> {
+  const { error } = await supabase.schema("recipes").rpc("set_recipe_photo", { p_recipe_id: recipeId, p_photo_path: photoPath });
   return { error: error?.message ?? null };
 }
 

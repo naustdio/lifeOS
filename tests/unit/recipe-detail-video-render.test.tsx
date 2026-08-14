@@ -21,6 +21,8 @@ const BASE_RECIPE = {
   title: "Tacos al pastor",
   category: "comida" as const,
   portions: 4,
+  prepMinutes: null,
+  photoUrl: null,
   ingredients: [],
   steps: [],
 };
