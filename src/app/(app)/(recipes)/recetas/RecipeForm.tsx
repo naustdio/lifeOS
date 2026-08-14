@@ -51,9 +51,12 @@ export type RecipeFormInitial = {
 /**
  * Create/edit recipe form — spec `recipes-catalog` "Recipe Core Record", "Ingredients are saved
  * in entry order", "Steps render in numeric sequence"; spec `recipes-history` "A UI edit without
- * a reason is blocked". Dynamic ingredient/step rows, unit picklist with a free-text fallback per
- * row (`IngredientRow`), mandatory reason field that blocks submission client-side (server/DB
- * re-validate independently — this is defence in depth, not the operative gate).
+ * a reason is blocked" — that requirement is EDIT-only (and soft/hard-delete, handled separately
+ * in `RecipeDetail`), so the "Motivo" field only renders in edit mode; creating a recipe has no
+ * prior state to explain and writes a fixed reason server-side instead. Dynamic ingredient/step
+ * rows, unit picklist with a free-text fallback per row (`IngredientRow`), mandatory reason field
+ * that blocks submission client-side in edit mode (server/DB re-validate independently — this is
+ * defence in depth, not the operative gate).
  */
 export function RecipeForm({
   mode,
@@ -82,6 +85,7 @@ export function RecipeForm({
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(initial?.photoUrl ?? null);
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Tracked separately from the server-fetched `catalog` prop so a photo/icon attached to a
   // brand-new ingredient name becomes available to THIS form's own autocomplete immediately —
@@ -108,14 +112,28 @@ export function RecipeForm({
   // photo picked in create mode is staged locally and only actually uploaded once `state.id`
   // shows up here. In edit mode the recipe already exists, so `handlePhotoSelected` uploads
   // immediately instead of staging.
+  //
+  // `useActionState` only resets uncontrolled/native fields on a successful submission — every
+  // piece of React state this form owns (photo preview, ingredients, steps, category) survives a
+  // create and would otherwise leak into the next "Nueva receta" entry, so a fresh `state.id`
+  // also means: upload the staged photo (if any), then reset the create form back to blank.
   useEffect(() => {
-    if (mode === "create" && state.id && pendingPhotoFile) {
+    if (mode !== "create" || !state?.id) return;
+    const newId = state.id;
+
+    if (pendingPhotoFile) {
       const file = pendingPhotoFile;
       setPendingPhotoFile(null);
-      void uploadRecipePhotoAction(state.id, file);
+      void uploadRecipePhotoAction(newId, file);
     }
+
+    formRef.current?.reset();
+    setPhotoPreviewUrl(null);
+    setCategory(CATEGORIES[1].value);
+    setIngredients([]);
+    setSteps([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to a fresh id appearing
-  }, [state.id]);
+  }, [state?.id]);
 
   async function handlePhotoSelected(file: File | undefined) {
     if (!file) return;
@@ -128,12 +146,14 @@ export function RecipeForm({
   }
 
   function handleSubmit(formData: FormData) {
-    const reason = String(formData.get("reason") ?? "").trim();
-    if (reason.length < 3) {
-      setReasonError("Escribe un motivo de al menos 3 caracteres.");
-      return;
+    if (mode === "edit") {
+      const reason = String(formData.get("reason") ?? "").trim();
+      if (reason.length < 3) {
+        setReasonError("Escribe un motivo de al menos 3 caracteres.");
+        return;
+      }
+      setReasonError(null);
     }
-    setReasonError(null);
 
     formData.set(
       "ingredients",
@@ -161,7 +181,7 @@ export function RecipeForm({
         <CardTitle>{mode === "create" ? "Nueva receta" : "Editar receta"}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={handleSubmit} className="flex flex-col gap-4">
+        <form ref={formRef} action={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Foto (opcional)</span>
             <input
@@ -311,19 +331,21 @@ export function RecipeForm({
             </Button>
           </fieldset>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="recipeReason" className="text-sm font-medium">
-              Motivo
-            </label>
-            <Input
-              id="recipeReason"
-              name="reason"
-              maxLength={200}
-              placeholder={mode === "create" ? "Ej. primera carga de la receta" : "Ej. corrijo la cantidad de azúcar"}
-              required
-            />
-            {reasonError && <p className="text-xs text-expense">{reasonError}</p>}
-          </div>
+          {mode === "edit" && (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="recipeReason" className="text-sm font-medium">
+                Motivo
+              </label>
+              <Input
+                id="recipeReason"
+                name="reason"
+                maxLength={200}
+                placeholder="Ej. corrijo la cantidad de azúcar"
+                required
+              />
+              {reasonError && <p className="text-xs text-expense">{reasonError}</p>}
+            </div>
+          )}
 
           {state.error && <p className="text-sm text-expense">{state.error}</p>}
           <Button type="submit" disabled={pending}>

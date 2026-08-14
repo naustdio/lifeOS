@@ -35,20 +35,33 @@ describe("RecipeForm — smoke render (recipes-module)", () => {
     updateRecipeAction.mockReset();
   });
 
-  it("renders title, category, portions, video url, and reason fields", () => {
+  it("renders title, category, portions, and video url fields, with no reason field on create", () => {
     render(<RecipeForm mode="create" units={UNITS} catalog={CATALOG} recipeOptions={[]} />);
 
     expect(screen.getByLabelText("Título")).toBeInTheDocument();
     expect(screen.getByLabelText("Categoría")).toBeInTheDocument();
     expect(screen.getByLabelText("Porciones")).toBeInTheDocument();
     expect(screen.getByLabelText(/Video/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Motivo")).toBeInTheDocument();
+    // The mandatory-reason rule (spec `recipes-history`) applies to edits/deletes, not creation —
+    // a brand-new recipe has no prior state to explain, so there's nothing for the user to type.
+    expect(screen.queryByLabelText("Motivo")).not.toBeInTheDocument();
   });
 
-  it("blocks submit and shows a validation message when the reason is empty", () => {
-    render(<RecipeForm mode="create" units={UNITS} catalog={CATALOG} recipeOptions={[]} />);
+  it("blocks submit and shows a validation message when editing without a reason", () => {
+    const initial = {
+      id: "r1",
+      title: "Tacos",
+      category: "comida",
+      portions: 4,
+      videoUrl: null,
+      prepMinutes: null,
+      photoUrl: null,
+      ingredients: [],
+      steps: [],
+    };
+    render(<RecipeForm mode="edit" units={UNITS} catalog={CATALOG} recipeOptions={[]} initial={initial} />);
 
-    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Tacos" } });
+    expect(screen.getByLabelText("Motivo")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Guardar receta/ }));
 
     expect(screen.getByText(/motivo/i)).toBeInTheDocument();

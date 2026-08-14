@@ -69,8 +69,11 @@ export function RecipeDetail({ recipe, history, isOwner }: { recipe: RecipeDetai
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle>{recipe.title}</CardTitle>
+          <Button asChild variant="secondary" size="sm">
+            <Link href={`/recetas/${recipe.id}/editar`}>Editar</Link>
+          </Button>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {recipe.photoUrl && (

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getCurrentHouseholdId } from "@/modules/core/api";
 import * as recipesApi from "@/modules/recipes/api";
 import { isValidCategory, reasonIsPresent, type IngredientInput, type StepInput } from "@/modules/recipes/api";
@@ -63,12 +64,13 @@ export async function createRecipeAction(_prevState: RecipeFormState, formData: 
   const videoUrl = String(formData.get("videoUrl") ?? "").trim() || null;
   const prepMinutesRaw = String(formData.get("prepMinutes") ?? "").trim();
   const prepMinutes = prepMinutesRaw ? Number(prepMinutesRaw) : null;
-  const reason = String(formData.get("reason") ?? "").trim();
 
   if (!title) return { error: "Completa el título." };
   if (!isValidCategory(category)) return { error: "Selecciona una categoría válida." };
-  if (!reasonIsPresent(reason)) return { error: "Escribe un motivo de al menos 3 caracteres." };
 
+  // The mandatory-reason audit trail (spec `recipes-history`) applies to edits and deletes, where
+  // there's a prior state worth explaining — a brand-new recipe has none, so creation writes a
+  // fixed reason instead of asking the user to invent one.
   const { id, error } = await recipesApi.createRecipe(supabase, {
     householdId: spaceId,
     title,
@@ -78,7 +80,7 @@ export async function createRecipeAction(_prevState: RecipeFormState, formData: 
     prepMinutes,
     ingredients: parseIngredients(formData),
     steps: parseSteps(formData),
-    reason,
+    reason: "Receta creada",
   });
   if (error || !id) {
     return { error: "No se pudo guardar la receta. " + (error ?? "") };
@@ -125,7 +127,7 @@ export async function updateRecipeAction(_prevState: RecipeFormState, formData: 
 
   revalidatePath("/recetas");
   revalidatePath(`/recetas/${id}`);
-  return { error: null, id };
+  redirect(`/recetas/${id}`);
 }
 
 /** Soft-deletes a recipe — any household member, mandatory reason (spec `recipes-history`). */
