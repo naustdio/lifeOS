@@ -1,8 +1,9 @@
 "use client";
 
-import { BookOpen } from "lucide-react";
+import { Apple, BookOpen, CakeSlice, Moon, Sunrise, Utensils } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { AnimatedFilterTab } from "@/design-system/patterns/AnimatedFilterTab";
 import { EmptyState } from "@/design-system/patterns/EmptyState";
 import { Card, CardContent } from "@/design-system/ui/card";
 import { Input } from "@/design-system/ui/input";
@@ -16,6 +17,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   postre: "Postre",
   snack: "Snack",
 };
+
+const CATEGORY_ICONS = {
+  desayuno: Sunrise,
+  comida: Utensils,
+  cena: Moon,
+  postre: CakeSlice,
+  snack: Apple,
+} as const;
 
 /**
  * Client list — name search + category filter chips, composed simultaneously (spec
@@ -53,18 +62,15 @@ export function RecipeList({
         <Input id="recipeSearch" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nombre de la receta" />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none" role="tablist" aria-label="Filtro por categoría">
         {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-          <button
+          <AnimatedFilterTab
             key={value}
-            type="button"
-            onClick={() => setCategory((prev) => (prev === value ? null : value))}
-            className={`rounded-pill px-3 py-1 text-xs font-medium transition-colors ${
-              category === value ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-            }`}
-          >
-            {label}
-          </button>
+            label={label}
+            icon={CATEGORY_ICONS[value as keyof typeof CATEGORY_ICONS]}
+            isActive={category === value}
+            onSelect={() => setCategory((prev) => (prev === value ? null : value))}
+          />
         ))}
       </div>
 

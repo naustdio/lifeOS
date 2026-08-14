@@ -20,8 +20,8 @@ describe("RecipeList — smoke render (recipes-module)", () => {
   it("renders a name search input and category filter chips", () => {
     render(<RecipeList recipes={RECIPES} initialQuery="" initialCategory={null} />);
     expect(screen.getByLabelText("Buscar receta")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Comida" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Postre" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Comida" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Postre" })).toBeInTheDocument();
   });
 
   it("all three recipes render initially", () => {
@@ -43,7 +43,7 @@ describe("RecipeList — smoke render (recipes-module)", () => {
   it("clicking a category chip narrows the list, composing with an active search", () => {
     render(<RecipeList recipes={RECIPES} initialQuery="" initialCategory={null} />);
     fireEvent.change(screen.getByLabelText("Buscar receta"), { target: { value: "tacos" } });
-    fireEvent.click(screen.getByRole("button", { name: "Comida" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Comida" }));
 
     expect(screen.getByText("Tacos al pastor")).toBeInTheDocument();
     expect(screen.getByText("Tacos de pescado")).toBeInTheDocument();
