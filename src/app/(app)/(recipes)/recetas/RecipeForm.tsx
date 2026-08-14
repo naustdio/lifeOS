@@ -1,11 +1,12 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { Reorder } from "motion/react";
 import { useActionState, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
 import { IngredientRow, type IngredientRowUnitOption } from "@/design-system/patterns/IngredientRow";
-import { StepRow } from "@/design-system/patterns/StepRow";
+import { StepRow, type StepDraft } from "@/design-system/patterns/StepRow";
 import { Input } from "@/design-system/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/design-system/ui/select";
 import { createRecipeAction, updateRecipeAction, type RecipeFormState } from "./actions";
@@ -21,7 +22,6 @@ const CATEGORIES = [
 ] as const;
 
 type IngredientDraft = { name: string; quantity: string; unit: string };
-type StepDraft = { instruction: string };
 
 export type RecipeFormInitial = {
   id: string;
@@ -48,7 +48,9 @@ export function RecipeForm({ mode, units, initial }: { mode: "create" | "edit"; 
   const [ingredients, setIngredients] = useState<IngredientDraft[]>(
     initial?.ingredients.map((i) => ({ name: i.name, quantity: i.quantity === null ? "" : String(i.quantity), unit: i.unit })) ?? [],
   );
-  const [steps, setSteps] = useState<StepDraft[]>(initial?.steps.map((s) => ({ instruction: s.instruction })) ?? []);
+  const [steps, setSteps] = useState<StepDraft[]>(
+    initial?.steps.map((s) => ({ id: crypto.randomUUID(), instruction: s.instruction })) ?? [],
+  );
   const [reasonError, setReasonError] = useState<string | null>(null);
 
   function handleSubmit(formData: FormData) {
@@ -150,38 +152,22 @@ export function RecipeForm({ mode, units, initial }: { mode: "create" | "edit"; 
 
           <fieldset className="flex flex-col gap-3">
             <legend className="text-sm font-medium">Pasos</legend>
-            {steps.map((s, i) => (
-              <StepRow
-                key={i}
-                index={i}
-                instruction={s.instruction}
-                isFirst={i === 0}
-                isLast={i === steps.length - 1}
-                onChange={(instruction) => setSteps((prev) => prev.map((p, idx) => (idx === i ? { instruction } : p)))}
-                onRemove={() => setSteps((prev) => prev.filter((_, idx) => idx !== i))}
-                onMoveUp={() =>
-                  setSteps((prev) => {
-                    if (i === 0) return prev;
-                    const next = [...prev];
-                    [next[i - 1], next[i]] = [next[i], next[i - 1]];
-                    return next;
-                  })
-                }
-                onMoveDown={() =>
-                  setSteps((prev) => {
-                    if (i === prev.length - 1) return prev;
-                    const next = [...prev];
-                    [next[i], next[i + 1]] = [next[i + 1], next[i]];
-                    return next;
-                  })
-                }
-              />
-            ))}
+            <Reorder.Group axis="y" values={steps} onReorder={setSteps} className="flex flex-col gap-2">
+              {steps.map((s, i) => (
+                <StepRow
+                  key={s.id}
+                  step={s}
+                  index={i}
+                  onChange={(instruction) => setSteps((prev) => prev.map((p) => (p.id === s.id ? { ...p, instruction } : p)))}
+                  onRemove={() => setSteps((prev) => prev.filter((p) => p.id !== s.id))}
+                />
+              ))}
+            </Reorder.Group>
             <Button
               type="button"
               variant="secondary"
               className="w-full justify-center gap-2"
-              onClick={() => setSteps((prev) => [...prev, { instruction: "" }])}
+              onClick={() => setSteps((prev) => [...prev, { id: crypto.randomUUID(), instruction: "" }])}
             >
               <Plus className="h-4 w-4" aria-hidden />
               Agregar paso

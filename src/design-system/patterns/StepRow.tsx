@@ -1,79 +1,66 @@
 "use client";
 
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { Reorder, useDragControls } from "motion/react";
+import { GripVertical, X } from "lucide-react";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
 
 /**
- * One numbered instruction row for `RecipeForm`, with reorder handles (up/down) and a remove
- * button (recipes-module design.md File Changes). Locally-declared props, zero module imports.
+ * One numbered instruction row for `RecipeForm`, reordered by dragging a handle (via `motion`'s
+ * `Reorder.Item`) and removed with the X button (recipes-module design.md File Changes). Locally-
+ * declared props, zero module imports. `id` is a client-only stable identity for the drag/React
+ * key — never persisted, `RecipeForm` derives the saved `position` from array order at submit.
+ *
+ * The drag handle uses `dragListener={false}` + `useDragControls` so dragging is opt-in from the
+ * grip icon only — the instruction `Input` stays freely clickable/selectable without accidentally
+ * starting a drag.
  */
+export type StepDraft = { id: string; instruction: string };
+
 export function StepRow({
+  step,
   index,
-  instruction,
-  isFirst,
-  isLast,
   onChange,
   onRemove,
-  onMoveUp,
-  onMoveDown,
 }: {
+  step: StepDraft;
   index: number;
-  instruction: string;
-  isFirst: boolean;
-  isLast: boolean;
   onChange: (instruction: string) => void;
   onRemove: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
 }) {
+  const dragControls = useDragControls();
+
   return (
-    <div className="flex items-center gap-2">
+    <Reorder.Item value={step} dragListener={false} dragControls={dragControls} className="flex items-center gap-2">
+      <button
+        type="button"
+        onPointerDown={(e) => dragControls.start(e)}
+        className="flex h-8 w-6 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground active:cursor-grabbing"
+        aria-label={`Arrastrar para reordenar paso ${index + 1}`}
+      >
+        <GripVertical className="h-4 w-4" aria-hidden />
+      </button>
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-pill bg-secondary text-sm font-medium text-secondary-foreground">
         {index + 1}
       </span>
       <Input
-        id={`step_${index}`}
-        value={instruction}
+        id={`step_${step.id}`}
+        value={step.instruction}
         onChange={(e) => onChange(e.target.value)}
         placeholder={`Paso ${index + 1}`}
         required
         className="flex-1"
       />
-      <div className="flex shrink-0 items-center gap-1.5">
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-full"
-          onClick={onMoveUp}
-          disabled={isFirst}
-          aria-label={`Subir paso ${index + 1}`}
-        >
-          <ChevronUp className="h-4 w-4" aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-full"
-          onClick={onMoveDown}
-          disabled={isLast}
-          aria-label={`Bajar paso ${index + 1}`}
-        >
-          <ChevronDown className="h-4 w-4" aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-full"
-          onClick={onRemove}
-          aria-label={`Quitar paso ${index + 1}`}
-        >
-          <X className="h-4 w-4" aria-hidden />
-        </Button>
-      </div>
-    </div>
+      <Button
+        type="button"
+        variant="secondary"
+        size="icon"
+        className="h-9 w-9 shrink-0 rounded-full"
+        onClick={onRemove}
+        aria-label={`Quitar paso ${index + 1}`}
+      >
+        <X className="h-4 w-4" aria-hidden />
+      </Button>
+    </Reorder.Item>
   );
 }
