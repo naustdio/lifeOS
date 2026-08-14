@@ -24,13 +24,16 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
   const supabase = await createClient();
   const spaceId = await getCurrentHouseholdId(supabase);
 
-  const [recipes, customUnits, catalogEntries] = spaceId
+  const [recipes, customUnits, catalogEntries, complementoRecipes] = spaceId
     ? await Promise.all([
         listRecipes(supabase, spaceId, { q, category: category && isValidCategory(category) ? category : undefined }),
         listCustomUnits(supabase, spaceId),
         listIngredientCatalog(supabase, spaceId),
+        // Independent of the list view's own q/category filter — the sub-recipe picker must offer
+        // every "complemento" recipe in the household regardless of what's currently being browsed.
+        listRecipes(supabase, spaceId, { category: "complemento" }),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
 
   const units = mergeUnitOptions(RECIPE_UNITS, customUnits);
 
@@ -66,7 +69,7 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
         mode="create"
         units={units}
         catalog={catalog}
-        recipeOptions={recipes.map((r) => ({ id: r.id, title: r.title }))}
+        recipeOptions={complementoRecipes.map((r) => ({ id: r.id, title: r.title }))}
       />
     </main>
   );

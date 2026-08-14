@@ -3,7 +3,7 @@
 // imports — a defensive client-side UX guard only; the DB remains the sole authority.
 
 /** Mirrors `recipes.recipes.category` CHECK. */
-export const RECIPE_CATEGORIES = ["desayuno", "comida", "cena", "postre", "snack"] as const;
+export const RECIPE_CATEGORIES = ["desayuno", "comida", "cena", "postre", "snack", "complemento"] as const;
 export type RecipeCategory = (typeof RECIPE_CATEGORIES)[number];
 
 export function isValidCategory(value: string): value is RecipeCategory {

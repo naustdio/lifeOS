@@ -1,6 +1,6 @@
 "use client";
 
-import { Apple, BookOpen, CakeSlice, Moon, Sunrise, Utensils } from "lucide-react";
+import { Apple, BookOpen, CakeSlice, Moon, Salad, Sunrise, Utensils } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AnimatedFilterTab } from "@/design-system/patterns/AnimatedFilterTab";
 import { EmptyState } from "@/design-system/patterns/EmptyState";
@@ -22,6 +22,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   cena: "Cena",
   postre: "Postre",
   snack: "Snack",
+  complemento: "Complemento",
 };
 
 const CATEGORY_ICONS = {
@@ -30,6 +31,7 @@ const CATEGORY_ICONS = {
   cena: Moon,
   postre: CakeSlice,
   snack: Apple,
+  complemento: Salad,
 } as const;
 
 /**

@@ -28,10 +28,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
  *
  * Sub-recipe ingredients (settled via grill-me interview): a "texto libre" / "usar una receta"
  * toggle switches the name field between free typing and picking another household recipe from
- * `recipeOptions` — mutually exclusive, never both. Picking a recipe snapshots its title into
- * `name` (consistent with how every other ingredient name is stored) and sets `subRecipeId` for
- * the link; quantity/unit still apply (e.g. "200 ml aderezo"). Starts in link mode automatically
- * if the row's initial `subRecipeId` is set.
+ * `recipeOptions` — mutually exclusive, never both. `recipeOptions` is pre-filtered by the caller
+ * to the "complemento" category (also re-validated server-side in the write seam) — sub-recipes
+ * are meant to be reusable components (salsas, aderezos), not full standalone dishes. Picking a
+ * recipe snapshots its title into `name` (consistent with how every other ingredient name is
+ * stored) and sets `subRecipeId` for the link; quantity/unit still apply (e.g. "200 ml aderezo").
+ * Starts in link mode automatically if the row's initial `subRecipeId` is set.
  *
  * Accordion behaviour: a row with a name already filled in starts/collapses into a flat summary
  * row (photo, name, qty/unit, edit + remove) — click the pencil (or the row) to expand. A

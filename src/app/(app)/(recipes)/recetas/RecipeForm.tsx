@@ -31,6 +31,7 @@ const CATEGORIES = [
   { value: "cena", label: "Cena" },
   { value: "postre", label: "Postre" },
   { value: "snack", label: "Snack" },
+  { value: "complemento", label: "Complemento" },
 ] as const;
 
 type IngredientDraft = { name: string; quantity: string; unit: string; subRecipeId: string | null };

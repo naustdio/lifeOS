@@ -16,6 +16,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   cena: "Cena",
   postre: "Postre",
   snack: "Snack",
+  complemento: "Complemento",
 };
 
 const ACTION_LABELS: Record<string, string> = {
