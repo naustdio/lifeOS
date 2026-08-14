@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown, Pencil, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Check, ChevronDown, Pencil, X } from "lucide-react";
 import { cn } from "@/design-system/ui/utils";
 import { useState } from "react";
 import { Button } from "@/design-system/ui/button";
@@ -22,10 +23,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
  * loaded from an existing recipe, or one the user just finished typing) starts/collapses into a
  * one-line summary — icon, name, "qty unit" — click to expand back into the editable fields. A
  * brand-new blank row (just added via "Agregar ingrediente") starts expanded since there's
- * nothing to summarize yet. Plain React state + a CSS grid-rows transition, no animation library
- * — this repo has none installed and one row's collapse doesn't warrant adding one.
+ * nothing to summarize yet. Uses `motion`'s shared-layout `layoutId` on the icon and name (user
+ * reference: an inline-table-edit component using the same technique) so the row visually morphs
+ * between the compact summary and the expanded card instead of an abrupt show/hide.
  */
 export type IngredientRowUnitOption = { value: string; label: string; icon: string };
+
+const springTransition = { type: "spring" as const, bounce: 0, duration: 0.5 };
 
 export function IngredientRow({
   index,
@@ -50,46 +54,77 @@ export function IngredientRow({
   const iconButtonClass = "shrink-0 rounded-full bg-secondary text-secondary-foreground hover:opacity-80";
   const unitOption = units.find((u) => u.value === unit);
   const unitSummary = unit ? (unitOption?.label ?? unit) : null;
+  const iconLayoutId = `ingredient-icon-${index}`;
+  const nameLayoutId = `ingredient-name-${index}`;
 
   return (
-    <div className="flex flex-col rounded-card border border-border/60">
-      <div className="flex items-center gap-3 p-3">
-        <button
-          type="button"
-          onClick={() => setCollapsed((v) => !v)}
-          aria-expanded={!collapsed}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-base">
-            {unitOption?.icon ?? "🥣"}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-medium">{name.trim() || `Ingrediente ${index + 1}`}</span>
-            {(quantity || unitSummary) && (
-              <span className="block truncate text-xs text-muted-foreground">
-                {quantity ? `${quantity} ` : ""}
-                {unitSummary ?? ""}
+    <motion.div layout transition={springTransition} className="overflow-hidden rounded-card border border-border/60 bg-card">
+      <AnimatePresence mode="popLayout" initial={false}>
+        {collapsed ? (
+          <motion.div key="collapsed" layout="position" transition={springTransition} className="flex items-center gap-3 p-3">
+            <button
+              type="button"
+              onClick={() => setCollapsed(false)}
+              aria-expanded={false}
+              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+            >
+              <motion.span
+                layoutId={iconLayoutId}
+                transition={springTransition}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-base"
+              >
+                {unitOption?.icon ?? "🥣"}
+              </motion.span>
+              <span className="min-w-0 flex-1">
+                <motion.span layoutId={nameLayoutId} transition={springTransition} className="block truncate text-sm font-medium">
+                  {name.trim() || `Ingrediente ${index + 1}`}
+                </motion.span>
+                {(quantity || unitSummary) && (
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {quantity ? `${quantity} ` : ""}
+                    {unitSummary ?? ""}
+                  </span>
+                )}
               </span>
-            )}
-          </span>
-          <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", !collapsed && "rotate-180")} aria-hidden />
-        </button>
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            </button>
 
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          className={iconButtonClass}
-          onClick={onRemove}
-          aria-label={`Quitar ingrediente ${index + 1}`}
-        >
-          <X className="h-4 w-4" aria-hidden />
-        </Button>
-      </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className={iconButtonClass}
+              onClick={onRemove}
+              aria-label={`Quitar ingrediente ${index + 1}`}
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </Button>
+          </motion.div>
+        ) : (
+          <motion.div key="expanded" layout transition={springTransition} className="flex flex-col gap-3 p-3">
+            <div className="flex items-center gap-3">
+              <motion.span
+                layoutId={iconLayoutId}
+                transition={springTransition}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-base"
+              >
+                {unitOption?.icon ?? "🥣"}
+              </motion.span>
+              <motion.span layoutId={nameLayoutId} transition={springTransition} className="min-w-0 flex-1 truncate text-sm font-medium">
+                {name.trim() || `Ingrediente ${index + 1}`}
+              </motion.span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className={iconButtonClass}
+                onClick={onRemove}
+                aria-label={`Quitar ingrediente ${index + 1}`}
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
 
-      <div className={cn("grid transition-all duration-200 ease-out", collapsed ? "grid-rows-[0fr]" : "grid-rows-[1fr]")}>
-        <div className="min-h-0 overflow-hidden">
-          <div className="flex flex-col gap-2 px-3 pb-3">
             <div className="flex flex-col gap-1">
               <label htmlFor={`ingredientName_${index}`} className="text-xs font-medium text-muted-foreground">
                 Ingrediente
@@ -99,7 +134,7 @@ export function IngredientRow({
                 value={name}
                 onChange={(e) => onChange({ name: e.target.value })}
                 placeholder="Ej. Tortilla de maíz"
-                required={!collapsed}
+                required
               />
             </div>
 
@@ -176,9 +211,14 @@ export function IngredientRow({
                 )}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
+
+            <Button type="button" variant="secondary" className="w-full justify-center gap-2" onClick={() => setCollapsed(true)}>
+              <Check className="h-4 w-4" aria-hidden />
+              Listo
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
