@@ -36,7 +36,7 @@ describe("RecipeForm — smoke render (recipes-module)", () => {
   });
 
   it("renders title, category, portions, video url, and reason fields", () => {
-    render(<RecipeForm mode="create" units={UNITS} catalog={CATALOG} />);
+    render(<RecipeForm mode="create" units={UNITS} catalog={CATALOG} recipeOptions={[]} />);
 
     expect(screen.getByLabelText("Título")).toBeInTheDocument();
     expect(screen.getByLabelText("Categoría")).toBeInTheDocument();
@@ -46,7 +46,7 @@ describe("RecipeForm — smoke render (recipes-module)", () => {
   });
 
   it("blocks submit and shows a validation message when the reason is empty", () => {
-    render(<RecipeForm mode="create" units={UNITS} catalog={CATALOG} />);
+    render(<RecipeForm mode="create" units={UNITS} catalog={CATALOG} recipeOptions={[]} />);
 
     fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Tacos" } });
     fireEvent.click(screen.getByRole("button", { name: /Guardar receta/ }));
@@ -55,7 +55,7 @@ describe("RecipeForm — smoke render (recipes-module)", () => {
   });
 
   it("can add and remove ingredient and step rows", () => {
-    render(<RecipeForm mode="create" units={UNITS} catalog={CATALOG} />);
+    render(<RecipeForm mode="create" units={UNITS} catalog={CATALOG} recipeOptions={[]} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Agregar ingrediente" }));
     expect(screen.getByLabelText("Ingrediente")).toBeInTheDocument();

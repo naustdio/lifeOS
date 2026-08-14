@@ -5,7 +5,12 @@ import { Reorder } from "motion/react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
-import { IngredientRow, type IngredientCatalogOption, type IngredientRowUnitOption } from "@/design-system/patterns/IngredientRow";
+import {
+  IngredientRow,
+  type IngredientCatalogOption,
+  type IngredientRowRecipeOption,
+  type IngredientRowUnitOption,
+} from "@/design-system/patterns/IngredientRow";
 import { StepRow, type StepDraft } from "@/design-system/patterns/StepRow";
 import { Input } from "@/design-system/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/design-system/ui/select";
@@ -28,7 +33,7 @@ const CATEGORIES = [
   { value: "snack", label: "Snack" },
 ] as const;
 
-type IngredientDraft = { name: string; quantity: string; unit: string };
+type IngredientDraft = { name: string; quantity: string; unit: string; subRecipeId: string | null };
 
 export type RecipeFormInitial = {
   id: string;
@@ -38,7 +43,7 @@ export type RecipeFormInitial = {
   videoUrl: string | null;
   prepMinutes: number | null;
   photoUrl: string | null;
-  ingredients: { name: string; quantity: number | null; unit: string }[];
+  ingredients: { name: string; quantity: number | null; unit: string; subRecipeId: string | null }[];
   steps: { instruction: string }[];
 };
 
@@ -53,11 +58,13 @@ export function RecipeForm({
   mode,
   units,
   catalog,
+  recipeOptions,
   initial,
 }: {
   mode: "create" | "edit";
   units: IngredientRowUnitOption[];
   catalog: IngredientCatalogOption[];
+  recipeOptions: IngredientRowRecipeOption[];
   initial?: RecipeFormInitial;
 }) {
   const action = mode === "create" ? createRecipeAction : updateRecipeAction;
@@ -65,7 +72,7 @@ export function RecipeForm({
 
   const [category, setCategory] = useState(initial?.category ?? CATEGORIES[1].value);
   const [ingredients, setIngredients] = useState<IngredientDraft[]>(
-    initial?.ingredients.map((i) => ({ name: i.name, quantity: i.quantity === null ? "" : String(i.quantity), unit: i.unit })) ?? [],
+    initial?.ingredients.map((i) => ({ name: i.name, quantity: i.quantity === null ? "" : String(i.quantity), unit: i.unit, subRecipeId: i.subRecipeId })) ?? [],
   );
   const [steps, setSteps] = useState<StepDraft[]>(
     initial?.steps.map((s) => ({ id: crypto.randomUUID(), instruction: s.instruction })) ?? [],
@@ -129,7 +136,15 @@ export function RecipeForm({
 
     formData.set(
       "ingredients",
-      JSON.stringify(ingredients.map((ing, position) => ({ position, name: ing.name, quantity: ing.quantity ? Number(ing.quantity) : null, unit: ing.unit }))),
+      JSON.stringify(
+        ingredients.map((ing, position) => ({
+          position,
+          name: ing.name,
+          quantity: ing.quantity ? Number(ing.quantity) : null,
+          unit: ing.unit,
+          subRecipeId: ing.subRecipeId,
+        })),
+      ),
     );
     formData.set("steps", JSON.stringify(steps.map((s, position) => ({ position, instruction: s.instruction }))));
     if (mode === "edit" && initial) {
@@ -242,8 +257,10 @@ export function RecipeForm({
                 name={ing.name}
                 quantity={ing.quantity}
                 unit={ing.unit}
+                subRecipeId={ing.subRecipeId}
                 units={units}
                 catalog={catalogState}
+                recipeOptions={recipeOptions}
                 onChange={(patch) => setIngredients((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))}
                 onRemove={() => setIngredients((prev) => prev.filter((_, idx) => idx !== i))}
                 onAttachPhoto={async (file) => {
@@ -262,7 +279,7 @@ export function RecipeForm({
               type="button"
               variant="secondary"
               className="w-full justify-center gap-2"
-              onClick={() => setIngredients((prev) => [...prev, { name: "", quantity: "", unit: units[0]?.value ?? "" }])}
+              onClick={() => setIngredients((prev) => [...prev, { name: "", quantity: "", unit: units[0]?.value ?? "", subRecipeId: null }])}
             >
               <Plus className="h-4 w-4" aria-hidden />
               Agregar ingrediente

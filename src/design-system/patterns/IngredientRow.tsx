@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Camera, Check, Hash, Pencil, Scale, Smile, UtensilsCrossed, X } from "lucide-react";
+import { BookOpen, Camera, Check, Hash, Pencil, Scale, Smile, Type, UtensilsCrossed, X } from "lucide-react";
 import { cn } from "@/design-system/ui/utils";
 import { useMemo, useRef, useState } from "react";
 import { Button } from "@/design-system/ui/button";
@@ -26,6 +26,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
  * list (settled decision, grilling round). Starts in text mode automatically if the row's initial
  * `unit` isn't one of the known options.
  *
+ * Sub-recipe ingredients (settled via grill-me interview): a "texto libre" / "usar una receta"
+ * toggle switches the name field between free typing and picking another household recipe from
+ * `recipeOptions` — mutually exclusive, never both. Picking a recipe snapshots its title into
+ * `name` (consistent with how every other ingredient name is stored) and sets `subRecipeId` for
+ * the link; quantity/unit still apply (e.g. "200 ml aderezo"). Starts in link mode automatically
+ * if the row's initial `subRecipeId` is set.
+ *
  * Accordion behaviour: a row with a name already filled in starts/collapses into a flat summary
  * row (photo, name, qty/unit, edit + remove) — click the pencil (or the row) to expand. A
  * brand-new blank row starts expanded. Uses `motion`'s shared-layout `layout`/`layoutId` so the
@@ -33,6 +40,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
  */
 export type IngredientRowUnitOption = { value: string; label: string; icon: string };
 export type IngredientCatalogOption = { name: string; photoUrl: string | null; icon: string | null };
+export type IngredientRowRecipeOption = { id: string; title: string };
 
 const springTransition = { type: "spring" as const, bounce: 0, duration: 0.5 };
 const ICON_CHOICES = ["🍎", "🥕", "🥩", "🥛", "🧅", "🍞", "🧄", "🍚", "🧀", "🥚", "🌶️", "🍋"];
@@ -42,8 +50,10 @@ export function IngredientRow({
   name,
   quantity,
   unit,
+  subRecipeId,
   units,
   catalog,
+  recipeOptions,
   onChange,
   onRemove,
   onAttachPhoto,
@@ -53,15 +63,18 @@ export function IngredientRow({
   name: string;
   quantity: string;
   unit: string;
+  subRecipeId: string | null;
   units: IngredientRowUnitOption[];
   catalog: IngredientCatalogOption[];
-  onChange: (patch: { name?: string; quantity?: string; unit?: string }) => void;
+  recipeOptions: IngredientRowRecipeOption[];
+  onChange: (patch: { name?: string; quantity?: string; unit?: string; subRecipeId?: string | null }) => void;
   onRemove: () => void;
   onAttachPhoto: (file: File) => Promise<{ error: string | null }>;
   onSetIcon: (icon: string) => Promise<{ error: string | null }>;
 }) {
   const [customMode, setCustomMode] = useState(() => unit.length > 0 && !units.some((u) => u.value === unit));
   const [collapsed, setCollapsed] = useState(() => name.trim().length > 0);
+  const [linkMode, setLinkMode] = useState(() => subRecipeId !== null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
 
@@ -219,48 +232,108 @@ export function IngredientRow({
               </div>
             )}
 
-            <div className="relative flex items-center gap-2">
-              <label htmlFor={`ingredientName_${index}`} className={fieldLabelClass}>
-                <UtensilsCrossed className="h-4 w-4" aria-hidden />
-                Ingrediente
-              </label>
-              <Input
-                id={`ingredientName_${index}`}
-                value={name}
-                onChange={(e) => {
-                  onChange({ name: e.target.value });
-                  setShowSuggestions(true);
+            <div className="flex items-center gap-1.5 self-start rounded-pill bg-secondary/60 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!linkMode) return;
+                  setLinkMode(false);
+                  onChange({ subRecipeId: null });
                 }}
-                onFocus={() => setShowSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                placeholder="Ej. Tortilla de maíz"
-                autoComplete="off"
-                required
-                className="min-w-0 flex-1 rounded-pill"
-              />
-              {showSuggestions && suggestions.length > 0 && (
-                <ul className="absolute top-full left-24 z-10 mt-1 flex w-[calc(100%-6rem)] flex-col overflow-hidden rounded-card border border-border bg-card shadow-soft-lg">
-                  {suggestions.map((s) => (
-                    <li key={s.name}>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => pickSuggestion(s)}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
-                      >
-                        {s.photoUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- signed thumbnail preview
-                          <img src={s.photoUrl} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
-                        ) : (
-                          <span className="text-base">{s.icon ?? "🥣"}</span>
-                        )}
-                        {s.name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-medium transition-colors",
+                  !linkMode ? "bg-card shadow-soft-sm" : "text-muted-foreground",
+                )}
+              >
+                <Type className="h-3.5 w-3.5" aria-hidden />
+                Texto libre
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (linkMode) return;
+                  setLinkMode(true);
+                  onChange({ name: "", subRecipeId: null });
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-medium transition-colors",
+                  linkMode ? "bg-card shadow-soft-sm" : "text-muted-foreground",
+                )}
+              >
+                <BookOpen className="h-3.5 w-3.5" aria-hidden />
+                Usar una receta
+              </button>
             </div>
+
+            {linkMode ? (
+              <div className="flex items-center gap-2">
+                <label htmlFor={`ingredientSubRecipe_${index}`} className={fieldLabelClass}>
+                  <BookOpen className="h-4 w-4" aria-hidden />
+                  Receta
+                </label>
+                <Select
+                  value={subRecipeId ?? ""}
+                  onValueChange={(v) => {
+                    const picked = recipeOptions.find((r) => r.id === v);
+                    onChange({ subRecipeId: v, name: picked?.title ?? "" });
+                  }}
+                >
+                  <SelectTrigger id={`ingredientSubRecipe_${index}`} className="min-w-0 flex-1 rounded-pill">
+                    <SelectValue placeholder="Elige una receta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {recipeOptions.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="relative flex items-center gap-2">
+                <label htmlFor={`ingredientName_${index}`} className={fieldLabelClass}>
+                  <UtensilsCrossed className="h-4 w-4" aria-hidden />
+                  Ingrediente
+                </label>
+                <Input
+                  id={`ingredientName_${index}`}
+                  value={name}
+                  onChange={(e) => {
+                    onChange({ name: e.target.value });
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  placeholder="Ej. Tortilla de maíz"
+                  autoComplete="off"
+                  required
+                  className="min-w-0 flex-1 rounded-pill"
+                />
+                {showSuggestions && suggestions.length > 0 && (
+                  <ul className="absolute top-full left-24 z-10 mt-1 flex w-[calc(100%-6rem)] flex-col overflow-hidden rounded-card border border-border bg-card shadow-soft-lg">
+                    {suggestions.map((s) => (
+                      <li key={s.name}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pickSuggestion(s)}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                        >
+                          {s.photoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- signed thumbnail preview
+                            <img src={s.photoUrl} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+                          ) : (
+                            <span className="text-base">{s.icon ?? "🥣"}</span>
+                          )}
+                          {s.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
               <label htmlFor={`ingredientQuantity_${index}`} className={fieldLabelClass}>

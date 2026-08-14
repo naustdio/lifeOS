@@ -25,7 +25,7 @@ const RECIPE = {
   videoUrl: null,
   prepMinutes: null,
   photoUrl: null,
-  ingredients: [{ id: "i1", position: 0, name: "Tortilla", quantity: 8, unit: "pieza" }],
+  ingredients: [{ id: "i1", position: 0, name: "Tortilla", quantity: 8, unit: "pieza", subRecipeId: null }],
   steps: [{ id: "s1", position: 0, instruction: "Calentar la tortilla" }],
 };
 

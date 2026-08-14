@@ -23,7 +23,13 @@ function parseIngredients(formData: FormData): IngredientInput[] {
     if (!Array.isArray(raw)) return [];
     return raw
       .filter((i) => typeof i?.name === "string" && i.name.trim().length > 0)
-      .map((i, position) => ({ position, name: String(i.name), quantity: i.quantity === null || i.quantity === "" ? null : Number(i.quantity), unit: String(i.unit ?? "") }));
+      .map((i, position) => ({
+        position,
+        name: String(i.name),
+        quantity: i.quantity === null || i.quantity === "" ? null : Number(i.quantity),
+        unit: String(i.unit ?? ""),
+        subRecipeId: i.subRecipeId ? String(i.subRecipeId) : null,
+      }));
   } catch {
     return [];
   }

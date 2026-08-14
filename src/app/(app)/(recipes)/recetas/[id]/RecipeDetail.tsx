@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
@@ -33,7 +34,7 @@ export type RecipeDetailRecipe = {
   videoUrl: string | null;
   prepMinutes: number | null;
   photoUrl: string | null;
-  ingredients: { id: string; position: number; name: string; quantity: number | null; unit: string }[];
+  ingredients: { id: string; position: number; name: string; quantity: number | null; unit: string; subRecipeId: string | null }[];
   steps: { id: string; position: number; instruction: string }[];
 };
 
@@ -89,7 +90,13 @@ export function RecipeDetail({ recipe, history, isOwner }: { recipe: RecipeDetai
               {recipe.ingredients.map((i) => (
                 <li key={i.id}>
                   {i.quantity !== null ? `${i.quantity} ${i.unit} ` : ""}
-                  {i.name}
+                  {i.subRecipeId ? (
+                    <Link href={`/recetas/${i.subRecipeId}`} className="underline underline-offset-2 hover:text-primary">
+                      {i.name}
+                    </Link>
+                  ) : (
+                    i.name
+                  )}
                 </li>
               ))}
             </ul>

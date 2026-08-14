@@ -22,7 +22,7 @@ export type RecipeListItem = {
   createdAt: string;
 };
 
-export type RecipeIngredient = { id: string; position: number; name: string; quantity: number | null; unit: string };
+export type RecipeIngredient = { id: string; position: number; name: string; quantity: number | null; unit: string; subRecipeId: string | null };
 export type RecipeStep = { id: string; position: number; instruction: string };
 export type RecipeDetail = RecipeListItem & { ingredients: RecipeIngredient[]; steps: RecipeStep[] };
 
@@ -86,7 +86,7 @@ export async function getRecipeById(supabase: SupabaseClient, id: string): Promi
   if (recipeErr || !recipeRow) return null;
 
   const [{ data: ingredientRows }, { data: stepRows }] = await Promise.all([
-    supabase.schema("recipes").from("recipe_ingredients").select("id, position, name, quantity, unit").eq("recipe_id", id).order("position"),
+    supabase.schema("recipes").from("recipe_ingredients").select("id, position, name, quantity, unit, sub_recipe_id").eq("recipe_id", id).order("position"),
     supabase.schema("recipes").from("recipe_steps").select("id, position, instruction").eq("recipe_id", id).order("position"),
   ]);
 
@@ -98,12 +98,13 @@ export async function getRecipeById(supabase: SupabaseClient, id: string): Promi
       name: r.name as string,
       quantity: r.quantity === null ? null : Number(r.quantity),
       unit: r.unit as string,
+      subRecipeId: (r.sub_recipe_id as string | null) ?? null,
     })),
     steps: (stepRows ?? []).map((r) => ({ id: r.id as string, position: Number(r.position), instruction: r.instruction as string })),
   };
 }
 
-export type IngredientInput = { position: number; name: string; quantity: number | null; unit: string };
+export type IngredientInput = { position: number; name: string; quantity: number | null; unit: string; subRecipeId: string | null };
 export type StepInput = { position: number; instruction: string };
 
 /** RPC wrapper for `recipes.create_recipe` — writes the recipe, its ingredients/steps, and its

@@ -62,7 +62,12 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
         initialCategory={category ?? null}
       />
 
-      <RecipeForm mode="create" units={units} catalog={catalog} />
+      <RecipeForm
+        mode="create"
+        units={units}
+        catalog={catalog}
+        recipeOptions={recipes.map((r) => ({ id: r.id, title: r.title }))}
+      />
     </main>
   );
 }
