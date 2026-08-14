@@ -5,11 +5,11 @@ import { Reorder } from "motion/react";
 import { useActionState, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
-import { IngredientRow, type IngredientRowUnitOption } from "@/design-system/patterns/IngredientRow";
+import { IngredientRow, type IngredientCatalogOption, type IngredientRowUnitOption } from "@/design-system/patterns/IngredientRow";
 import { StepRow, type StepDraft } from "@/design-system/patterns/StepRow";
 import { Input } from "@/design-system/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/design-system/ui/select";
-import { createRecipeAction, updateRecipeAction, type RecipeFormState } from "./actions";
+import { attachIngredientPhotoAction, createRecipeAction, setIngredientIconAction, updateRecipeAction, type RecipeFormState } from "./actions";
 
 const INITIAL_STATE: RecipeFormState = { error: null };
 
@@ -40,7 +40,17 @@ export type RecipeFormInitial = {
  * row (`IngredientRow`), mandatory reason field that blocks submission client-side (server/DB
  * re-validate independently — this is defence in depth, not the operative gate).
  */
-export function RecipeForm({ mode, units, initial }: { mode: "create" | "edit"; units: IngredientRowUnitOption[]; initial?: RecipeFormInitial }) {
+export function RecipeForm({
+  mode,
+  units,
+  catalog,
+  initial,
+}: {
+  mode: "create" | "edit";
+  units: IngredientRowUnitOption[];
+  catalog: IngredientCatalogOption[];
+  initial?: RecipeFormInitial;
+}) {
   const action = mode === "create" ? createRecipeAction : updateRecipeAction;
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE);
 
@@ -52,6 +62,27 @@ export function RecipeForm({ mode, units, initial }: { mode: "create" | "edit"; 
     initial?.steps.map((s) => ({ id: crypto.randomUUID(), instruction: s.instruction })) ?? [],
   );
   const [reasonError, setReasonError] = useState<string | null>(null);
+
+  // Tracked separately from the server-fetched `catalog` prop so a photo/icon attached to a
+  // brand-new ingredient name becomes available to THIS form's own autocomplete immediately —
+  // the server prop only refreshes on next navigation, but a household member filling in several
+  // ingredients in one sitting expects row 2's suggestions to already include what they just set
+  // up for row 1.
+  const [catalogState, setCatalogState] = useState<IngredientCatalogOption[]>(catalog);
+
+  function upsertCatalogState(name: string, patch: Partial<IngredientCatalogOption>) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setCatalogState((prev) => {
+      const idx = prev.findIndex((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+      if (idx === -1) {
+        return [...prev, { name: trimmed, photoUrl: null, icon: null, ...patch }];
+      }
+      const next = [...prev];
+      next[idx] = { ...next[idx], ...patch };
+      return next;
+    });
+  }
 
   function handleSubmit(formData: FormData) {
     const reason = String(formData.get("reason") ?? "").trim();
@@ -135,8 +166,19 @@ export function RecipeForm({ mode, units, initial }: { mode: "create" | "edit"; 
                 quantity={ing.quantity}
                 unit={ing.unit}
                 units={units}
+                catalog={catalogState}
                 onChange={(patch) => setIngredients((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))}
                 onRemove={() => setIngredients((prev) => prev.filter((_, idx) => idx !== i))}
+                onAttachPhoto={async (file) => {
+                  const result = await attachIngredientPhotoAction(ing.name, file);
+                  if (!result.error) upsertCatalogState(ing.name, { photoUrl: URL.createObjectURL(file), icon: null });
+                  return result;
+                }}
+                onSetIcon={async (icon) => {
+                  const result = await setIngredientIconAction(ing.name, icon);
+                  if (!result.error) upsertCatalogState(ing.name, { icon, photoUrl: null });
+                  return result;
+                }}
               />
             ))}
             <Button

@@ -1,9 +1,9 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Hash, Pencil, Scale, UtensilsCrossed, X } from "lucide-react";
+import { Camera, Check, Hash, Pencil, Scale, Smile, UtensilsCrossed, X } from "lucide-react";
 import { cn } from "@/design-system/ui/utils";
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/design-system/ui/select";
@@ -12,25 +12,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
  * One ingredient row for `RecipeForm` — quantity + unit select + name, with a remove button
  * (recipes-module design.md File Changes). Locally-declared props, zero module imports (same
  * `design-system → design-system | shared` boundary `MetricTrendChart.tsx`/`PhotoPickerGrid.tsx`
- * already satisfy) — the caller maps its own `UnitOption[]` in from `@/modules/recipes/api`.
+ * already satisfy) — the caller maps its own `UnitOption[]`/`IngredientCatalogOption[]` in from
+ * `@/modules/recipes/api` and wires `onAttachPhoto`/`onSetIcon` to real Server Actions, since this
+ * component may never import them directly.
+ *
+ * Ingredient catalog (UI-polish fast-follow): typing a name shows autocomplete suggestions from
+ * the household's growing catalog of previously-used ingredients; picking one reuses its photo or
+ * icon. A brand-new name can have a photo uploaded (client-side object-URL preview, matching
+ * `PhotoPickerGrid.tsx`'s convention — the real upload happens via `onAttachPhoto`) or an emoji
+ * icon picked, both attached to the household's catalog for reuse on future recipes.
  *
  * The unit field is a fixed picklist BY DEFAULT, with a free-text fallback for a unit outside the
- * list (settled decision, grilling round: "lista fija por default... pero dejar un campo para
- * poder introducir nuevas"). Starts in text mode automatically if the row's initial `unit` isn't
- * one of the known options (e.g. editing a recipe that already used a custom unit).
+ * list (settled decision, grilling round). Starts in text mode automatically if the row's initial
+ * `unit` isn't one of the known options.
  *
- * Accordion behaviour (UI-polish follow-up): a row with a name already filled in (an ingredient
- * loaded from an existing recipe, or one the user just finished typing) starts/collapses into a
- * flat summary row (name, qty/unit, edit + remove) — click the pencil (or the row) to expand back
- * into the editable fields. A brand-new blank row (just added via "Agregar ingrediente") starts
- * expanded since there's nothing to summarize yet. Uses `motion`'s shared-layout `layout`/
- * `layoutId` (user reference: an inline-table-edit component using the same technique) so the row
- * visually morphs between the compact summary and the expanded card instead of an abrupt
- * show/hide. Expanded fields use a label-left/pill-input-right layout, also per that reference.
+ * Accordion behaviour: a row with a name already filled in starts/collapses into a flat summary
+ * row (photo, name, qty/unit, edit + remove) — click the pencil (or the row) to expand. A
+ * brand-new blank row starts expanded. Uses `motion`'s shared-layout `layout`/`layoutId` so the
+ * row visually morphs between the compact summary and the expanded card.
  */
 export type IngredientRowUnitOption = { value: string; label: string; icon: string };
+export type IngredientCatalogOption = { name: string; photoUrl: string | null; icon: string | null };
 
 const springTransition = { type: "spring" as const, bounce: 0, duration: 0.5 };
+const ICON_CHOICES = ["🍎", "🥕", "🥩", "🥛", "🧅", "🍞", "🧄", "🍚", "🧀", "🥚", "🌶️", "🍋"];
 
 export function IngredientRow({
   index,
@@ -38,19 +43,32 @@ export function IngredientRow({
   quantity,
   unit,
   units,
+  catalog,
   onChange,
   onRemove,
+  onAttachPhoto,
+  onSetIcon,
 }: {
   index: number;
   name: string;
   quantity: string;
   unit: string;
   units: IngredientRowUnitOption[];
+  catalog: IngredientCatalogOption[];
   onChange: (patch: { name?: string; quantity?: string; unit?: string }) => void;
   onRemove: () => void;
+  onAttachPhoto: (file: File) => Promise<{ error: string | null }>;
+  onSetIcon: (icon: string) => Promise<{ error: string | null }>;
 }) {
   const [customMode, setCustomMode] = useState(() => unit.length > 0 && !units.some((u) => u.value === unit));
   const [collapsed, setCollapsed] = useState(() => name.trim().length > 0);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
+
+  const initialMatch = catalog.find((c) => c.name.toLowerCase() === name.trim().toLowerCase());
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(initialMatch?.photoUrl ?? null);
+  const [icon, setIconState] = useState<string | null>(initialMatch?.icon ?? null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const iconButtonClass = "shrink-0 rounded-full bg-secondary text-secondary-foreground hover:opacity-80";
   const fieldLabelClass = "flex w-24 shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground";
@@ -58,11 +76,46 @@ export function IngredientRow({
   const unitSummary = unit ? (unitOption?.label ?? unit) : null;
   const nameLayoutId = `ingredient-name-${index}`;
 
+  const suggestions = useMemo(() => {
+    const query = name.trim().toLowerCase();
+    if (!query) return [];
+    return catalog.filter((c) => c.name.toLowerCase().includes(query) && c.name.toLowerCase() !== query).slice(0, 5);
+  }, [catalog, name]);
+
+  function pickSuggestion(option: IngredientCatalogOption) {
+    onChange({ name: option.name });
+    setPhotoPreviewUrl(option.photoUrl);
+    setIconState(option.icon);
+    setShowSuggestions(false);
+  }
+
+  async function handleFileSelected(file: File | undefined) {
+    if (!file) return;
+    setPhotoPreviewUrl(URL.createObjectURL(file));
+    setIconState(null);
+    await onAttachPhoto(file);
+  }
+
+  async function handlePickIcon(nextIcon: string) {
+    setIconState(nextIcon);
+    setPhotoPreviewUrl(null);
+    setShowIconPicker(false);
+    await onSetIcon(nextIcon);
+  }
+
+  const avatar = photoPreviewUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element -- local/signed object URL preview, not an optimizable static asset
+    <img src={photoPreviewUrl} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover" />
+  ) : (
+    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary text-lg">{icon ?? unitOption?.icon ?? "🥣"}</span>
+  );
+
   return (
     <motion.div layout transition={springTransition} className="overflow-hidden rounded-card border border-border/60 bg-card">
       <AnimatePresence mode="popLayout" initial={false}>
         {collapsed ? (
           <motion.div key="collapsed" layout="position" transition={springTransition} className="flex items-center gap-3 p-3">
+            {avatar}
             <button type="button" onClick={() => setCollapsed(false)} aria-expanded={false} className="min-w-0 flex-1 text-left">
               <motion.span layoutId={nameLayoutId} transition={springTransition} className="block truncate text-sm font-semibold">
                 {name.trim() || `Ingrediente ${index + 1}`}
@@ -115,7 +168,58 @@ export function IngredientRow({
               </Button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {avatar}
+              <div className="flex items-center gap-1.5">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => handleFileSelected(e.target.files?.[0])}
+                  aria-label={`Foto de ingrediente ${index + 1}`}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1.5 rounded-pill"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Camera className="h-3.5 w-3.5" aria-hidden />
+                  Foto
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1.5 rounded-pill"
+                  onClick={() => setShowIconPicker((v) => !v)}
+                  aria-expanded={showIconPicker}
+                >
+                  <Smile className="h-3.5 w-3.5" aria-hidden />
+                  Ícono
+                </Button>
+              </div>
+            </div>
+
+            {showIconPicker && (
+              <div className="flex flex-wrap gap-1.5 rounded-card bg-secondary/50 p-2">
+                {ICON_CHOICES.map((choice) => (
+                  <button
+                    key={choice}
+                    type="button"
+                    onClick={() => handlePickIcon(choice)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-base hover:bg-secondary"
+                    aria-label={`Usar ícono ${choice}`}
+                  >
+                    {choice}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="relative flex items-center gap-2">
               <label htmlFor={`ingredientName_${index}`} className={fieldLabelClass}>
                 <UtensilsCrossed className="h-4 w-4" aria-hidden />
                 Ingrediente
@@ -123,11 +227,39 @@ export function IngredientRow({
               <Input
                 id={`ingredientName_${index}`}
                 value={name}
-                onChange={(e) => onChange({ name: e.target.value })}
+                onChange={(e) => {
+                  onChange({ name: e.target.value });
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 placeholder="Ej. Tortilla de maíz"
+                autoComplete="off"
                 required
                 className="min-w-0 flex-1 rounded-pill"
               />
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="absolute top-full left-24 z-10 mt-1 flex w-[calc(100%-6rem)] flex-col overflow-hidden rounded-card border border-border bg-card shadow-soft-lg">
+                  {suggestions.map((s) => (
+                    <li key={s.name}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => pickSuggestion(s)}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                      >
+                        {s.photoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- signed thumbnail preview
+                          <img src={s.photoUrl} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+                        ) : (
+                          <span className="text-base">{s.icon ?? "🥣"}</span>
+                        )}
+                        {s.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="flex items-center gap-2">

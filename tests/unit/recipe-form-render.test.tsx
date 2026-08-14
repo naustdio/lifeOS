@@ -11,7 +11,14 @@ vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
 
 const createRecipeAction = vi.fn();
 const updateRecipeAction = vi.fn();
-vi.mock("@/app/(app)/(recipes)/recetas/actions", () => ({ createRecipeAction, updateRecipeAction }));
+const attachIngredientPhotoAction = vi.fn();
+const setIngredientIconAction = vi.fn();
+vi.mock("@/app/(app)/(recipes)/recetas/actions", () => ({
+  createRecipeAction,
+  updateRecipeAction,
+  attachIngredientPhotoAction,
+  setIngredientIconAction,
+}));
 
 const { RecipeForm } = await import("@/app/(app)/(recipes)/recetas/RecipeForm");
 
@@ -19,6 +26,7 @@ const UNITS = [
   { value: "g", label: "Gramo (g)", icon: "⚖️" },
   { value: "taza", label: "Taza", icon: "☕" },
 ];
+const CATALOG: never[] = [];
 
 describe("RecipeForm — smoke render (recipes-module)", () => {
   afterEach(() => {
@@ -28,7 +36,7 @@ describe("RecipeForm — smoke render (recipes-module)", () => {
   });
 
   it("renders title, category, portions, video url, and reason fields", () => {
-    render(<RecipeForm mode="create" units={UNITS} />);
+    render(<RecipeForm mode="create" units={UNITS} catalog={CATALOG} />);
 
     expect(screen.getByLabelText("Título")).toBeInTheDocument();
     expect(screen.getByLabelText("Categoría")).toBeInTheDocument();
@@ -38,7 +46,7 @@ describe("RecipeForm — smoke render (recipes-module)", () => {
   });
 
   it("blocks submit and shows a validation message when the reason is empty", () => {
-    render(<RecipeForm mode="create" units={UNITS} />);
+    render(<RecipeForm mode="create" units={UNITS} catalog={CATALOG} />);
 
     fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Tacos" } });
     fireEvent.click(screen.getByRole("button", { name: /Guardar receta/ }));
@@ -47,7 +55,7 @@ describe("RecipeForm — smoke render (recipes-module)", () => {
   });
 
   it("can add and remove ingredient and step rows", () => {
-    render(<RecipeForm mode="create" units={UNITS} />);
+    render(<RecipeForm mode="create" units={UNITS} catalog={CATALOG} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Agregar ingrediente" }));
     expect(screen.getByLabelText("Ingrediente")).toBeInTheDocument();

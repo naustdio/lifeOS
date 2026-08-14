@@ -23,6 +23,16 @@ export { listRecipeChanges, type RecipeChange } from "../data/recipe-history-rep
 
 export { listCustomUnits } from "../data/custom-unit-repository";
 
+export {
+  listIngredientCatalog,
+  signIngredientPhotoUrls,
+  upsertIngredientCatalogEntry,
+  uploadIngredientPhoto,
+  buildIngredientPhotoPath,
+  INGREDIENT_PHOTO_BUCKET,
+  type IngredientCatalogEntry,
+} from "../data/ingredient-catalog-repository";
+
 export { RECIPE_CATEGORIES, type RecipeCategory, isValidCategory, reasonIsPresent, normalizePositions } from "../domain/recipe";
 
 export { RECIPE_UNITS, type UnitOption, mergeUnitOptions } from "../domain/unit";

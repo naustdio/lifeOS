@@ -154,3 +154,27 @@ export async function hardDeleteRecipeAction(_prevState: RecipeFormState, formDa
   revalidatePath("/recetas");
   return { error: null };
 }
+
+/** Uploads a photo for a household ingredient-catalog entry (creating the entry if the write seam
+ *  hasn't yet, e.g. attaching a photo before ever saving a recipe with this name). Called directly
+ *  from `IngredientRow` per row — not a `<form>` action, a plain callback prop. */
+export async function attachIngredientPhotoAction(name: string, file: File): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const spaceId = await getCurrentHouseholdId(supabase);
+  if (!spaceId) return { error: ERROR_COPY.NOT_A_MEMBER };
+
+  const ext = file.name.split(".").pop() || "jpg";
+  const { error } = await recipesApi.uploadIngredientPhoto(supabase, { householdId: spaceId, name, file, ext });
+  return { error };
+}
+
+/** Sets a picked emoji icon for a household ingredient-catalog entry — same creates-if-missing
+ *  shape as the photo attach above. */
+export async function setIngredientIconAction(name: string, icon: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const spaceId = await getCurrentHouseholdId(supabase);
+  if (!spaceId) return { error: ERROR_COPY.NOT_A_MEMBER };
+
+  const { error } = await recipesApi.upsertIngredientCatalogEntry(supabase, { householdId: spaceId, name, icon });
+  return { error };
+}

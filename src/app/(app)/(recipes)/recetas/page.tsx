@@ -1,5 +1,14 @@
 import { getCurrentHouseholdId } from "@/modules/core/api";
-import { listCustomUnits, listRecipes, RECIPE_UNITS, isValidCategory, mergeUnitOptions } from "@/modules/recipes/api";
+import {
+  listCustomUnits,
+  listIngredientCatalog,
+  listRecipes,
+  RECIPE_UNITS,
+  isValidCategory,
+  mergeUnitOptions,
+  signIngredientPhotoUrls,
+} from "@/modules/recipes/api";
+import type { IngredientCatalogOption } from "@/design-system/patterns/IngredientRow";
 import { createClient } from "@/shared/supabase/server";
 import { RecipeForm } from "./RecipeForm";
 import { RecipeList } from "./RecipeList";
@@ -14,14 +23,23 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
   const supabase = await createClient();
   const spaceId = await getCurrentHouseholdId(supabase);
 
-  const [recipes, customUnits] = spaceId
+  const [recipes, customUnits, catalogEntries] = spaceId
     ? await Promise.all([
         listRecipes(supabase, spaceId, { q, category: category && isValidCategory(category) ? category : undefined }),
         listCustomUnits(supabase, spaceId),
+        listIngredientCatalog(supabase, spaceId),
       ])
-    : [[], []];
+    : [[], [], []];
 
   const units = mergeUnitOptions(RECIPE_UNITS, customUnits);
+
+  const photoPaths = catalogEntries.map((c) => c.photoPath).filter((p): p is string => Boolean(p));
+  const signedUrls = spaceId ? await signIngredientPhotoUrls(supabase, photoPaths) : {};
+  const catalog: IngredientCatalogOption[] = catalogEntries.map((c) => ({
+    name: c.name,
+    photoUrl: c.photoPath ? (signedUrls[c.photoPath] ?? null) : null,
+    icon: c.icon,
+  }));
 
   return (
     <main className="flex flex-col gap-6">
@@ -33,7 +51,7 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
         initialCategory={category ?? null}
       />
 
-      <RecipeForm mode="create" units={units} />
+      <RecipeForm mode="create" units={units} catalog={catalog} />
     </main>
   );
 }
