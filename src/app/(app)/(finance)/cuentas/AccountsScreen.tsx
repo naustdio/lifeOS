@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Wallet } from "lucide-react";
+import { CreditCard, HandCoins, Landmark, LayoutGrid, PiggyBank, TrendingUp, Wallet } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent } from "@/design-system/ui/card";
@@ -69,6 +70,96 @@ const TABS: {
   { key: "prestamos", label: "Préstamos", types: ["liability"], heroLabel: "Total adeudado", defaultType: "liability" },
   { key: "prestado", label: "Prestado", types: ["loaned"], heroLabel: "Te deben", defaultType: "loaned" },
 ];
+
+const TAB_ICONS: Record<TabKey, typeof Wallet> = {
+  todo: LayoutGrid,
+  debito: Wallet,
+  ahorros: PiggyBank,
+  inversiones: TrendingUp,
+  tarjetas: CreditCard,
+  prestamos: Landmark,
+  prestado: HandCoins,
+};
+
+const TAB_SPRING = { type: "spring", stiffness: 210, damping: 18, mass: 1 } as const;
+
+/**
+ * Single filter tab (change: cuentas-tabs-discrete-adapt): collapses to an icon-only pill when
+ * inactive, expands to icon+label with a spring layout transition when selected, plus a one-shot
+ * "shine" sweep across the label — adapted from a reference `DiscreteTabs` component the user
+ * shared, restyled onto this design system's existing selected-state convention (`bg-primary` +
+ * `border-primary`, the same segmented-control look `/recurrentes`'s mode toggle already uses)
+ * rather than the reference's per-tab rainbow colors, to stay consistent with the rest of the app.
+ * `aria-label` keeps the accessible name stable even when the visible text is collapsed to width 0.
+ */
+function AccountTypeTab({
+  tab,
+  isActive,
+  onSelect,
+}: {
+  tab: (typeof TABS)[number];
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const [shine, setShine] = React.useState(false);
+  const Icon = TAB_ICONS[tab.key];
+
+  React.useEffect(() => {
+    if (!isActive) {
+      setShine(false);
+      return;
+    }
+    const timer = setTimeout(() => setShine(true), 500);
+    return () => clearTimeout(timer);
+  }, [isActive]);
+
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={isActive}
+      aria-label={tab.label}
+      onClick={onSelect}
+      className="relative shrink-0 rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <motion.div layout="position" transition={TAB_SPRING} className="flex h-11 items-center justify-center">
+        <div
+          className={cn(
+            "flex h-11 items-center justify-center overflow-hidden rounded-pill border transition-[width,gap,padding,background-color,color,border-color] duration-300 ease-out",
+            isActive
+              ? "w-auto gap-2 border-primary bg-primary px-4 text-primary-foreground"
+              : "w-11 gap-0 border-border bg-card px-0 text-muted-foreground hover:bg-accent hover:text-foreground",
+          )}
+        >
+          <Icon className="h-4 w-4 shrink-0" aria-hidden />
+          {/* Plain CSS, not a `motion` width animation: Framer's `animate to "auto"` doesn't
+              reliably resolve back to 0 for an inline flex child (confirmed live — it froze at
+              the text's natural width instead of collapsing), so the collapse itself is a
+              `max-width` transition; only the one-shot shine sweep below still needs Framer. */}
+          <span
+            className={cn(
+              "relative overflow-hidden whitespace-nowrap text-sm font-medium transition-[max-width,opacity] duration-300 ease-out",
+              isActive ? "max-w-40 opacity-100" : "max-w-0 opacity-0",
+            )}
+          >
+            {tab.label}
+            <AnimatePresence>
+              {isActive && shine && (
+                <motion.span
+                  aria-hidden
+                  initial={{ left: "-120%" }}
+                  animate={{ left: "120%" }}
+                  transition={{ duration: 0.5, ease: "linear" }}
+                  className="absolute top-0 bottom-0 w-10 bg-linear-to-r from-transparent via-primary-foreground/40 to-transparent"
+                />
+              )}
+            </AnimatePresence>
+          </span>
+        </div>
+      </motion.div>
+    </button>
+  );
+}
 
 /** "Vence en N días" / "Vencido hace N días" — `null` propagates to no label. */
 function dueDateLabel(daysUntilDue: number | null): string | null {
@@ -244,29 +335,21 @@ export function AccountsScreen({
         </Button>
       </div>
 
-      <div
-        className="flex gap-2 overflow-x-auto pb-1 scrollbar-none"
+      <motion.div
+        layout
+        className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none"
         role="tablist"
         aria-label="Filtro por tipo de cuenta"
       >
         {TABS.map((tab) => (
-          <button
+          <AccountTypeTab
             key={tab.key}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              "shrink-0 rounded-pill border border-border px-3 py-1.5 text-sm font-medium transition-colors duration-200 ease-out",
-              activeTab === tab.key
-                ? "border-primary bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-accent",
-            )}
-          >
-            {tab.label}
-          </button>
+            tab={tab}
+            isActive={activeTab === tab.key}
+            onSelect={() => setActiveTab(tab.key)}
+          />
         ))}
-      </div>
+      </motion.div>
 
       <div className="flex flex-col gap-1">
         <span className="text-xs uppercase tracking-wide text-muted-foreground">{activeTabDef.heroLabel}</span>
