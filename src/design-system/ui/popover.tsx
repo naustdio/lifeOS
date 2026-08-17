@@ -24,7 +24,9 @@ const PopoverContent = React.forwardRef<
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 w-auto rounded-card border border-input bg-card p-2 text-card-foreground shadow-soft-lg outline-none",
+        // z-[70]: same reasoning as SelectContent — must outrank any modal/sheet (e.g. the "Nueva
+        // receta" launcher's backdrop at z-[60]) regardless of portal target.
+        "z-[70] w-auto rounded-card border border-input bg-card p-2 text-card-foreground shadow-soft-lg outline-none",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
         className,
       )}

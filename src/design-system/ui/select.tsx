@@ -39,6 +39,8 @@ export const SelectTrigger = React.forwardRef<
 ));
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
+// z-[70]: a Select can be opened from inside a modal (e.g. the "Nueva receta" launcher's backdrop
+// sits at z-[60]) — this must always render above any modal/sheet, portal target notwithstanding.
 export const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
@@ -48,7 +50,7 @@ export const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        "relative z-50 max-h-64 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-card border border-input bg-card text-card-foreground shadow-soft-lg",
+        "relative z-[70] max-h-64 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-card border border-input bg-card text-card-foreground shadow-soft-lg",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1",
         className,
