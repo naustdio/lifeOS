@@ -4,14 +4,10 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 import type * as React from "react";
 
 /**
- * Theme selection (design-system spec "Theme Selection", all three
- * scenarios):
- * 1. First visit follows the OS preference (`defaultTheme="system"`).
- * 2. An explicit override (`setTheme("light" | "dark")`) persists across
- *    sessions via `next-themes`' own localStorage key and wins over the OS
- *    preference.
- * 3. Returning to "system" (`setTheme("system")`) clears the stored
- *    override and the theme again tracks the OS preference.
+ * Theme selection — light/dark only, no OS-tracking "system" option
+ * (product decision: the app always shows an explicit, user-picked theme).
+ * An explicit choice (`setTheme("light" | "dark")`) persists across
+ * sessions via `next-themes`' own localStorage key.
  *
  * `attribute="class"` toggles the `.dark` class consumed by
  * `tokens/semantic.css`. `suppressHydrationWarning` must also be set on
@@ -20,7 +16,7 @@ import type * as React from "react";
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
-    <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
+    <NextThemesProvider attribute="class" defaultTheme="light" enableSystem={false}>
       {children}
     </NextThemesProvider>
   );

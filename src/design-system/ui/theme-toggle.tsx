@@ -1,20 +1,19 @@
 "use client";
 
-import { Moon, Sun, SunMoon } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import * as React from "react";
 import { cn } from "./utils";
 
 const OPTIONS = [
   { value: "light", label: "Claro", icon: Sun },
-  { value: "system", label: "Sistema", icon: SunMoon },
   { value: "dark", label: "Oscuro", icon: Moon },
 ] as const;
 
 /**
- * Explicit user override control (design-system spec "Theme Selection").
- * Selecting "light"/"dark" persists an override that wins over the OS
- * preference; selecting "system" clears the override.
+ * Explicit user override control — light/dark only, no "system" option
+ * (design-system spec "Theme Selection"): the app always shows an explicit,
+ * user-picked theme rather than tracking the OS preference.
  */
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();

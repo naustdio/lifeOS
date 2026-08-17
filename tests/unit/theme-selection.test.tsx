@@ -5,9 +5,10 @@ import { ThemeProvider } from "../../src/design-system/theme-provider";
 import { ThemeToggle } from "../../src/design-system/ui/theme-toggle";
 
 /**
- * Covers all three scenarios of the design-system spec's "Theme Selection"
- * requirement end-to-end through `next-themes`, backed by real
- * `localStorage`/`document.documentElement` state in jsdom.
+ * Covers the design-system's "Theme Selection" requirement end-to-end through `next-themes`,
+ * backed by real `localStorage`/`document.documentElement` state in jsdom — light/dark only, no
+ * OS-tracking "system" option (product decision: the app always shows an explicit, user-picked
+ * theme).
  */
 
 function mockMatchMedia(prefersDark: boolean) {
@@ -44,61 +45,58 @@ describe("Theme Selection", () => {
     cleanup();
   });
 
-  it("scenario: first visit follows the OS dark preference", async () => {
+  it("scenario: first visit defaults to light, ignoring an OS dark preference", async () => {
     mockMatchMedia(true);
     renderApp();
-
-    await waitFor(() => {
-      expect(document.documentElement.classList.contains("dark")).toBe(true);
-    });
-  });
-
-  it("scenario: a manual light override wins over an OS dark preference and persists", async () => {
-    mockMatchMedia(true);
-    renderApp();
-
-    await waitFor(() => {
-      expect(document.documentElement.classList.contains("dark")).toBe(true);
-    });
-
-    act(() => {
-      screen.getByRole("radio", { name: "Claro" }).click();
-    });
 
     await waitFor(() => {
       expect(document.documentElement.classList.contains("dark")).toBe(false);
     });
-    expect(window.localStorage.getItem("theme")).toBe("light");
+    expect(screen.queryByRole("radio", { name: "Sistema" })).not.toBeInTheDocument();
+  });
+
+  it("scenario: picking dark applies it and persists it across a fresh render", async () => {
+    renderApp();
+
+    act(() => {
+      screen.getByRole("radio", { name: "Oscuro" }).click();
+    });
+
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains("dark")).toBe(true);
+    });
+    expect(window.localStorage.getItem("theme")).toBe("dark");
 
     // Simulate "the next session": re-render with a fresh tree, same storage.
     cleanup();
     renderApp();
     await waitFor(() => {
-      expect(document.documentElement.classList.contains("dark")).toBe(false);
+      expect(document.documentElement.classList.contains("dark")).toBe(true);
     });
   });
 
-  it("scenario: returning to system-following clears the stored override", async () => {
-    mockMatchMedia(true);
+  it("scenario: picking light applies it and persists it across a fresh render", async () => {
     renderApp();
+
+    act(() => {
+      screen.getByRole("radio", { name: "Oscuro" }).click();
+    });
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains("dark")).toBe(true);
+    });
 
     act(() => {
       screen.getByRole("radio", { name: "Claro" }).click();
     });
     await waitFor(() => {
-      expect(window.localStorage.getItem("theme")).toBe("light");
+      expect(document.documentElement.classList.contains("dark")).toBe(false);
     });
+    expect(window.localStorage.getItem("theme")).toBe("light");
 
-    act(() => {
-      screen.getByRole("radio", { name: "Sistema" }).click();
-    });
-
+    cleanup();
+    renderApp();
     await waitFor(() => {
-      expect(window.localStorage.getItem("theme")).toBe("system");
-    });
-    // Tracks the OS preference again (mocked as dark).
-    await waitFor(() => {
-      expect(document.documentElement.classList.contains("dark")).toBe(true);
+      expect(document.documentElement.classList.contains("dark")).toBe(false);
     });
   });
 });
