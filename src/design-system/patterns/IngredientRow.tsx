@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { BookOpen, Camera, Check, Hash, Pencil, Scale, Smile, Type, UtensilsCrossed, X } from "lucide-react";
+import { BookOpen, Camera, Hash, Pencil, Scale, Smile, Type, UtensilsCrossed, X } from "lucide-react";
 import { cn } from "@/design-system/ui/utils";
 import { useMemo, useRef, useState } from "react";
 import { useTheme } from "next-themes";
@@ -37,10 +37,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
  * stored) and sets `subRecipeId` for the link; quantity/unit still apply (e.g. "200 ml aderezo").
  * Starts in link mode automatically if the row's initial `subRecipeId` is set.
  *
- * Accordion behaviour: a row with a name already filled in starts/collapses into a flat summary
- * row (photo, name, qty/unit, edit + remove) — click the pencil (or the row) to expand. A
- * brand-new blank row starts expanded. Uses `motion`'s shared-layout `layout`/`layoutId` so the
- * row visually morphs between the compact summary and the expanded card.
+ * Accordion behaviour: a collapsed row is a flat summary (photo, name, qty/unit, edit + remove) —
+ * click the pencil (or the row) to expand. `expanded`/`onExpandedChange` are controlled by the
+ * caller, which keeps at most one row expanded at a time across the whole ingredient list (a long
+ * list of always-expanded rows becomes an endless scroll). Uses `motion`'s shared-layout
+ * `layout`/`layoutId` so the row visually morphs between the compact summary and the expanded card.
  */
 export type IngredientRowUnitOption = { value: string; label: string; icon: string };
 export type IngredientCatalogOption = { name: string; photoUrl: string | null; icon: string | null };
@@ -57,6 +58,8 @@ export function IngredientRow({
   units,
   catalog,
   recipeOptions,
+  expanded,
+  onExpandedChange,
   onChange,
   onRemove,
   onAttachPhoto,
@@ -70,6 +73,11 @@ export function IngredientRow({
   units: IngredientRowUnitOption[];
   catalog: IngredientCatalogOption[];
   recipeOptions: IngredientRowRecipeOption[];
+  /** Accordion behaviour (UI-polish fast-follow): only one row expanded at a time, owned by the
+   *  parent so opening a row can collapse whichever other row was open — keeps a long ingredient
+   *  list from becoming an endless scroll. */
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   onChange: (patch: { name?: string; quantity?: string; unit?: string; subRecipeId?: string | null }) => void;
   onRemove: () => void;
   onAttachPhoto: (file: File) => Promise<{ error: string | null }>;
@@ -77,7 +85,8 @@ export function IngredientRow({
 }) {
   const { resolvedTheme } = useTheme();
   const [customMode, setCustomMode] = useState(() => unit.length > 0 && !units.some((u) => u.value === unit));
-  const [collapsed, setCollapsed] = useState(() => name.trim().length > 0);
+  const collapsed = !expanded;
+  const setCollapsed = (next: boolean) => onExpandedChange(!next);
   const [linkMode, setLinkMode] = useState(() => subRecipeId !== null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -174,9 +183,17 @@ export function IngredientRow({
         ) : (
           <motion.div key="expanded" layout transition={springTransition} className="flex flex-col gap-3 p-4">
             <div className="flex items-center justify-between">
-              <motion.span layoutId={nameLayoutId} transition={springTransition} className="truncate text-sm font-semibold">
-                {name.trim() || `Ingrediente ${index + 1}`}
-              </motion.span>
+              <button
+                type="button"
+                onClick={() => setCollapsed(true)}
+                aria-expanded={true}
+                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+              >
+                {avatar}
+                <motion.span layoutId={nameLayoutId} transition={springTransition} className="block truncate text-sm font-semibold">
+                  {name.trim() || `Ingrediente ${index + 1}`}
+                </motion.span>
+              </button>
               <Button
                 type="button"
                 variant="secondary"
@@ -189,38 +206,68 @@ export function IngredientRow({
               </Button>
             </div>
 
-            <div className="flex items-center gap-3">
-              {avatar}
-              <div className="flex items-center gap-1.5">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => handleFileSelected(e.target.files?.[0])}
-                  aria-label={`Foto de ingrediente ${index + 1}`}
-                />
-                <Button
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => handleFileSelected(e.target.files?.[0])}
+                aria-label={`Foto de ingrediente ${index + 1}`}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className={cn(iconButtonClass, "h-9 w-9")}
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Agregar foto"
+              >
+                <Camera className="h-3.5 w-3.5" aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className={cn(iconButtonClass, "h-9 w-9")}
+                onClick={() => setShowIconPicker((v) => !v)}
+                aria-expanded={showIconPicker}
+                aria-label="Elegir ícono"
+              >
+                <Smile className="h-3.5 w-3.5" aria-hidden />
+              </Button>
+
+              <div className="flex items-center gap-1.5 rounded-pill bg-secondary/60 p-1">
+                <button
                   type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="gap-1.5 rounded-pill"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    if (!linkMode) return;
+                    setLinkMode(false);
+                    onChange({ subRecipeId: null });
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-medium transition-colors",
+                    !linkMode ? "bg-card shadow-soft-sm" : "text-muted-foreground",
+                  )}
                 >
-                  <Camera className="h-3.5 w-3.5" aria-hidden />
-                  Foto
-                </Button>
-                <Button
+                  <Type className="h-3.5 w-3.5" aria-hidden />
+                  Texto libre
+                </button>
+                <button
                   type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="gap-1.5 rounded-pill"
-                  onClick={() => setShowIconPicker((v) => !v)}
-                  aria-expanded={showIconPicker}
+                  onClick={() => {
+                    if (linkMode) return;
+                    setLinkMode(true);
+                    onChange({ name: "", subRecipeId: null });
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-medium transition-colors",
+                    linkMode ? "bg-card shadow-soft-sm" : "text-muted-foreground",
+                  )}
                 >
-                  <Smile className="h-3.5 w-3.5" aria-hidden />
-                  Ícono
-                </Button>
+                  <BookOpen className="h-3.5 w-3.5" aria-hidden />
+                  Usar una receta
+                </button>
               </div>
             </div>
 
@@ -237,39 +284,6 @@ export function IngredientRow({
                 />
               </div>
             )}
-
-            <div className="flex items-center gap-1.5 self-start rounded-pill bg-secondary/60 p-1">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!linkMode) return;
-                  setLinkMode(false);
-                  onChange({ subRecipeId: null });
-                }}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-medium transition-colors",
-                  !linkMode ? "bg-card shadow-soft-sm" : "text-muted-foreground",
-                )}
-              >
-                <Type className="h-3.5 w-3.5" aria-hidden />
-                Texto libre
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (linkMode) return;
-                  setLinkMode(true);
-                  onChange({ name: "", subRecipeId: null });
-                }}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-medium transition-colors",
-                  linkMode ? "bg-card shadow-soft-sm" : "text-muted-foreground",
-                )}
-              >
-                <BookOpen className="h-3.5 w-3.5" aria-hidden />
-                Usar una receta
-              </button>
-            </div>
 
             {linkMode ? (
               <div className="flex items-center gap-2">
@@ -415,11 +429,6 @@ export function IngredientRow({
                 </>
               )}
             </div>
-
-            <Button type="button" variant="secondary" className="mt-1 w-full justify-center gap-2 rounded-pill" onClick={() => setCollapsed(true)}>
-              <Check className="h-4 w-4" aria-hidden />
-              Listo
-            </Button>
           </motion.div>
         )}
       </AnimatePresence>

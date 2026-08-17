@@ -78,6 +78,10 @@ export function RecipeForm({
   const [ingredients, setIngredients] = useState<IngredientDraft[]>(
     initial?.ingredients.map((i) => ({ name: i.name, quantity: i.quantity === null ? "" : String(i.quantity), unit: i.unit, subRecipeId: i.subRecipeId })) ?? [],
   );
+  // Accordion behaviour: only one ingredient row expanded at a time, so a long ingredient list
+  // doesn't turn into an endless scroll (owned here, not per-row, since expanding one must collapse
+  // whichever other row was open).
+  const [expandedIngredientIndex, setExpandedIngredientIndex] = useState<number | null>(null);
   const [steps, setSteps] = useState<StepDraft[]>(
     initial?.steps.map((s) => ({ id: crypto.randomUUID(), instruction: s.instruction })) ?? [],
   );
@@ -282,8 +286,13 @@ export function RecipeForm({
                 units={units}
                 catalog={catalogState}
                 recipeOptions={recipeOptions}
+                expanded={expandedIngredientIndex === i}
+                onExpandedChange={(next) => setExpandedIngredientIndex(next ? i : null)}
                 onChange={(patch) => setIngredients((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))}
-                onRemove={() => setIngredients((prev) => prev.filter((_, idx) => idx !== i))}
+                onRemove={() => {
+                  setIngredients((prev) => prev.filter((_, idx) => idx !== i));
+                  setExpandedIngredientIndex((prev) => (prev === null ? null : prev === i ? null : prev > i ? prev - 1 : prev));
+                }}
                 onAttachPhoto={async (file) => {
                   const result = await attachIngredientPhotoAction(ing.name, file);
                   if (!result.error) upsertCatalogState(ing.name, { photoUrl: URL.createObjectURL(file), icon: null });
@@ -300,7 +309,10 @@ export function RecipeForm({
               type="button"
               variant="secondary"
               className="w-full justify-center gap-2"
-              onClick={() => setIngredients((prev) => [...prev, { name: "", quantity: "", unit: units[0]?.value ?? "", subRecipeId: null }])}
+              onClick={() => {
+                setIngredients((prev) => [...prev, { name: "", quantity: "", unit: units[0]?.value ?? "", subRecipeId: null }]);
+                setExpandedIngredientIndex(ingredients.length);
+              }}
             >
               <Plus className="h-4 w-4" aria-hidden />
               Agregar ingrediente
