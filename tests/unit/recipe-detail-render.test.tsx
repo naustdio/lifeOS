@@ -64,19 +64,19 @@ describe("RecipeDetail — history + delete confirmations (recipes-module)", () 
 
   it("a non-owner sees only the soft-delete action, never hard-delete", () => {
     render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={false} />);
-    expect(screen.getByRole("button", { name: "Eliminar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Eliminar receta" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Eliminar permanentemente" })).not.toBeInTheDocument();
   });
 
   it("an owner sees both the soft-delete and hard-delete actions", () => {
     render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={true} />);
-    expect(screen.getByRole("button", { name: "Eliminar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Eliminar receta" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Eliminar permanentemente" })).toBeInTheDocument();
   });
 
   it("soft-delete confirmation is blocked client-side without a typed reason", () => {
     render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={false} />);
-    fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar receta" }));
 
     const confirmButton = screen.getByRole("button", { name: "Confirmar borrado" });
     expect(confirmButton).toBeDisabled();
