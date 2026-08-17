@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { BookOpen, Camera, Check, Hash, Pencil, Scale, Smile, Type, UtensilsCrossed, X } from "lucide-react";
 import { cn } from "@/design-system/ui/utils";
 import { useMemo, useRef, useState } from "react";
+import { useTheme } from "next-themes";
+import EmojiPicker, { EmojiStyle, Theme as EmojiTheme } from "emoji-picker-react";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/design-system/ui/select";
@@ -45,7 +47,6 @@ export type IngredientCatalogOption = { name: string; photoUrl: string | null; i
 export type IngredientRowRecipeOption = { id: string; title: string };
 
 const springTransition = { type: "spring" as const, bounce: 0, duration: 0.5 };
-const ICON_CHOICES = ["🍎", "🥕", "🥩", "🥛", "🧅", "🍞", "🧄", "🍚", "🧀", "🥚", "🌶️", "🍋"];
 
 export function IngredientRow({
   index,
@@ -74,6 +75,7 @@ export function IngredientRow({
   onAttachPhoto: (file: File) => Promise<{ error: string | null }>;
   onSetIcon: (icon: string) => Promise<{ error: string | null }>;
 }) {
+  const { resolvedTheme } = useTheme();
   const [customMode, setCustomMode] = useState(() => unit.length > 0 && !units.some((u) => u.value === unit));
   const [collapsed, setCollapsed] = useState(() => name.trim().length > 0);
   const [linkMode, setLinkMode] = useState(() => subRecipeId !== null);
@@ -116,6 +118,10 @@ export function IngredientRow({
     setPhotoPreviewUrl(null);
     setShowIconPicker(false);
     await onSetIcon(nextIcon);
+  }
+
+  async function handleEmojiClick(emoji: { emoji: string }) {
+    await handlePickIcon(emoji.emoji);
   }
 
   const avatar = photoPreviewUrl ? (
@@ -219,18 +225,16 @@ export function IngredientRow({
             </div>
 
             {showIconPicker && (
-              <div className="flex flex-wrap gap-1.5 rounded-card bg-secondary/50 p-2">
-                {ICON_CHOICES.map((choice) => (
-                  <button
-                    key={choice}
-                    type="button"
-                    onClick={() => handlePickIcon(choice)}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-base hover:bg-secondary"
-                    aria-label={`Usar ícono ${choice}`}
-                  >
-                    {choice}
-                  </button>
-                ))}
+              <div className="rounded-card">
+                <EmojiPicker
+                  onEmojiClick={handleEmojiClick}
+                  theme={resolvedTheme === "dark" ? EmojiTheme.DARK : EmojiTheme.LIGHT}
+                  emojiStyle={EmojiStyle.NATIVE}
+                  searchPlaceHolder="Buscar emoji"
+                  width="100%"
+                  height={350}
+                  previewConfig={{ showPreview: false }}
+                />
               </div>
             )}
 
