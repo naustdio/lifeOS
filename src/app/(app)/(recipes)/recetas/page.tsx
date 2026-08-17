@@ -2,6 +2,7 @@ import { getCurrentHouseholdId } from "@/modules/core/api";
 import {
   listCustomUnits,
   listIngredientCatalog,
+  listIngredientNamesByRecipeIds,
   listRecipes,
   RECIPE_UNITS,
   isValidCategory,
@@ -47,6 +48,9 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
 
   const recipePhotoPaths = recipes.map((r) => r.photoPath).filter((p): p is string => Boolean(p));
   const recipeSignedUrls = spaceId ? await signRecipePhotoUrls(supabase, recipePhotoPaths) : {};
+  // Feeds RecipeList's client-side instant filter so typing also matches ingredient names, not
+  // just the title (UI-polish fast-follow "search by ingredient").
+  const ingredientNamesByRecipeId = spaceId ? await listIngredientNamesByRecipeIds(supabase, recipes.map((r) => r.id)) : {};
 
   return (
     <main className="flex flex-col gap-6">
@@ -60,6 +64,7 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
           portions: r.portions,
           photoUrl: r.photoPath ? (recipeSignedUrls[r.photoPath] ?? null) : null,
           prepMinutes: r.prepMinutes,
+          ingredientNames: ingredientNamesByRecipeId[r.id] ?? [],
         }))}
         initialQuery={q ?? ""}
         initialCategory={category ?? null}

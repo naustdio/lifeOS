@@ -19,15 +19,24 @@ export type RecipeListItem = {
   videoUrl: string | null;
   prepMinutes: number | null;
   photoPath: string | null;
+  description: string | null;
   createdAt: string;
 };
 
-export type RecipeIngredient = { id: string; position: number; name: string; quantity: number | null; unit: string; subRecipeId: string | null };
+export type RecipeIngredient = {
+  id: string;
+  position: number;
+  name: string;
+  quantity: number | null;
+  unit: string;
+  subRecipeId: string | null;
+  estimatedUnitCost: number | null;
+};
 export type RecipeStep = { id: string; position: number; instruction: string };
 export type RecipeDetail = RecipeListItem & { ingredients: RecipeIngredient[]; steps: RecipeStep[] };
 
 const RECIPE_COLUMNS =
-  "id, household_id, owner_user_id, title, category, portions, video_url, prep_minutes, photo_path, created_at";
+  "id, household_id, owner_user_id, title, category, portions, video_url, prep_minutes, photo_path, description, created_at";
 
 function mapRecipeRow(r: Record<string, unknown>): RecipeListItem {
   return {
@@ -40,37 +49,69 @@ function mapRecipeRow(r: Record<string, unknown>): RecipeListItem {
     videoUrl: (r.video_url as string | null) ?? null,
     prepMinutes: r.prep_minutes === null || r.prep_minutes === undefined ? null : Number(r.prep_minutes),
     photoPath: (r.photo_path as string | null) ?? null,
+    description: (r.description as string | null) ?? null,
     createdAt: r.created_at as string,
   };
 }
 
 /** Name substring + category filter, excludes soft-deleted rows (spec `recipes-catalog` "Name
- *  Search and Category Filter"). */
+ *  Search and Category Filter"). `q` matches either the recipe title OR any of its ingredient
+ *  names (UI-polish fast-follow: "search by ingredient") — run as two separate queries and
+ *  merged client-side rather than one `.or()` filter string, since `q` is raw user input and
+ *  PostgREST's or-filter grammar treats commas/parens as syntax, not literal search text. */
 export async function listRecipes(
   supabase: SupabaseClient,
   householdId: string,
   filter?: { q?: string; category?: RecipeCategory },
 ): Promise<RecipeListItem[]> {
-  let query = supabase
-    .schema("recipes")
-    .from("recipes")
-    .select(RECIPE_COLUMNS)
-    .eq("household_id", householdId)
-    .eq("is_deleted", false)
-    .order("created_at", { ascending: false });
+  function baseQuery() {
+    let query = supabase
+      .schema("recipes")
+      .from("recipes")
+      .select(RECIPE_COLUMNS)
+      .eq("household_id", householdId)
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: false });
+    if (filter?.category) {
+      query = query.eq("category", filter.category);
+    }
+    return query;
+  }
 
-  if (filter?.q) {
-    query = query.ilike("title", `%${filter.q}%`);
-  }
-  if (filter?.category) {
-    query = query.eq("category", filter.category);
+  if (!filter?.q) {
+    const { data, error } = await baseQuery();
+    if (error || !data) return [];
+    return data.map(mapRecipeRow);
   }
 
-  const { data, error } = await query;
-  if (error || !data) {
-    return [];
+  const [byTitle, ingredientMatches] = await Promise.all([
+    baseQuery().ilike("title", `%${filter.q}%`),
+    supabase.schema("recipes").from("recipe_ingredients").select("recipe_id").ilike("name", `%${filter.q}%`),
+  ]);
+
+  const ingredientRecipeIds = [...new Set((ingredientMatches.data ?? []).map((r) => r.recipe_id as string))];
+  const alreadyMatchedIds = new Set((byTitle.data ?? []).map((r) => r.id as string));
+  const idsToFetch = ingredientRecipeIds.filter((id) => !alreadyMatchedIds.has(id));
+
+  const byIngredient = idsToFetch.length > 0 ? await baseQuery().in("id", idsToFetch) : { data: [], error: null };
+
+  const rows = [...(byTitle.data ?? []), ...(byIngredient.data ?? [])];
+  return rows.map(mapRecipeRow).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
+
+/** Batch-fetches each recipe's ingredient names, keyed by recipe id — feeds `RecipeList`'s
+ *  client-side instant filter (UI-polish fast-follow "search by ingredient") so it can match
+ *  ingredients without a server round-trip on every keystroke. */
+export async function listIngredientNamesByRecipeIds(supabase: SupabaseClient, recipeIds: string[]): Promise<Record<string, string[]>> {
+  if (recipeIds.length === 0) return {};
+  const { data, error } = await supabase.schema("recipes").from("recipe_ingredients").select("recipe_id, name").in("recipe_id", recipeIds);
+  if (error || !data) return {};
+  const map: Record<string, string[]> = {};
+  for (const row of data) {
+    const id = row.recipe_id as string;
+    (map[id] ??= []).push(row.name as string);
   }
-  return data.map(mapRecipeRow);
+  return map;
 }
 
 /** A single recipe with its ordered ingredients and steps. RLS already excludes another
@@ -86,7 +127,12 @@ export async function getRecipeById(supabase: SupabaseClient, id: string): Promi
   if (recipeErr || !recipeRow) return null;
 
   const [{ data: ingredientRows }, { data: stepRows }] = await Promise.all([
-    supabase.schema("recipes").from("recipe_ingredients").select("id, position, name, quantity, unit, sub_recipe_id").eq("recipe_id", id).order("position"),
+    supabase
+      .schema("recipes")
+      .from("recipe_ingredients")
+      .select("id, position, name, quantity, unit, sub_recipe_id, estimated_unit_cost")
+      .eq("recipe_id", id)
+      .order("position"),
     supabase.schema("recipes").from("recipe_steps").select("id, position, instruction").eq("recipe_id", id).order("position"),
   ]);
 
@@ -99,12 +145,20 @@ export async function getRecipeById(supabase: SupabaseClient, id: string): Promi
       quantity: r.quantity === null ? null : Number(r.quantity),
       unit: r.unit as string,
       subRecipeId: (r.sub_recipe_id as string | null) ?? null,
+      estimatedUnitCost: r.estimated_unit_cost === null ? null : Number(r.estimated_unit_cost),
     })),
     steps: (stepRows ?? []).map((r) => ({ id: r.id as string, position: Number(r.position), instruction: r.instruction as string })),
   };
 }
 
-export type IngredientInput = { position: number; name: string; quantity: number | null; unit: string; subRecipeId: string | null };
+export type IngredientInput = {
+  position: number;
+  name: string;
+  quantity: number | null;
+  unit: string;
+  subRecipeId: string | null;
+  estimatedUnitCost: number | null;
+};
 export type StepInput = { position: number; instruction: string };
 
 /** RPC wrapper for `recipes.create_recipe` — writes the recipe, its ingredients/steps, and its
@@ -118,6 +172,7 @@ export async function createRecipe(
     portions: number;
     videoUrl: string | null;
     prepMinutes: number | null;
+    description: string | null;
     ingredients: IngredientInput[];
     steps: StepInput[];
     reason: string;
@@ -133,6 +188,7 @@ export async function createRecipe(
     p_steps: input.steps,
     p_reason: input.reason,
     p_prep_minutes: input.prepMinutes,
+    p_description: input.description,
   });
   if (error || !data) {
     return { id: null, error: error?.message ?? "create failed" };
@@ -150,6 +206,7 @@ export async function updateRecipe(
     portions: number;
     videoUrl: string | null;
     prepMinutes: number | null;
+    description: string | null;
     ingredients: IngredientInput[];
     steps: StepInput[];
     reason: string;
@@ -165,6 +222,7 @@ export async function updateRecipe(
     p_steps: input.steps,
     p_reason: input.reason,
     p_prep_minutes: input.prepMinutes,
+    p_description: input.description,
   });
   return { error: error?.message ?? null };
 }
@@ -187,5 +245,26 @@ export async function softDeleteRecipe(supabase: SupabaseClient, recipeId: strin
  *  (design.md Decision 3); the audit row survives as a title-stamped orphan (Decision 2). */
 export async function hardDeleteRecipe(supabase: SupabaseClient, recipeId: string, reason: string): Promise<{ error: string | null }> {
   const { error } = await supabase.schema("recipes").rpc("hard_delete_recipe", { p_recipe_id: recipeId, p_reason: reason });
+  return { error: error?.message ?? null };
+}
+
+/** The calling user's own favorited recipe ids — personal, not household-shared (migration
+ *  `20260817223100_recipes_favorites.sql`). RLS already scopes rows to `auth.uid()`, so no
+ *  explicit user id filter is needed here. */
+export async function listFavoriteRecipeIds(supabase: SupabaseClient): Promise<string[]> {
+  const { data, error } = await supabase.schema("recipes").from("recipe_favorites").select("recipe_id");
+  if (error || !data) return [];
+  return data.map((r) => r.recipe_id as string);
+}
+
+/** Direct writes under RLS, not a write-seam RPC — same reasoning as `ingredient_catalog`:
+ *  favoriting carries no mandatory-reason audit requirement. */
+export async function addFavorite(supabase: SupabaseClient, userId: string, recipeId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.schema("recipes").from("recipe_favorites").insert({ user_id: userId, recipe_id: recipeId });
+  return { error: error?.message ?? null };
+}
+
+export async function removeFavorite(supabase: SupabaseClient, userId: string, recipeId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.schema("recipes").from("recipe_favorites").delete().eq("user_id", userId).eq("recipe_id", recipeId);
   return { error: error?.message ?? null };
 }

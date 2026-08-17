@@ -14,6 +14,7 @@ import {
 import { StepRow, type StepDraft } from "@/design-system/patterns/StepRow";
 import { Input } from "@/design-system/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/design-system/ui/select";
+import { Textarea } from "@/design-system/ui/textarea";
 import {
   attachIngredientPhotoAction,
   createRecipeAction,
@@ -34,7 +35,7 @@ const CATEGORIES = [
   { value: "complemento", label: "Complemento" },
 ] as const;
 
-type IngredientDraft = { name: string; quantity: string; unit: string; subRecipeId: string | null };
+type IngredientDraft = { name: string; quantity: string; unit: string; subRecipeId: string | null; estimatedUnitCost: string };
 
 export type RecipeFormInitial = {
   id: string;
@@ -44,7 +45,8 @@ export type RecipeFormInitial = {
   videoUrl: string | null;
   prepMinutes: number | null;
   photoUrl: string | null;
-  ingredients: { name: string; quantity: number | null; unit: string; subRecipeId: string | null }[];
+  description: string | null;
+  ingredients: { name: string; quantity: number | null; unit: string; subRecipeId: string | null; estimatedUnitCost: number | null }[];
   steps: { instruction: string }[];
 };
 
@@ -84,7 +86,13 @@ export function RecipeForm({
 
   const [category, setCategory] = useState(initial?.category ?? CATEGORIES[1].value);
   const [ingredients, setIngredients] = useState<IngredientDraft[]>(
-    initial?.ingredients.map((i) => ({ name: i.name, quantity: i.quantity === null ? "" : String(i.quantity), unit: i.unit, subRecipeId: i.subRecipeId })) ?? [],
+    initial?.ingredients.map((i) => ({
+      name: i.name,
+      quantity: i.quantity === null ? "" : String(i.quantity),
+      unit: i.unit,
+      subRecipeId: i.subRecipeId,
+      estimatedUnitCost: i.estimatedUnitCost === null ? "" : String(i.estimatedUnitCost),
+    })) ?? [],
   );
   // Accordion behaviour: only one ingredient row expanded at a time, so a long ingredient list
   // doesn't turn into an endless scroll (owned here, not per-row, since expanding one must collapse
@@ -180,6 +188,7 @@ export function RecipeForm({
           quantity: ing.quantity ? Number(ing.quantity) : null,
           unit: ing.unit,
           subRecipeId: ing.subRecipeId,
+          estimatedUnitCost: ing.estimatedUnitCost ? Number(ing.estimatedUnitCost) : null,
         })),
       ),
     );
@@ -235,6 +244,19 @@ export function RecipeForm({
               Título
             </label>
             <Input id="recipeTitle" name="title" maxLength={120} defaultValue={initial?.title} required />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="recipeDescription" className="text-sm font-medium">
+              Descripción (opcional)
+            </label>
+            <Textarea
+              id="recipeDescription"
+              name="description"
+              maxLength={500}
+              placeholder="Ej. Una ensalada fresca y ligera, ideal para el verano."
+              defaultValue={initial?.description ?? ""}
+            />
           </div>
 
           <div className="flex flex-col gap-1">
@@ -300,6 +322,7 @@ export function RecipeForm({
                 quantity={ing.quantity}
                 unit={ing.unit}
                 subRecipeId={ing.subRecipeId}
+                estimatedUnitCost={ing.estimatedUnitCost}
                 units={units}
                 catalog={catalogState}
                 recipeOptions={recipeOptions}
@@ -327,7 +350,10 @@ export function RecipeForm({
               variant="secondary"
               className="w-full justify-center gap-2"
               onClick={() => {
-                setIngredients((prev) => [...prev, { name: "", quantity: "", unit: units[0]?.value ?? "", subRecipeId: null }]);
+                setIngredients((prev) => [
+                  ...prev,
+                  { name: "", quantity: "", unit: units[0]?.value ?? "", subRecipeId: null, estimatedUnitCost: "" },
+                ]);
                 setExpandedIngredientIndex(ingredients.length);
               }}
             >

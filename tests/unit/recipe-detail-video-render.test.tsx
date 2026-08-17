@@ -12,7 +12,8 @@ vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
 
 const softDeleteRecipeAction = vi.fn();
 const hardDeleteRecipeAction = vi.fn();
-vi.mock("@/app/(app)/(recipes)/recetas/actions", () => ({ softDeleteRecipeAction, hardDeleteRecipeAction }));
+const toggleFavoriteAction = vi.fn();
+vi.mock("@/app/(app)/(recipes)/recetas/actions", () => ({ softDeleteRecipeAction, hardDeleteRecipeAction, toggleFavoriteAction }));
 
 const { RecipeDetail } = await import("@/app/(app)/(recipes)/recetas/[id]/RecipeDetail");
 
@@ -23,6 +24,7 @@ const BASE_RECIPE = {
   portions: 4,
   prepMinutes: null,
   photoUrl: null,
+  description: null,
   ingredients: [],
   steps: [],
 };
@@ -35,7 +37,7 @@ describe("RecipeDetail — video embed wiring (recipes-module Phase 5)", () => {
       <RecipeDetail
         recipe={{ ...BASE_RECIPE, videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }}
         history={[]}
-        isOwner={false}
+        isOwner={false} isFavorited={false}
       />,
     );
     expect(screen.getByTitle("Tacos al pastor")).toBeInTheDocument();
@@ -44,14 +46,14 @@ describe("RecipeDetail — video embed wiring (recipes-module Phase 5)", () => {
 
   it("an unrecognized video URL renders a link, not an iframe", () => {
     render(
-      <RecipeDetail recipe={{ ...BASE_RECIPE, videoUrl: "https://example.com/video.mp4" }} history={[]} isOwner={false} />,
+      <RecipeDetail recipe={{ ...BASE_RECIPE, videoUrl: "https://example.com/video.mp4" }} history={[]} isOwner={false} isFavorited={false} />,
     );
     expect(screen.getByRole("link", { name: "Ver video" })).toHaveAttribute("href", "https://example.com/video.mp4");
     expect(screen.queryByTitle("Tacos al pastor")).not.toBeInTheDocument();
   });
 
   it("a recipe with no video URL renders neither an iframe nor a link", () => {
-    render(<RecipeDetail recipe={{ ...BASE_RECIPE, videoUrl: null }} history={[]} isOwner={false} />);
+    render(<RecipeDetail recipe={{ ...BASE_RECIPE, videoUrl: null }} history={[]} isOwner={false} isFavorited={false} />);
     expect(screen.queryByTitle("Tacos al pastor")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Ver video" })).not.toBeInTheDocument();
   });

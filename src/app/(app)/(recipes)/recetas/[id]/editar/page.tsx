@@ -53,7 +53,14 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
     videoUrl: recipe.videoUrl,
     prepMinutes: recipe.prepMinutes,
     photoUrl: recipe.photoPath ? (photoSignedUrls[recipe.photoPath] ?? null) : null,
-    ingredients: recipe.ingredients.map((i) => ({ name: i.name, quantity: i.quantity, unit: i.unit, subRecipeId: i.subRecipeId })),
+    description: recipe.description,
+    ingredients: recipe.ingredients.map((i) => ({
+      name: i.name,
+      quantity: i.quantity,
+      unit: i.unit,
+      subRecipeId: i.subRecipeId,
+      estimatedUnitCost: i.estimatedUnitCost,
+    })),
     steps: recipe.steps.map((s) => ({ instruction: s.instruction })),
   };
 

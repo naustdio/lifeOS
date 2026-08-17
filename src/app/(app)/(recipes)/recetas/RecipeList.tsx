@@ -14,6 +14,7 @@ export type RecipeListEntry = {
   portions: number;
   photoUrl: string | null;
   prepMinutes: number | null;
+  ingredientNames: string[];
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -39,7 +40,9 @@ const CATEGORY_ICONS = {
  * `recipes-catalog` "Searching by partial name returns matches", "Category filter narrows the
  * list", "Search and filter compose on small viewports"). Filtering happens client-side over the
  * already-fetched list for instant feedback; `page.tsx` also reads `q`/`category` from
- * `searchParams` so a shared/reloaded URL reproduces the same view server-side.
+ * `searchParams` so a shared/reloaded URL reproduces the same view server-side. The query also
+ * matches any of a recipe's `ingredientNames` (UI-polish fast-follow "search by ingredient"),
+ * pre-fetched by `page.tsx` so this stays a zero-round-trip client filter.
  */
 export function RecipeList({
   recipes,
@@ -54,8 +57,9 @@ export function RecipeList({
   const [category, setCategory] = useState<string | null>(initialCategory);
 
   const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
     return recipes.filter((r) => {
-      const matchesQuery = query.trim().length === 0 || r.title.toLowerCase().includes(query.trim().toLowerCase());
+      const matchesQuery = q.length === 0 || r.title.toLowerCase().includes(q) || r.ingredientNames.some((name) => name.toLowerCase().includes(q));
       const matchesCategory = category === null || r.category === category;
       return matchesQuery && matchesCategory;
     });

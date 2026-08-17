@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getCurrentHouseholdId } from "@/modules/core/api";
-import { getRecipeById, listRecipeChanges, signRecipePhotoUrls } from "@/modules/recipes/api";
+import { getRecipeById, listFavoriteRecipeIds, listRecipeChanges, signRecipePhotoUrls } from "@/modules/recipes/api";
 import { createClient } from "@/shared/supabase/server";
 import { RecipeDetail } from "./RecipeDetail";
 
@@ -18,10 +18,11 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
   const recipe = await getRecipeById(supabase, id);
   if (!recipe) notFound();
 
-  const [history, { data: isOwner }, signedUrls] = await Promise.all([
+  const [history, { data: isOwner }, signedUrls, favoriteIds] = await Promise.all([
     listRecipeChanges(supabase, id),
     supabase.schema("core").rpc("is_owner", { p_household_id: spaceId }),
     recipe.photoPath ? signRecipePhotoUrls(supabase, [recipe.photoPath]) : Promise.resolve({} as Record<string, string>),
+    listFavoriteRecipeIds(supabase),
   ]);
 
   return (
@@ -30,6 +31,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         recipe={{ ...recipe, photoUrl: recipe.photoPath ? (signedUrls[recipe.photoPath] ?? null) : null }}
         history={history}
         isOwner={Boolean(isOwner)}
+        isFavorited={favoriteIds.includes(id)}
       />
     </main>
   );

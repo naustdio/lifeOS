@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, BookOpen, ChevronDown, Clock, Pencil, Users } from "lucide-react";
+import { ArrowLeft, Bookmark, BookOpen, ChevronDown, Clock, Minus, Pencil, Plus, Users } from "lucide-react";
 import { useActionState, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/design-system/ui/popover";
 import { cn } from "@/design-system/ui/utils";
 import { VideoEmbed } from "@/design-system/patterns/VideoEmbed";
-import { hardDeleteRecipeAction, softDeleteRecipeAction, type RecipeFormState } from "../actions";
+import { hardDeleteRecipeAction, softDeleteRecipeAction, toggleFavoriteAction, type RecipeFormState } from "../actions";
 
 const INITIAL_STATE: RecipeFormState = { error: null };
 
@@ -49,7 +49,16 @@ export type RecipeDetailRecipe = {
   videoUrl: string | null;
   prepMinutes: number | null;
   photoUrl: string | null;
-  ingredients: { id: string; position: number; name: string; quantity: number | null; unit: string; subRecipeId: string | null }[];
+  description: string | null;
+  ingredients: {
+    id: string;
+    position: number;
+    name: string;
+    quantity: number | null;
+    unit: string;
+    subRecipeId: string | null;
+    estimatedUnitCost: number | null;
+  }[];
   steps: { id: string; position: number; instruction: string }[];
 };
 
@@ -62,6 +71,12 @@ export type RecipeDetailHistoryEntry = {
   reason: string;
   createdAt: string;
 };
+
+/** Formats a scaled ingredient quantity — up to 2 decimals, no trailing zeros (e.g. 1.5, not
+ *  1.50; 2, not 2.00). Scaling is display-only, never persisted. */
+function formatScaledQuantity(value: number): string {
+  return Number(value.toFixed(2)).toString();
+}
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -162,9 +177,9 @@ function StepAccordionRow({
  * rounded info panel (UI-polish fast-follow, adapted from a Penpot reference design: same visual
  * language — photo-forward hero, colored category pill, pill-shaped "Pasos" accordion, a single
  * prominent delete CTA — reusing this app's own design tokens throughout instead of the
- * reference's literal colors, so light/dark theming stays intact). The reference also showed a
- * description paragraph and calorie/carb/protein macro stats; both are out of scope here since
- * neither field exists in the recipe data model yet (fast-follow candidate, not implemented).
+ * reference's literal colors, so light/dark theming stays intact). Also carries a description,
+ * a per-user favorite toggle, and an estimated total cost — calorie/carb/protein macros are the
+ * one thing from that reference still not built (no way to measure them decided yet).
  *
  * Collapsed-by-default "Historial de cambios" (actor/timestamp/reason per row, no field-level
  * diff, spec `recipes-history`), soft-delete behind a mandatory-reason confirmation any member can
@@ -172,9 +187,39 @@ function StepAccordionRow({
  * Decision 3). Both deletes route through their Server Actions from `actions.ts`, which re-check
  * role/reason server-side — this UI gating is defence in depth, not the operative gate.
  */
-export function RecipeDetail({ recipe, history, isOwner }: { recipe: RecipeDetailRecipe; history: RecipeDetailHistoryEntry[]; isOwner: boolean }) {
+export function RecipeDetail({
+  recipe,
+  history,
+  isOwner,
+  isFavorited,
+}: {
+  recipe: RecipeDetailRecipe;
+  history: RecipeDetailHistoryEntry[];
+  isOwner: boolean;
+  isFavorited: boolean;
+}) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [expandedStepIndex, setExpandedStepIndex] = useState<number | null>(null);
+  // Portion scaling (UI-polish fast-follow): display-only — scales the shown ingredient
+  // quantities by targetPortions/recipe.portions, never rewrites the saved recipe.
+  const [targetPortions, setTargetPortions] = useState(recipe.portions);
+  const scaleRatio = recipe.portions > 0 ? targetPortions / recipe.portions : 1;
+  // Favorite toggle (UI-polish fast-follow, per-user): optimistic local flip, reconciled with the
+  // server via `toggleFavoriteAction`; reverts on error rather than trusting the optimistic state.
+  const [favorited, setFavorited] = useState(isFavorited);
+  const [favoritePending, setFavoritePending] = useState(false);
+  async function handleToggleFavorite() {
+    const next = !favorited;
+    setFavorited(next);
+    setFavoritePending(true);
+    const result = await toggleFavoriteAction(recipe.id, favorited);
+    setFavoritePending(false);
+    if (result.error) setFavorited(!next);
+  }
+  const estimatedTotalCost = recipe.ingredients.reduce((sum, i) => {
+    if (i.quantity === null || i.estimatedUnitCost === null) return sum;
+    return sum + i.quantity * scaleRatio * i.estimatedUnitCost;
+  }, 0);
   const [softOpen, setSoftOpen] = useState(false);
   const [softReason, setSoftReason] = useState("");
   const [softState, softAction, softPending] = useActionState(softDeleteRecipeAction, INITIAL_STATE);
@@ -222,6 +267,17 @@ export function RecipeDetail({ recipe, history, isOwner }: { recipe: RecipeDetai
               <Pencil className="h-4 w-4" aria-hidden />
             </Link>
           </div>
+
+          <button
+            type="button"
+            onClick={handleToggleFavorite}
+            disabled={favoritePending}
+            aria-pressed={favorited}
+            aria-label={favorited ? "Quitar de favoritos" : "Agregar a favoritos"}
+            className={cn(floatingIconButtonClass, "absolute right-4 bottom-4", !recipe.photoUrl && "bg-card/70 text-foreground hover:bg-card")}
+          >
+            <Bookmark className={cn("h-4 w-4", favorited && "fill-current")} aria-hidden />
+          </button>
         </div>
 
         <div className="relative -mt-6 rounded-t-[1.75rem] bg-card px-5 pt-6 pb-5">
@@ -233,9 +289,28 @@ export function RecipeDetail({ recipe, history, isOwner }: { recipe: RecipeDetai
                   {recipe.prepMinutes} min
                 </span>
               )}
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5 rounded-pill bg-secondary pl-2.5">
                 <Users className="h-4 w-4 text-muted-foreground" aria-hidden />
-                {recipe.portions} porciones
+                <button
+                  type="button"
+                  onClick={() => setTargetPortions((p) => Math.max(1, p - 1))}
+                  disabled={targetPortions <= 1}
+                  aria-label="Menos porciones"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-accent disabled:opacity-40"
+                >
+                  <Minus className="h-3.5 w-3.5" aria-hidden />
+                </button>
+                <span className="min-w-[4.5rem] text-center">
+                  {targetPortions} porcion{targetPortions === 1 ? "" : "es"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setTargetPortions((p) => p + 1)}
+                  aria-label="Más porciones"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                </button>
               </span>
             </div>
             <span className={cn("shrink-0 rounded-pill px-3 py-1 text-xs font-semibold", categoryColor.surface, categoryColor.text)}>
@@ -245,6 +320,8 @@ export function RecipeDetail({ recipe, history, isOwner }: { recipe: RecipeDetai
 
           <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-card-foreground">{recipe.title}</h1>
 
+          {recipe.description && <p className="mt-2 text-sm text-muted-foreground">{recipe.description}</p>}
+
           {recipe.videoUrl && (
             <div className="mt-4">
               <VideoEmbed url={recipe.videoUrl} title={recipe.title} />
@@ -252,13 +329,18 @@ export function RecipeDetail({ recipe, history, isOwner }: { recipe: RecipeDetai
           )}
 
           <div className="mt-5 flex flex-col gap-2">
-            <h2 className="text-xs font-bold tracking-wide text-muted-foreground uppercase">Ingredientes</h2>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-xs font-bold tracking-wide text-muted-foreground uppercase">Ingredientes</h2>
+              {estimatedTotalCost > 0 && (
+                <span className="text-xs font-semibold text-muted-foreground">Costo estimado: ${estimatedTotalCost.toFixed(2)}</span>
+              )}
+            </div>
             <ul className="flex flex-col gap-1.5 text-sm text-card-foreground">
               {recipe.ingredients.map((i) => (
                 <li key={i.id} className="flex items-start gap-2">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-card-foreground" aria-hidden />
                   <span>
-                    {i.quantity !== null ? `${i.quantity} ${i.unit} ` : ""}
+                    {i.quantity !== null ? `${formatScaledQuantity(i.quantity * scaleRatio)} ${i.unit} ` : ""}
                     {i.subRecipeId ? (
                       <Link href={`/recetas/${i.subRecipeId}`} className="underline underline-offset-2 hover:text-category-green">
                         {i.name}

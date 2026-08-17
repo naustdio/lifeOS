@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { BookOpen, Camera, Hash, Pencil, Scale, Smile, Type, UtensilsCrossed, X } from "lucide-react";
+import { BookOpen, Camera, DollarSign, Hash, Pencil, Scale, Smile, Type, UtensilsCrossed, X } from "lucide-react";
 import { cn } from "@/design-system/ui/utils";
 import { useMemo, useRef, useState } from "react";
 import { useTheme } from "next-themes";
@@ -55,6 +55,7 @@ export function IngredientRow({
   quantity,
   unit,
   subRecipeId,
+  estimatedUnitCost,
   units,
   catalog,
   recipeOptions,
@@ -70,6 +71,9 @@ export function IngredientRow({
   quantity: string;
   unit: string;
   subRecipeId: string | null;
+  /** Manual estimated cost per unit (UI-polish fast-follow) — foundation for a future shopping-list
+   *  total, but useful standalone as an estimated recipe cost today. String state like `quantity`. */
+  estimatedUnitCost: string;
   units: IngredientRowUnitOption[];
   catalog: IngredientCatalogOption[];
   recipeOptions: IngredientRowRecipeOption[];
@@ -78,7 +82,7 @@ export function IngredientRow({
    *  list from becoming an endless scroll. */
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
-  onChange: (patch: { name?: string; quantity?: string; unit?: string; subRecipeId?: string | null }) => void;
+  onChange: (patch: { name?: string; quantity?: string; unit?: string; subRecipeId?: string | null; estimatedUnitCost?: string }) => void;
   onRemove: () => void;
   onAttachPhoto: (file: File) => Promise<{ error: string | null }>;
   onSetIcon: (icon: string) => Promise<{ error: string | null }>;
@@ -428,6 +432,23 @@ export function IngredientRow({
                   </Button>
                 </>
               )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor={`ingredientCost_${index}`} className={fieldLabelClass}>
+                <DollarSign className="h-4 w-4" aria-hidden />
+                Costo
+              </label>
+              <Input
+                id={`ingredientCost_${index}`}
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Ej. 35.00"
+                value={estimatedUnitCost}
+                onChange={(e) => onChange({ estimatedUnitCost: e.target.value })}
+                className="min-w-0 flex-1 rounded-pill"
+              />
             </div>
           </motion.div>
         )}

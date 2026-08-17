@@ -9,9 +9,9 @@ import { afterEach, describe, expect, it } from "vitest";
 const { RecipeList } = await import("@/app/(app)/(recipes)/recetas/RecipeList");
 
 const RECIPES = [
-  { id: "1", title: "Tacos al pastor", category: "comida", portions: 4, photoUrl: null, prepMinutes: null },
-  { id: "2", title: "Pastel de chocolate", category: "postre", portions: 8, photoUrl: null, prepMinutes: 45 },
-  { id: "3", title: "Tacos de pescado", category: "comida", portions: 4, photoUrl: null, prepMinutes: null },
+  { id: "1", title: "Tacos al pastor", category: "comida", portions: 4, photoUrl: null, prepMinutes: null, ingredientNames: ["Piña"] },
+  { id: "2", title: "Pastel de chocolate", category: "postre", portions: 8, photoUrl: null, prepMinutes: 45, ingredientNames: ["Cocoa"] },
+  { id: "3", title: "Tacos de pescado", category: "comida", portions: 4, photoUrl: null, prepMinutes: null, ingredientNames: ["Pescado blanco"] },
 ];
 
 describe("RecipeList — smoke render (recipes-module)", () => {
@@ -34,6 +34,15 @@ describe("RecipeList — smoke render (recipes-module)", () => {
   it("typing in the search box narrows the rendered list by name", () => {
     render(<RecipeList recipes={RECIPES} initialQuery="" initialCategory={null} />);
     fireEvent.change(screen.getByLabelText("Buscar receta"), { target: { value: "pastor" } });
+
+    expect(screen.getByText("Tacos al pastor")).toBeInTheDocument();
+    expect(screen.queryByText("Pastel de chocolate")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tacos de pescado")).not.toBeInTheDocument();
+  });
+
+  it("typing an ingredient name (not in the title) also narrows the list", () => {
+    render(<RecipeList recipes={RECIPES} initialQuery="" initialCategory={null} />);
+    fireEvent.change(screen.getByLabelText("Buscar receta"), { target: { value: "piña" } });
 
     expect(screen.getByText("Tacos al pastor")).toBeInTheDocument();
     expect(screen.queryByText("Pastel de chocolate")).not.toBeInTheDocument();

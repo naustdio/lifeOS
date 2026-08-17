@@ -30,6 +30,7 @@ function parseIngredients(formData: FormData): IngredientInput[] {
         quantity: i.quantity === null || i.quantity === "" ? null : Number(i.quantity),
         unit: String(i.unit ?? ""),
         subRecipeId: i.subRecipeId ? String(i.subRecipeId) : null,
+        estimatedUnitCost: i.estimatedUnitCost === null || i.estimatedUnitCost === "" || i.estimatedUnitCost === undefined ? null : Number(i.estimatedUnitCost),
       }));
   } catch {
     return [];
@@ -64,6 +65,7 @@ export async function createRecipeAction(_prevState: RecipeFormState, formData: 
   const videoUrl = String(formData.get("videoUrl") ?? "").trim() || null;
   const prepMinutesRaw = String(formData.get("prepMinutes") ?? "").trim();
   const prepMinutes = prepMinutesRaw ? Number(prepMinutesRaw) : null;
+  const description = String(formData.get("description") ?? "").trim() || null;
 
   if (!title) return { error: "Completa el título." };
   if (!isValidCategory(category)) return { error: "Selecciona una categoría válida." };
@@ -78,6 +80,7 @@ export async function createRecipeAction(_prevState: RecipeFormState, formData: 
     portions,
     videoUrl,
     prepMinutes,
+    description,
     ingredients: parseIngredients(formData),
     steps: parseSteps(formData),
     reason: "Receta creada",
@@ -103,6 +106,7 @@ export async function updateRecipeAction(_prevState: RecipeFormState, formData: 
   const videoUrl = String(formData.get("videoUrl") ?? "").trim() || null;
   const prepMinutesRaw = String(formData.get("prepMinutes") ?? "").trim();
   const prepMinutes = prepMinutesRaw ? Number(prepMinutesRaw) : null;
+  const description = String(formData.get("description") ?? "").trim() || null;
   const reason = String(formData.get("reason") ?? "").trim();
 
   if (!id) return { error: "Receta no encontrada." };
@@ -117,6 +121,7 @@ export async function updateRecipeAction(_prevState: RecipeFormState, formData: 
     portions,
     videoUrl,
     prepMinutes,
+    description,
     ingredients: parseIngredients(formData),
     steps: parseSteps(formData),
     reason,
@@ -194,6 +199,26 @@ export async function setIngredientIconAction(name: string, icon: string): Promi
 
   const { error } = await recipesApi.upsertIngredientCatalogEntry(supabase, { householdId: spaceId, name, icon });
   return { error };
+}
+
+/** Toggles the calling user's own favorite mark on a recipe (personal, not household-shared —
+ *  migration `20260817223100_recipes_favorites.sql`). Called directly from `RecipeDetail`, not a
+ *  `<form>` action, since it's a single icon-button toggle with no other fields. */
+export async function toggleFavoriteAction(recipeId: string, isFavorited: boolean): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: ERROR_COPY.NOT_A_MEMBER };
+
+  const { error } = isFavorited
+    ? await recipesApi.removeFavorite(supabase, user.id, recipeId)
+    : await recipesApi.addFavorite(supabase, user.id, recipeId);
+  if (error) return { error };
+
+  revalidatePath("/recetas");
+  revalidatePath(`/recetas/${recipeId}`);
+  return { error: null };
 }
 
 /** Uploads a recipe's own photo (distinct from ingredient photos) — called directly from

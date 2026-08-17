@@ -56,6 +56,7 @@ describe("RecipeForm — smoke render (recipes-module)", () => {
       videoUrl: null,
       prepMinutes: null,
       photoUrl: null,
+      description: null,
       ingredients: [],
       steps: [],
     };

@@ -13,7 +13,8 @@ vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
 
 const softDeleteRecipeAction = vi.fn();
 const hardDeleteRecipeAction = vi.fn();
-vi.mock("@/app/(app)/(recipes)/recetas/actions", () => ({ softDeleteRecipeAction, hardDeleteRecipeAction }));
+const toggleFavoriteAction = vi.fn();
+vi.mock("@/app/(app)/(recipes)/recetas/actions", () => ({ softDeleteRecipeAction, hardDeleteRecipeAction, toggleFavoriteAction }));
 
 const { RecipeDetail } = await import("@/app/(app)/(recipes)/recetas/[id]/RecipeDetail");
 
@@ -25,7 +26,8 @@ const RECIPE = {
   videoUrl: null,
   prepMinutes: null,
   photoUrl: null,
-  ingredients: [{ id: "i1", position: 0, name: "Tortilla", quantity: 8, unit: "pieza", subRecipeId: null }],
+  description: null,
+  ingredients: [{ id: "i1", position: 0, name: "Tortilla", quantity: 8, unit: "pieza", subRecipeId: null, estimatedUnitCost: null }],
   steps: [{ id: "s1", position: 0, instruction: "Calentar la tortilla" }],
 };
 
@@ -45,14 +47,14 @@ describe("RecipeDetail — history + delete confirmations (recipes-module)", () 
   afterEach(() => cleanup());
 
   it("renders the recipe title and a collapsed history toggle, hiding entries by default", () => {
-    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={false} />);
+    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={false} isFavorited={false} />);
     expect(screen.getByText("Tacos al pastor")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Historial de cambios" })).toBeInTheDocument();
     expect(screen.queryByText("primera carga de la receta")).not.toBeInTheDocument();
   });
 
   it("expanding history shows actor, timestamp, and reason per entry with no field-level diff", () => {
-    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={false} />);
+    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={false} isFavorited={false} />);
     fireEvent.click(screen.getByRole("button", { name: "Historial de cambios" }));
 
     expect(screen.getByText("primera carga de la receta")).toBeInTheDocument();
@@ -63,19 +65,19 @@ describe("RecipeDetail — history + delete confirmations (recipes-module)", () 
   });
 
   it("a non-owner sees only the soft-delete action, never hard-delete", () => {
-    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={false} />);
+    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={false} isFavorited={false} />);
     expect(screen.getByRole("button", { name: "Eliminar receta" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Eliminar permanentemente" })).not.toBeInTheDocument();
   });
 
   it("an owner sees both the soft-delete and hard-delete actions", () => {
-    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={true} />);
+    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={true} isFavorited={false} />);
     expect(screen.getByRole("button", { name: "Eliminar receta" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Eliminar permanentemente" })).toBeInTheDocument();
   });
 
   it("soft-delete confirmation is blocked client-side without a typed reason", () => {
-    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={false} />);
+    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={false} isFavorited={false} />);
     fireEvent.click(screen.getByRole("button", { name: "Eliminar receta" }));
 
     const confirmButton = screen.getByRole("button", { name: "Confirmar borrado" });
@@ -89,7 +91,7 @@ describe("RecipeDetail — history + delete confirmations (recipes-module)", () 
   });
 
   it("the hard-delete confirmation step is visibly distinct from the soft-delete confirmation", () => {
-    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={true} />);
+    render(<RecipeDetail recipe={RECIPE} history={HISTORY} isOwner={true} isFavorited={false} />);
     fireEvent.click(screen.getByRole("button", { name: "Eliminar permanentemente" }));
 
     expect(screen.getByText(/esta acción no se puede deshacer/i)).toBeInTheDocument();

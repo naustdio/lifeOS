@@ -6,12 +6,16 @@ import "server-only";
 
 export {
   listRecipes,
+  listIngredientNamesByRecipeIds,
   getRecipeById,
   createRecipe,
   updateRecipe,
   softDeleteRecipe,
   hardDeleteRecipe,
   setRecipePhoto,
+  listFavoriteRecipeIds,
+  addFavorite,
+  removeFavorite,
   type RecipeListItem,
   type RecipeDetail,
   type RecipeIngredient,
