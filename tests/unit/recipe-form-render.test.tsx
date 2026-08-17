@@ -74,7 +74,7 @@ describe("RecipeForm — smoke render (recipes-module)", () => {
     expect(screen.getByLabelText("Ingrediente")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Agregar paso" }));
-    expect(screen.getByPlaceholderText("Paso 1")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Paso 1/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Quitar ingrediente 1" }));
     expect(screen.queryByLabelText("Ingrediente")).not.toBeInTheDocument();

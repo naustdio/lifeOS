@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
 import { Input } from "@/design-system/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/design-system/ui/popover";
 import { VideoEmbed } from "@/design-system/patterns/VideoEmbed";
 import { hardDeleteRecipeAction, softDeleteRecipeAction, type RecipeFormState } from "../actions";
 
@@ -48,6 +49,65 @@ export type RecipeDetailHistoryEntry = {
   reason: string;
   createdAt: string;
 };
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Renders a step's instruction text, turning any "@IngredientName" substring that matches this
+ * recipe's own ingredients into a clickable chip that opens a popover with its quantity/unit (UI-
+ * polish fast-follow: plain-text @mentions, settled via grill-me interview — no structured tag, so
+ * a later ingredient rename just stops matching instead of breaking the step text). Longest names
+ * match first so e.g. "@Queso panela" doesn't get cut short by a shorter "@Queso" also on the list.
+ */
+function StepInstructionText({ instruction, ingredients }: { instruction: string; ingredients: RecipeDetailRecipe["ingredients"] }) {
+  const mentionPattern = useMemo(() => {
+    const names = ingredients.map((i) => i.name.trim()).filter(Boolean);
+    if (names.length === 0) return null;
+    const sorted = [...new Set(names)].sort((a, b) => b.length - a.length);
+    return new RegExp(`@(${sorted.map(escapeRegExp).join("|")})`, "gi");
+  }, [ingredients]);
+
+  if (!mentionPattern) return <>{instruction}</>;
+
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  mentionPattern.lastIndex = 0;
+  while ((match = mentionPattern.exec(instruction))) {
+    if (match.index > lastIndex) parts.push(instruction.slice(lastIndex, match.index));
+    const matchedName = match[1];
+    const ingredient = ingredients.find((i) => i.name.toLowerCase() === matchedName.toLowerCase());
+    if (ingredient) {
+      parts.push(
+        <Popover key={key++}>
+          <PopoverTrigger asChild>
+            <button type="button" className="font-medium text-primary underline underline-offset-2">
+              @{matchedName}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto text-sm">
+            <p className="font-medium">{ingredient.name}</p>
+            {(ingredient.quantity !== null || ingredient.unit) && (
+              <p className="text-muted-foreground">
+                {ingredient.quantity !== null ? `${ingredient.quantity} ` : ""}
+                {ingredient.unit}
+              </p>
+            )}
+          </PopoverContent>
+        </Popover>,
+      );
+    } else {
+      parts.push(match[0]);
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < instruction.length) parts.push(instruction.slice(lastIndex));
+
+  return <>{parts}</>;
+}
 
 /**
  * Recipe detail — collapsed-by-default "Historial de cambios" (actor/timestamp/reason per row, no
@@ -110,7 +170,9 @@ export function RecipeDetail({ recipe, history, isOwner }: { recipe: RecipeDetai
             <h3 className="text-sm font-medium">Pasos</h3>
             <ol className="flex flex-col gap-1 text-sm list-decimal pl-4">
               {recipe.steps.map((s) => (
-                <li key={s.id}>{s.instruction}</li>
+                <li key={s.id}>
+                  <StepInstructionText instruction={s.instruction} ingredients={recipe.ingredients} />
+                </li>
               ))}
             </ol>
           </div>

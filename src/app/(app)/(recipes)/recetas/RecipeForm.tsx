@@ -2,7 +2,7 @@
 
 import { Camera, Plus } from "lucide-react";
 import { Reorder } from "motion/react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/design-system/ui/card";
 import {
@@ -82,6 +82,9 @@ export function RecipeForm({
   // doesn't turn into an endless scroll (owned here, not per-row, since expanding one must collapse
   // whichever other row was open).
   const [expandedIngredientIndex, setExpandedIngredientIndex] = useState<number | null>(null);
+  // Feeds the "@" mention autocomplete in step instructions (StepRow) — recomputed as ingredient
+  // rows change so a name typed moments ago is immediately citable.
+  const ingredientNames = useMemo(() => ingredients.map((i) => i.name.trim()).filter(Boolean), [ingredients]);
   const [steps, setSteps] = useState<StepDraft[]>(
     initial?.steps.map((s) => ({ id: crypto.randomUUID(), instruction: s.instruction })) ?? [],
   );
@@ -327,6 +330,7 @@ export function RecipeForm({
                   key={s.id}
                   step={s}
                   index={i}
+                  ingredientNames={ingredientNames}
                   onChange={(instruction) => setSteps((prev) => prev.map((p) => (p.id === s.id ? { ...p, instruction } : p)))}
                   onRemove={() => setSteps((prev) => prev.filter((p) => p.id !== s.id))}
                 />
