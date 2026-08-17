@@ -144,7 +144,7 @@ export async function softDeleteRecipeAction(_prevState: RecipeFormState, formDa
   if (error) return { error: "No se pudo eliminar la receta. " + error };
 
   revalidatePath("/recetas");
-  return { error: null };
+  redirect("/recetas");
 }
 
 /** Permanently deletes a recipe — owner-only. Checks the caller's role BEFORE attempting the
@@ -169,7 +169,7 @@ export async function hardDeleteRecipeAction(_prevState: RecipeFormState, formDa
   if (error) return { error: "No se pudo eliminar la receta. " + error };
 
   revalidatePath("/recetas");
-  return { error: null };
+  redirect("/recetas");
 }
 
 /** Uploads a photo for a household ingredient-catalog entry (creating the entry if the write seam

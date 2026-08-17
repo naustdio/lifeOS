@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
 import { isValidCategory, normalizePositions, reasonIsPresent, RECIPE_CATEGORIES } from "@/modules/recipes/domain/recipe";
 
 describe("RECIPE_CATEGORIES / isValidCategory (mirrors recipes.recipes.category CHECK)", () => {
-  it("accepts exactly the five fixed categories", () => {
-    expect(RECIPE_CATEGORIES).toEqual(["desayuno", "comida", "cena", "postre", "snack"]);
+  it("accepts exactly the six fixed categories", () => {
+    expect(RECIPE_CATEGORIES).toEqual(["desayuno", "comida", "cena", "postre", "snack", "complemento"]);
     for (const c of RECIPE_CATEGORIES) {
       expect(isValidCategory(c)).toBe(true);
     }

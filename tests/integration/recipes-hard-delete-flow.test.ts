@@ -15,6 +15,11 @@ import { adminClient, signUpAndSignIn, type TestSession } from "./helpers/local-
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(() => {
+    throw Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT" });
+  }),
+}));
 
 let activeClient: SupabaseClient;
 vi.mock("@/shared/supabase/server", () => ({
@@ -116,11 +121,9 @@ describe("hard-delete flow — owner-only, audit survives (recipes-module Phase 
     expect(createErr).toBeNull();
     expect(recipeId).toBeTruthy();
 
-    const result = await actions.hardDeleteRecipeAction(
-      { error: null },
-      formData({ id: recipeId as string, reason: "eliminación permanente de prueba" }),
-    );
-    expect(result.error).toBeNull();
+    await expect(
+      actions.hardDeleteRecipeAction({ error: null }, formData({ id: recipeId as string, reason: "eliminación permanente de prueba" })),
+    ).rejects.toThrow("NEXT_REDIRECT");
 
     const recipeRow = await owner.client.schema("recipes").from("recipes").select("id").eq("id", recipeId);
     expect(recipeRow.data).toEqual([]);

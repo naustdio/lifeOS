@@ -2,7 +2,9 @@
 //
 // recipes-module Phase 3 (tasks.md 3.7/3.8) — calling the Server Actions directly (bypassing the
 // rendered form entirely) with an empty/missing reason is rejected and writes no row. Spec
-// `recipes-history` "A direct write bypassing the UI is still rejected".
+// `recipes-history` "A direct write bypassing the UI is still rejected" — that requirement is
+// scoped to edits/deletes (a brand-new recipe has no prior state to explain), so `createRecipeAction`
+// deliberately ignores any `reason` field and always writes a fixed "Receta creada" audit entry.
 
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -53,15 +55,15 @@ describe("recetas/actions — reason bypass rejected (recipes-module Phase 3)", 
     householdId = space.householdId;
   }, 30000);
 
-  it("createRecipeAction with an empty reason is rejected and writes no row", async () => {
+  it("createRecipeAction ignores an empty reason field — creation never requires one", async () => {
     const result = await actions.createRecipeAction(
       { error: null },
       formData({ title: "Sin motivo", category: "comida", portions: "2", ingredients: "[]", steps: "[]", reason: "" }),
     );
-    expect(result.error).not.toBeNull();
+    expect(result.error).toBeNull();
 
     const rows = await activeClient.schema("recipes").from("recipes").select("id").eq("household_id", householdId).eq("title", "Sin motivo");
-    expect(rows.data).toEqual([]);
+    expect(rows.data).toHaveLength(1);
   });
 
   it("softDeleteRecipeAction with an empty reason is rejected", async () => {
