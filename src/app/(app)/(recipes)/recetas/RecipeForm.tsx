@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Plus } from "lucide-react";
+import { Camera, Plus, X } from "lucide-react";
 import { Reorder } from "motion/react";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/design-system/ui/button";
@@ -64,12 +64,20 @@ export function RecipeForm({
   catalog,
   recipeOptions,
   initial,
+  onCreated,
+  onClose,
 }: {
   mode: "create" | "edit";
   units: IngredientRowUnitOption[];
   catalog: IngredientCatalogOption[];
   recipeOptions: IngredientRowRecipeOption[];
   initial?: RecipeFormInitial;
+  /** Fired once a create succeeds (after the create-success reset below) — lets a modal-hosted
+   *  create form (`NewRecipeLauncher`) close itself instead of sitting open on a blank form. */
+  onCreated?: () => void;
+  /** Renders a close (X) button in the header — only meaningful when this form is hosted inside
+   *  a dismissible container (the create modal); the standalone edit route has no `onClose`. */
+  onClose?: () => void;
 }) {
   const action = mode === "create" ? createRecipeAction : updateRecipeAction;
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE);
@@ -139,6 +147,7 @@ export function RecipeForm({
     setCategory(CATEGORIES[1].value);
     setIngredients([]);
     setSteps([]);
+    onCreated?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to a fresh id appearing
   }, [state?.id]);
 
@@ -184,8 +193,13 @@ export function RecipeForm({
 
   return (
     <Card id="recipe-form">
-      <CardHeader>
+      <CardHeader className={onClose ? "flex flex-row items-center justify-between gap-2" : undefined}>
         <CardTitle>{mode === "create" ? "Nueva receta" : "Editar receta"}</CardTitle>
+        {onClose && (
+          <Button type="button" variant="secondary" size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={onClose} aria-label="Cerrar">
+            <X className="h-4 w-4" aria-hidden />
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         <form ref={formRef} action={handleSubmit} className="flex flex-col gap-4">

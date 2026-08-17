@@ -11,7 +11,7 @@ import {
 } from "@/modules/recipes/api";
 import type { IngredientCatalogOption } from "@/design-system/patterns/IngredientRow";
 import { createClient } from "@/shared/supabase/server";
-import { RecipeForm } from "./RecipeForm";
+import { NewRecipeLauncher } from "./NewRecipeLauncher";
 import { RecipeList } from "./RecipeList";
 
 /**
@@ -65,12 +65,7 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
         initialCategory={category ?? null}
       />
 
-      <RecipeForm
-        mode="create"
-        units={units}
-        catalog={catalog}
-        recipeOptions={complementoRecipes.map((r) => ({ id: r.id, title: r.title }))}
-      />
+      <NewRecipeLauncher units={units} catalog={catalog} recipeOptions={complementoRecipes.map((r) => ({ id: r.id, title: r.title }))} />
     </main>
   );
 }
