@@ -52,18 +52,16 @@ export function RecipeCard({
         }}
       />
 
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-3">
-        <div className="min-w-0 flex flex-col">
-          <span className="truncate text-sm font-semibold text-white">{title}</span>
-          <span className="truncate text-xs text-white/85">{categoryLabel}</span>
-        </div>
+      {prepMinutes !== null && (
+        <span className="absolute top-3 right-3 flex shrink-0 items-center gap-1 rounded-pill bg-card px-2.5 py-1.5 text-xs font-medium text-card-foreground shadow-soft">
+          <Clock className="h-3.5 w-3.5" aria-hidden />
+          {prepMinutes} min
+        </span>
+      )}
 
-        {prepMinutes !== null && (
-          <span className="flex shrink-0 items-center gap-1 rounded-pill bg-card px-2.5 py-1.5 text-xs font-medium text-card-foreground shadow-soft">
-            <Clock className="h-3.5 w-3.5" aria-hidden />
-            {prepMinutes} min
-          </span>
-        )}
+      <div className="absolute inset-x-0 bottom-0 flex flex-col p-3">
+        <span className="truncate text-sm font-semibold text-white">{title}</span>
+        <span className="truncate text-xs text-white/85">{categoryLabel}</span>
       </div>
     </Link>
   );
