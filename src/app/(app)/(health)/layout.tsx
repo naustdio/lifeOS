@@ -1,17 +1,16 @@
-import { Apple, HeartPulse, LineChart, UserRound } from "lucide-react";
-import Link from "next/link";
 import type * as React from "react";
-import { FabMenu } from "@/design-system/patterns/FabMenu";
-import { OverflowMenu } from "@/design-system/patterns/OverflowMenu";
-import { NavPill } from "@/design-system/ui/nav-pill";
+import { ModuleNavPill } from "@/design-system/patterns/ModuleNavPill";
+import { MODULE_NAV } from "@/shared/navigation/registry";
+
+const healthModule = MODULE_NAV.find((module) => module.id === "health")!;
 
 /**
  * Health module's nested layout (change: health-tracking, spec `module-architecture`:
  * UI-Layer Route-Group Boundary — same shape `(finance)/layout.tsx` already established).
  * `(health)` is a Next.js route group: zero URL segments added, so `(health)/salud/page.tsx`
- * still serves `/salud`. Sole owner of Health's bottom nav; the outer `AppLayout` renders none
- * of it. `/perfil` moved into an `OverflowMenu` alongside the new `/nutricion` destination
- * (design.md Decision 6, nutrition-submodule) — mirrors `(finance)/layout.tsx`'s exact shape.
+ * still serves `/salud`. Sole owner of Health's bottom nav, now sourced from the shared
+ * registry via `ModuleNavPill` (change: tablet-web-sidebar-layout, design.md decision 7) —
+ * rendered output and behavior are unchanged.
  */
 export default function HealthLayout({
   children,
@@ -21,39 +20,7 @@ export default function HealthLayout({
   return (
     <>
       {children}
-      <NavPill>
-        <Link
-          href="/salud"
-          aria-label="Eventos"
-          className="flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
-        >
-          <HeartPulse className="h-5 w-5" aria-hidden />
-        </Link>
-        <Link href="/salud" aria-label="Nuevo evento">
-          <FabMenu label="Nuevo evento" />
-        </Link>
-        <Link
-          href="/signos"
-          aria-label="Signos vitales"
-          className="flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-200 ease-out hover:bg-nav-pill-foreground/10"
-        >
-          <LineChart className="h-5 w-5" aria-hidden />
-        </Link>
-        <OverflowMenu
-          items={[
-            {
-              href: "/nutricion",
-              label: "Nutrición",
-              icon: <Apple className="h-5 w-5" aria-hidden />,
-            },
-            {
-              href: "/perfil",
-              label: "Perfil",
-              icon: <UserRound className="h-5 w-5" aria-hidden />,
-            },
-          ]}
-        />
-      </NavPill>
+      <ModuleNavPill module={healthModule} />
     </>
   );
 }
