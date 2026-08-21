@@ -61,9 +61,18 @@ Shell (≥md, sidebar present → sidebar+content centre together; absent → co
 ```tsx
 <div className="md:flex md:justify-center md:gap-8">
   <SidebarNav modules={serialized} />
-  <div className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-6 px-4 pb-28 pt-8 md:pb-8">…</div>
+  <div className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-6 px-4 pb-28 pt-8 md:max-w-2xl md:pb-8 lg:max-w-3xl">…</div>
 </div>
 ```
+
+**Decision 5 (amended 2026-08-21):** the content column no longer pins `max-w-md` at every width.
+Real-device review at tablet width (iPad Air, 820px) showed the original fixed-`max-w-md` column
+sitting in a large dead void beside the sidebar — narrowing the sidebar or removing it doesn't fix
+that, since the column would stay 448px regardless of available space. The column now widens on a
+fixed breakpoint curve (`max-w-md` → `md:max-w-2xl` → `lg:max-w-3xl`), not fluidly/full-bleed, so
+existing content components (which assume a narrow single-column measure) aren't stretched into
+unintentional layouts. This does not become general "content reflow": components themselves are
+untouched, only the outer cap they render inside.
 
 ## Testing Strategy
 

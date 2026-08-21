@@ -15,7 +15,7 @@ export const Sidebar = React.forwardRef<
   <nav
     ref={ref}
     className={cn(
-      "hidden md:flex md:sticky md:top-0 md:h-screen w-56 shrink-0 flex-col gap-1 py-8",
+      "hidden md:flex md:sticky md:top-0 md:h-screen w-60 shrink-0 flex-col gap-1.5 border-r border-border py-8 pr-3",
       className,
     )}
     {...props}
@@ -52,9 +52,9 @@ export function SidebarNavItem({
       aria-label={label}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-card px-3 py-2 text-sm font-medium transition-colors duration-200 ease-out",
+        "flex items-center gap-3 rounded-card px-3 py-2.5 text-sm font-medium transition-colors duration-200 ease-out",
         active
-          ? "bg-accent text-accent-foreground"
+          ? "bg-primary text-primary-foreground"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
       )}
     >

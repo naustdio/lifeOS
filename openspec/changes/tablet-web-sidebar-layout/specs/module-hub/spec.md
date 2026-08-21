@@ -26,11 +26,17 @@ breakpoint distinction.)
 - THEN it mounts the shared sidebar (scoped to the active module per `adaptive-navigation`), and
   still contributes no `FabMenu` or `OverflowMenu`
 
-#### Scenario: Content container keeps max-w-md at every width
-- GIVEN any authenticated route at any viewport width
-- WHEN the content container renders
-- THEN it keeps `max-w-md`; only the outer shell's nav chrome and container padding change by
-  breakpoint, never the content column width
+#### Scenario: Content container widens at md and above
+- GIVEN any authenticated route
+- WHEN the viewport is narrower than 768px (`md`)
+- THEN the content container keeps `max-w-md` (unchanged from before this amendment)
+- WHEN the viewport is 768px (`md`) or wider
+- THEN the content container widens to `max-w-2xl`, and to `max-w-3xl` at 1024px (`lg`) and above —
+  a fixed, breakpoint-driven cap, not a fluid/full-bleed width; individual content components are
+  unchanged and may still assume a narrow single-column measure inside this wider container
+  (Amended 2026-08-21: originally this scenario pinned `max-w-md` at every width; that produced a
+  cramped column with excess dead space beside the sidebar at tablet/desktop widths — see
+  `design.md` decision 5 for the reasoning)
 
 ### Requirement: Finance Nested Layout Owns Finance Nav
 `(finance)/layout.tsx` MUST render the same `NavPill`, `FabMenu`, and `OverflowMenu` JSX previously

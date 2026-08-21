@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -32,7 +32,10 @@ const SERIALIZED_MODULES = MODULE_NAV.map((module) => ({
 }));
 
 describe("SidebarNav", () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    window.localStorage.clear();
+  });
 
   it("renders null when no module matches the current route (hub)", () => {
     mockPathname = "/";
@@ -67,9 +70,35 @@ describe("SidebarNav", () => {
     mockPathname = "/salud";
     render(<SidebarNav modules={SERIALIZED_MODULES} />);
 
-    expect(screen.getByRole("link", { name: /LifeOS|Inicio del hub|hub/i })).toHaveAttribute(
-      "href",
-      "/",
-    );
+    expect(screen.getByRole("link", { name: "Todos los módulos" })).toHaveAttribute("href", "/");
+  });
+
+  it("renders a collapse toggle when a module is active", () => {
+    mockPathname = "/finance";
+    render(<SidebarNav modules={SERIALIZED_MODULES} />);
+
+    expect(screen.getByRole("button", { name: /contraer navegación/i })).toBeInTheDocument();
+  });
+
+  it("collapsing hides the nav items and shows a reopen button instead", () => {
+    mockPathname = "/finance";
+    render(<SidebarNav modules={SERIALIZED_MODULES} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /contraer navegación/i }));
+
+    expect(screen.queryByRole("link", { name: "Cuentas" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mostrar navegación/i })).toBeInTheDocument();
+  });
+
+  it("persists the collapsed state across remounts via localStorage", () => {
+    mockPathname = "/finance";
+    const { unmount } = render(<SidebarNav modules={SERIALIZED_MODULES} />);
+    fireEvent.click(screen.getByRole("button", { name: /contraer navegación/i }));
+    unmount();
+
+    render(<SidebarNav modules={SERIALIZED_MODULES} />);
+
+    expect(screen.queryByRole("link", { name: "Cuentas" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mostrar navegación/i })).toBeInTheDocument();
   });
 });

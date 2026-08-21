@@ -55,7 +55,7 @@ export default async function AppLayout({
   return (
     <div className="md:flex md:justify-center md:gap-8">
       <SidebarNav modules={sidebarModules} />
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-6 px-4 pb-28 pt-8 md:pb-8">
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-6 px-4 pb-28 pt-8 md:max-w-2xl md:pb-8 lg:max-w-3xl">
         <div className="flex items-center justify-between">
           <Link href="/">
             <h1 className="text-xl font-semibold">LifeOS</h1>

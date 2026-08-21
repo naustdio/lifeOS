@@ -1,10 +1,13 @@
 "use client";
 
+import { LayoutGrid, PanelLeft, PanelLeftClose } from "lucide-react";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 import { resolveActiveHref } from "@/shared/navigation/active-route";
 import type { ModuleNav } from "@/shared/navigation/registry";
 import { Sidebar, SidebarNavItem } from "../ui/sidebar";
+
+const COLLAPSED_STORAGE_KEY = "lifeos:sidebar-collapsed";
 
 export type SidebarNavDestination = {
   href: string;
@@ -36,6 +39,19 @@ export interface SidebarNavProps {
  */
 export function SidebarNav({ modules }: SidebarNavProps) {
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = React.useState(false);
+
+  React.useEffect(() => {
+    setCollapsed(window.localStorage.getItem(COLLAPSED_STORAGE_KEY) === "true");
+  }, []);
+
+  const toggleCollapsed = React.useCallback(() => {
+    setCollapsed((current) => {
+      const next = !current;
+      window.localStorage.setItem(COLLAPSED_STORAGE_KEY, String(next));
+      return next;
+    });
+  }, []);
 
   const allHrefs = React.useMemo(
     () =>
@@ -67,11 +83,41 @@ export function SidebarNav({ modules }: SidebarNavProps) {
     activeModule.destinations.map((destination) => destination.href),
   );
 
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-label="Mostrar navegación"
+        className="fixed left-4 top-4 z-40 hidden h-9 w-9 items-center justify-center rounded-card border border-border bg-card text-muted-foreground shadow-soft transition-colors duration-200 ease-out hover:text-foreground md:flex"
+      >
+        <PanelLeft className="h-4 w-4" aria-hidden />
+      </button>
+    );
+  }
+
   return (
     <Sidebar>
-      <SidebarNavItem href="/" label="Inicio del hub">
-        LifeOS
-      </SidebarNavItem>
+      <div className="flex items-center gap-1 pr-1">
+        <div className="min-w-0 flex-1">
+          <SidebarNavItem
+            href="/"
+            label="Todos los módulos"
+            icon={<LayoutGrid className="h-5 w-5" aria-hidden />}
+          >
+            Todos los módulos
+          </SidebarNavItem>
+        </div>
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label="Contraer navegación"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-card text-muted-foreground transition-colors duration-200 ease-out hover:bg-accent hover:text-accent-foreground"
+        >
+          <PanelLeftClose className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+      <div className="mb-1 border-t border-border" role="separator" />
       {activeModule.destinations.map((destination) => (
         <SidebarNavItem
           key={destination.href}
