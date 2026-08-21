@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Bookmark, BookOpen, ChevronDown, Clock, Minus, Pencil, Plus, Users } from "lucide-react";
+import { ArrowLeft, Bookmark, BookOpen, ChevronDown, Clock, Minus, Pencil, Plus, ShoppingCart, Users } from "lucide-react";
 import { useActionState, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/design-system/ui/button";
 import { Input } from "@/design-system/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/design-system/ui/popover";
 import { cn } from "@/design-system/ui/utils";
 import { VideoEmbed } from "@/design-system/patterns/VideoEmbed";
+import { generateFromRecipesAction } from "../../../(shopping-list)/lista-de-compras/actions";
 import { hardDeleteRecipeAction, softDeleteRecipeAction, toggleFavoriteAction, type RecipeFormState } from "../actions";
 
 const INITIAL_STATE: RecipeFormState = { error: null };
@@ -220,6 +221,22 @@ export function RecipeDetail({
     if (i.quantity === null || i.estimatedUnitCost === null) return sum;
     return sum + i.quantity * scaleRatio * i.estimatedUnitCost;
   }, 0);
+  // "Generar lista de compras" (Phase 5, spec `shopping-list-recipe-intake` "Single-Recipe Entry
+  // Point With Portion-Scaling Prompt") — reuses the same `targetPortions` stepper already above:
+  // the member adjusts it (or leaves it at `recipe.portions`) before generating, satisfying both
+  // spec scenarios without a separate prompt UI.
+  const [generatePending, setGeneratePending] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateDone, setGenerateDone] = useState(false);
+  async function handleGenerateShoppingList() {
+    setGeneratePending(true);
+    setGenerateError(null);
+    setGenerateDone(false);
+    const result = await generateFromRecipesAction({ recipeIds: [recipe.id], targetPortions });
+    setGeneratePending(false);
+    if (result.error) setGenerateError(result.error);
+    else setGenerateDone(true);
+  }
   const [softOpen, setSoftOpen] = useState(false);
   const [softReason, setSoftReason] = useState("");
   const [softState, softAction, softPending] = useActionState(softDeleteRecipeAction, INITIAL_STATE);
@@ -352,6 +369,19 @@ export function RecipeDetail({
                 </li>
               ))}
             </ul>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="mt-1 self-start"
+              onClick={handleGenerateShoppingList}
+              disabled={generatePending}
+            >
+              <ShoppingCart className="h-4 w-4" aria-hidden />
+              {generatePending ? "Generando…" : "Generar lista de compras"}
+            </Button>
+            {generateDone && <p className="text-xs text-category-green">Se agregó a tu lista de compras.</p>}
+            {generateError && <p className="text-xs text-expense">{generateError}</p>}
           </div>
         </div>
       </div>

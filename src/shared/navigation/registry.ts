@@ -8,6 +8,7 @@ import {
   Layers,
   LineChart,
   Repeat,
+  ShoppingCart,
   Target,
   UserRound,
   Wallet,
@@ -38,7 +39,7 @@ export type NavDestination = {
 };
 
 export type ModuleNav = {
-  id: "finance" | "health" | "recipes";
+  id: "finance" | "health" | "recipes" | "shopping-list";
   label: string;
   href: string;
   icon: LucideIcon;
@@ -113,6 +114,20 @@ export const MODULE_NAV: readonly ModuleNav[] = [
     fab: { href: "/recetas", label: "Nueva receta", buttonLabel: "Nueva receta" },
     destinations: [
       { href: "/recetas", label: "Recetas", icon: BookOpen, placement: "primary" },
+    ],
+  },
+  {
+    id: "shopping-list",
+    label: "Lista de compras",
+    href: "/lista-de-compras",
+    icon: ShoppingCart,
+    /** Unused by this module's own layout (`(shopping-list)/layout.tsx` keeps its own
+     * FAB-less bottom nav — items are added inline, not via a launcher), but `fab` is
+     * required by `ModuleNav` since every other module's `ModuleNavPill` depends on it. */
+    fab: { href: "/lista-de-compras", label: "Agregar ítem" },
+    destinations: [
+      { href: "/lista-de-compras", label: "Lista de compras", icon: ShoppingCart, placement: "primary" },
+      { href: "/planificador", label: "Planificador", icon: CalendarDays, placement: "primary" },
     ],
   },
 ];

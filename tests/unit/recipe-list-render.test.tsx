@@ -1,10 +1,21 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 // RED-first (tasks.md 3.9, RTL, standard mode). Spec `recipes-catalog` "Searching by partial name
 // returns matches", "Category filter narrows the list", "Search and filter compose on small
 // viewports". `RecipeList.tsx` did not exist when this was written.
+//
+// shopping-list Phase 5 (tasks.md 5.4) added an import of `generateFromRecipesAction` into
+// `RecipeList.tsx`, which transitively imports `server-only` via `@/modules/shopping-list/api`.
+// Mirrors `recipe-detail-render.test.tsx:10-12`'s mocking pattern for the identical situation.
+
+vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/shared/supabase/server", () => ({ createClient: vi.fn() }));
+
+const generateFromRecipesAction = vi.fn();
+vi.mock("@/app/(app)/(shopping-list)/lista-de-compras/actions", () => ({ generateFromRecipesAction }));
 
 const { RecipeList } = await import("@/app/(app)/(recipes)/recetas/RecipeList");
 

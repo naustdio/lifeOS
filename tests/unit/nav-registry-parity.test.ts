@@ -32,6 +32,7 @@ const FROZEN_MODULES = {
   finance: { id: "finance", label: "Finanzas", href: "/finance" },
   health: { id: "health", label: "Salud", href: "/salud" },
   recipes: { id: "recipes", label: "Recetas", href: "/recetas" },
+  shoppingList: { id: "shopping-list", label: "Lista de compras", href: "/lista-de-compras" },
 } as const;
 
 function destinationsOf(id: "finance" | "health" | "recipes") {
@@ -63,6 +64,7 @@ describe("MODULE_NAV registry parity (regression guard)", () => {
       FROZEN_MODULES.finance,
       FROZEN_MODULES.health,
       FROZEN_MODULES.recipes,
+      FROZEN_MODULES.shoppingList,
     ]);
   });
 });

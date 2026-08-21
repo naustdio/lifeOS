@@ -49,3 +49,6 @@ Thumbs.db
 
 # Personal reference files (never commit — may contain sensitive data)
 /EXTRAS/
+
+.vercel
+.env*
