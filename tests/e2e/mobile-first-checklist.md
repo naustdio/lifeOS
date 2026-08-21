@@ -29,3 +29,26 @@ Structural basis for why this passes by construction in sub-slice 1A:
 
 This checklist is re-run manually whenever a new screen ships (1B's
 `/entrar`, 2C's `/cuentas` and `/movimientos`) until T-040 automates it.
+
+## Adaptive Navigation Breakpoint Checklist (change: tablet-web-sidebar-layout)
+
+Manual checklist for the `adaptive-navigation` spec's "Exactly One Nav
+Surface Visible" requirement — no automated responsive/visual-regression
+coverage exists (design.md "Testing Strategy" limit); jsdom cannot evaluate
+CSS media queries, so `tests/unit/nav-surface-breakpoint.test.tsx` only
+proves the class strings, not real rendered visibility.
+
+**How to run:** `pnpm dev`, open a module route (e.g. `/finance`) in a
+browser, and resize/use DevTools device toolbar at each width below.
+
+| Width | Exactly one nav surface visible | Which surface | Sidebar shows only active module + hub link | No horizontal scroll / no double nav |
+|---|---|---|---|---|
+| 375px | ☐ | pill (expected) | N/A | ☐ |
+| 768px | ☐ | sidebar (expected) | ☐ | ☐ |
+| 1024px | ☐ | sidebar (expected) | ☐ | ☐ |
+| 1280px | ☐ | sidebar (expected) | ☐ | ☐ |
+
+**Status**: PENDING — not run in this session (no browser access from the
+apply agent). Requires a human pass before this change is considered fully
+verified end-to-end; `pnpm verify` (lint + typecheck + tests + build) is
+green independent of this manual pass.

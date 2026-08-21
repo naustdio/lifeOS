@@ -48,17 +48,17 @@ Skill: `chained-pr` (gentle-ai-chained-pr registry) applies — split confirmed,
 ## PR 2: Sidebar + Adaptive Shell (targets PR 1 branch)
 
 ### Phase 1: Sidebar Primitive
-- [ ] 1.1 RED: write `design-system/ui/sidebar.test.tsx` — active item exposes `aria-current="page"`, inactive doesn't
-- [ ] 1.2 GREEN: create `sidebar.tsx` (`Sidebar`, `SidebarNavItem`), token-based styling
-- [ ] 1.3 RED: write `design-system/patterns/SidebarNav.test.tsx` (mocked `usePathname`) — active module's destinations only, hub link, `null` at `/`
-- [ ] 1.4 GREEN: create `SidebarNav.tsx` (`"use client"`), longest-prefix module match via `active-route.ts`
+- [x] 1.1 RED: write `design-system/ui/sidebar.test.tsx` — active item exposes `aria-current="page"`, inactive doesn't — implemented at `tests/unit/sidebar-render.test.tsx` (same vitest `test.include` constraint as PR1: colocated `src/**` tests aren't globbed)
+- [x] 1.2 GREEN: create `sidebar.tsx` (`Sidebar`, `SidebarNavItem`), token-based styling
+- [x] 1.3 RED: write `design-system/patterns/SidebarNav.test.tsx` (mocked `usePathname`) — active module's destinations only, hub link, `null` at `/` — implemented at `tests/unit/sidebar-nav-render.test.tsx`
+- [x] 1.4 GREEN: create `SidebarNav.tsx` (`"use client"`), longest-prefix module match via `active-route.ts`; introduced `SidebarModuleNav`/`SidebarNavDestination` serialized types (icon as `ReactNode`) distinct from the registry's `ModuleNav` (icon as `LucideIcon`) to satisfy decision 5 at the type level, not just by convention
 
 ### Phase 2: Adaptive Shell Wiring
-- [ ] 2.1 Safety net: run existing `(app)/layout.tsx`-dependent tests, capture baseline
-- [ ] 2.2 Modify `(app)/layout.tsx`: wrap `md:flex md:justify-center md:gap-8`, mount `SidebarNav` (icon refs -> elements per decision 5), `pb-28` -> `pb-28 md:pb-8`
-- [ ] 2.3 Add `md:hidden` to `nav-pill.tsx` base class
-- [ ] 2.4 RED->GREEN: proxy breakpoint tests asserting class strings contain `md:hidden` / `hidden md:flex`
+- [x] 2.1 Safety net: ran `hub-page-render`, `finance/health/recipes-layout-nav-render` (the tests that exercise `(app)/layout.tsx`'s siblings/consumers) — 12/12 passing before the shell change
+- [x] 2.2 Modified `(app)/layout.tsx`: wrapped `md:flex md:justify-center md:gap-8`, mounted `SidebarNav` with icon refs mapped to elements in the Server Component (decision 5), `pb-28` -> `pb-28 md:pb-8`
+- [x] 2.3 Added `md:hidden` to `nav-pill.tsx` base class
+- [x] 2.4 RED->GREEN: proxy breakpoint tests asserting class strings contain `md:hidden` / `hidden md:flex` — `tests/unit/nav-surface-breakpoint.test.tsx`
 
 ### Phase 3: Verification
-- [ ] 3.1 Extend `tests/e2e/mobile-first-checklist.md`: manual pass at 375/768/1024/1280px, exactly one nav surface
-- [ ] 3.2 Run `pnpm verify` (lint incl. boundaries + `tsc --noEmit` + tests)
+- [x] 3.1 Extended `tests/e2e/mobile-first-checklist.md` with an "Adaptive Navigation Breakpoint Checklist" section (375/768/1024/1280px, exactly one nav surface) — marked PENDING, requires a human browser pass; the apply agent has no browser access
+- [x] 3.2 Ran `pnpm verify` (lint incl. boundaries + `tsc --noEmit` + tokens + build) — all green; `pnpm test` separately — 91/91 files, 526/526 tests passing (518 baseline + 8 new from this PR)

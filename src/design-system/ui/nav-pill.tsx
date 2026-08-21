@@ -14,7 +14,7 @@ export const NavPill = React.forwardRef<
   <nav
     ref={ref}
     className={cn(
-      "fixed inset-x-4 bottom-4 z-50 flex items-center justify-between rounded-pill bg-nav-pill px-4 py-2 text-nav-pill-foreground shadow-soft-lg",
+      "fixed inset-x-4 bottom-4 z-50 flex items-center justify-between rounded-pill bg-nav-pill px-4 py-2 text-nav-pill-foreground shadow-soft-lg md:hidden",
       className,
     )}
     {...props}
